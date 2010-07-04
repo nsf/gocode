@@ -249,6 +249,8 @@ func processPackage(filename string) {
 	pkgname := s[len("package "):i-1]
 	fmt.Printf("parsing package '%s'\n", pkgname)
 	s = s[i+1:]
+
+	internalPackages := make(map[string]string, 50)
 	for {
 		// for each line
 		i := strings.Index(s, "\n")
@@ -266,19 +268,36 @@ func processPackage(filename string) {
 			continue
 		}
 
-		_, err := parser.ParseDeclList("", decl2 + "\n", nil)
+		if pkg == "" {
+			pkg = "__this__"
+		}
+
+		if _, ok := internalPackages[pkg]; ok {
+			internalPackages[pkg] = internalPackages[pkg] + decl2 + "\n"
+		} else {
+			internalPackages[pkg] = decl2 + "\n"
+		}
+		/*decls, err := parser.ParseDeclList("", decl2 + "\n", nil)
 		if err != nil {
 			fmt.Printf("!!!!!!!!!!!!!!!! FAILURE !!!!!!!!!!!!!!!!\n%s\n", decl2)
 			panic(fmt.Sprintf("%s\n", err.String()))
 		} else {
 			fmt.Printf("OK")
 		}
-		min := 80
-		if len(decl2) < min {
-			min = len(decl2)
-		}
-		fmt.Printf("\t%s\t%s\n", pkg, decl2[0:min])
+		*/
 		s = s[i+1:]
+
+		//fmt.Printf("\t%s\t%s\n", pkg, decl2)
+	}
+
+	for key, value := range internalPackages {
+		decls, err := parser.ParseDeclList("", value, nil)
+		if err != nil {
+			fmt.Printf("!!!!!!!!!!!!!!!! FAILURE !!!!!!!!!!!!!!!!\n%s\n", value)
+			panic(fmt.Sprintf("%s\n", err.String()))
+		} else {
+			fmt.Printf("\t%s: \033[32mOK\033[0m (ndecls: %d)\n", key, len(decls))
+		}
 	}
 }
 
@@ -286,4 +305,5 @@ func main() {
 	for _, arg := range os.Args[1:] {
 		processPackage(arg)
 	}
+	fmt.Printf("Total number of packages: %d\n", len(os.Args)-1)
 }
