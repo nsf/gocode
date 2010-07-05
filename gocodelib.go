@@ -261,7 +261,7 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 	}
 	s = s[i+1:]
 
-	internalPackages := make(map[string]string, 50)
+	internalPackages := make(map[string]*bytes.Buffer)
 	for {
 		// for each line
 		i := strings.Index(s, "\n")
@@ -284,12 +284,17 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 			pkg = uniquename
 		}
 
-		internalPackages[pkg] = internalPackages[pkg] + decl2 + "\n"
+		buf := internalPackages[pkg]
+		if buf == nil {
+			buf = bytes.NewBuffer(make([]byte, 0, 4096))
+			internalPackages[pkg] = buf
+		}
+		buf.WriteString(decl2)
+		buf.WriteString("\n")
 		s = s[i+1:]
 	}
-
 	for key, value := range internalPackages {
-		decls, err := parser.ParseDeclList("", value, nil)
+		decls, err := parser.ParseDeclList("", value.Bytes(), nil)
 		if err != nil {
 			panic(fmt.Sprintf("failure in:\n%s\n%s\n", value, err.String()))
 		} else {
