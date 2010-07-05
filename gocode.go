@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"go/parser"
+	"go/ast"
+	"go/token"
 	"strings"
 	"io/ioutil"
 	"os"
@@ -224,7 +226,7 @@ func processExport(s string) (string, string) {
 	return s, pkg
 }
 
-func processPackage(filename string) {
+func (self *AutoCompleteContext) processPackage(filename string, uniquename string, pkgname string) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic("Failed to open archive file")
@@ -246,8 +248,12 @@ func processPackage(filename string) {
 	if i == -1 {
 		panic("Wrong file")
 	}
-	pkgname := s[len("package "):i-1]
-	fmt.Printf("parsing package '%s'\n", pkgname)
+
+	if pkgname == "" {
+		pkgname = s[len("package "):i-1]
+	}
+	self.AddAlias(pkgname, uniquename)
+	//fmt.Printf("parsing package '%s'...\n", pkgname)
 	s = s[i+1:]
 
 	internalPackages := make(map[string]string, 50)
@@ -269,25 +275,12 @@ func processPackage(filename string) {
 		}
 
 		if pkg == "" {
-			pkg = "__this__"
+			// local package, use ours name
+			pkg = uniquename
 		}
 
-		if _, ok := internalPackages[pkg]; ok {
-			internalPackages[pkg] = internalPackages[pkg] + decl2 + "\n"
-		} else {
-			internalPackages[pkg] = decl2 + "\n"
-		}
-		/*decls, err := parser.ParseDeclList("", decl2 + "\n", nil)
-		if err != nil {
-			fmt.Printf("!!!!!!!!!!!!!!!! FAILURE !!!!!!!!!!!!!!!!\n%s\n", decl2)
-			panic(fmt.Sprintf("%s\n", err.String()))
-		} else {
-			fmt.Printf("OK")
-		}
-		*/
+		internalPackages[pkg] = internalPackages[pkg] + decl2 + "\n"
 		s = s[i+1:]
-
-		//fmt.Printf("\t%s\t%s\n", pkg, decl2)
 	}
 
 	for key, value := range internalPackages {
@@ -296,14 +289,153 @@ func processPackage(filename string) {
 			fmt.Printf("!!!!!!!!!!!!!!!! FAILURE !!!!!!!!!!!!!!!!\n%s\n", value)
 			panic(fmt.Sprintf("%s\n", err.String()))
 		} else {
-			fmt.Printf("\t%s: \033[32mOK\033[0m (ndecls: %d)\n", key, len(decls))
+			//fmt.Printf("\t%s: \033[32mOK\033[0m (ndecls: %d)\n", key, len(decls))
+			f := new(ast.File) // fake file
+			f.Decls = decls
+			ast.FileExports(f)
+			self.Add(key, f.Decls)
 		}
 	}
 }
 
-func main() {
-	for _, arg := range os.Args[1:] {
-		processPackage(arg)
+func prettyPrintDecl(d ast.Decl, p string) {
+	switch t := d.(type) {
+	case *ast.GenDecl:
+		switch t.Tok {
+		case token.CONST:
+			for _, spec := range t.Specs {
+				c := spec.(*ast.ValueSpec)
+				for _, name := range c.Names {
+					if len(name.Name()) < len(p) || (p != "" && name.Name()[0:len(p)] != p) {
+						continue
+					}
+					fmt.Printf("\tconst %s\n", name.Name())
+				}
+			}
+		case token.TYPE:
+			for _, spec := range t.Specs {
+				t := spec.(*ast.TypeSpec)
+				if len(t.Name.Name()) < len(p) || (p != "" && t.Name.Name()[0:len(p)] != p) {
+					continue
+				}
+				fmt.Printf("\ttype %s\n", t.Name.Name())
+			}
+		case token.VAR:
+			for _, spec := range t.Specs {
+				v := spec.(*ast.ValueSpec)
+				for _, name := range v.Names {
+					if len(name.Name()) < len(p) || (p != "" && name.Name()[0:len(p)] != p) {
+						continue
+					}
+					fmt.Printf("\tvar %s\n", name.Name())
+				}
+			}
+		default:
+			fmt.Printf("\tgen STUB\n")
+		}
+	case *ast.FuncDecl:
+		if t.Recv != nil {
+			//XXX: skip method, temporary
+			break
+		}
+		if len(t.Name.Name()) < len(p) || (p != "" && t.Name.Name()[0:len(p)] != p) {
+			break
+		}
+		fmt.Printf("\tfunc %s\n", t.Name.Name())
 	}
-	fmt.Printf("Total number of packages: %d\n", len(os.Args)-1)
+}
+
+func findFile(imp string) string {
+	goroot := os.Getenv("GOROOT")
+	goarch := os.Getenv("GOARCH")
+	goos := os.Getenv("GOOS")
+
+	return fmt.Sprintf("%s/pkg/%s_%s/%s.a", goroot, goos, goarch, imp)
+}
+
+func (self *AutoCompleteContext) processEndFile(filename string) {
+	file, err := parser.ParseFile(filename, nil, nil, parser.ImportsOnly)
+	if err != nil {
+		panic(err.String())
+	}
+
+	decl, ok := file.Decls[0].(*ast.GenDecl)
+	if !ok {
+		panic("Fail")
+	}
+
+	for _, spec := range decl.Specs {
+		imp, ok := spec.(*ast.ImportSpec)
+		if !ok {
+			panic("Fail")
+		}
+
+		s := string(imp.Path.Value)
+		alias := ""
+		if imp.Name != nil {
+			alias = imp.Name.Name()
+		}
+		s = s[1:len(s)-1]
+		self.processPackage(findFile(s), s, alias)
+	}
+}
+
+type AutoCompleteContext struct {
+	// main map:
+	// unique package name ->
+	//	[]ast.Decl
+	m map[string][]ast.Decl
+	// TODO: ast.Decl is a bit evil here, we need our own stuff
+
+	// current file namespace:
+	// alias name ->
+	//	unique package name
+	cfns map[string]string
+}
+
+func NewAutoCompleteContext() *AutoCompleteContext {
+	self := new(AutoCompleteContext)
+	self.m = make(map[string][]ast.Decl)
+	self.cfns = make(map[string]string)
+	return self
+}
+
+func (self *AutoCompleteContext) Add(globalname string, decls []ast.Decl) {
+	self.m[globalname] = decls
+}
+
+func (self *AutoCompleteContext) AddAlias(alias string, globalname string) {
+	self.cfns[alias] = globalname
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		panic("usage: ./gocode <go file> <apropos request>")
+	}
+	ctx := NewAutoCompleteContext()
+	ctx.processEndFile(os.Args[1])
+
+	switch len(os.Args) {
+	case 2:
+		for alias, pkgid := range ctx.cfns {
+			decls := ctx.m[pkgid]
+			fmt.Printf("package: '%s'...\n", alias)
+			for _, decl := range decls {
+				prettyPrintDecl(decl, "")
+			}
+		}
+	case 3:
+		request := os.Args[2]
+		parts := strings.Split(request, ".", 2)
+		switch len(parts) {
+		case 1:
+			for _, decl := range ctx.m[ctx.cfns[request]] {
+				prettyPrintDecl(decl, "")
+			}
+		case 2:
+			for _, decl := range ctx.m[ctx.cfns[parts[0]]] {
+				prettyPrintDecl(decl, parts[1])
+			}
+		}
+	}
 }
