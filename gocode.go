@@ -2,11 +2,14 @@ package main
 
 import (
 	"fmt"
+	"bytes"
+	"reflect"
 	"go/parser"
 	"go/ast"
 	"go/token"
 	"strings"
 	"io/ioutil"
+	"io"
 	"os"
 )
 
@@ -298,7 +301,81 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 	}
 }
 
-func prettyPrintDecl(d ast.Decl, p string) {
+func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
+	ty := reflect.Typeof(e)
+	if false {
+		fmt.Fprintf(out, "%s\n", ty.String())
+	}
+	switch t := e.(type) {
+	case *ast.StarExpr:
+		fmt.Fprintf(out, "*")
+		prettyPrintTypeExpr(out, t.X)
+	case *ast.Ident:
+		fmt.Fprintf(out, t.Name())
+	case *ast.ArrayType:
+		fmt.Fprintf(out, "[]")
+		prettyPrintTypeExpr(out, t.Elt)
+	case *ast.SelectorExpr:
+		prettyPrintTypeExpr(out, t.X)
+		fmt.Fprintf(out, ".%s", t.Sel.Name())
+	case *ast.FuncType:
+		fmt.Fprintf(out, "func(")
+		prettyPrintFuncFieldList(out, t.Params)
+		fmt.Fprintf(out, ")")
+
+		buf := bytes.NewBuffer(make([]byte, 0, 256))
+		nresults := prettyPrintFuncFieldList(buf, t.Results)
+		if nresults > 0 {
+			results := buf.String()
+			if strings.Index(results, " ") != -1 {
+				results = "(" + results + ")"
+			}
+			fmt.Fprintf(out, " %s", results)
+		}
+	case *ast.MapType:
+		fmt.Fprintf(out, "map[")
+		prettyPrintTypeExpr(out, t.Key)
+		fmt.Fprintf(out, "]")
+		prettyPrintTypeExpr(out, t.Value)
+	case *ast.InterfaceType:
+		fmt.Fprintf(out, "interface{}")
+	default:
+		fmt.Fprintf(out, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!%s\n", ty.String())
+	}
+}
+
+func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
+	count := 0
+	if f == nil {
+		return count
+	}
+	for i, field := range f.List {
+		// names
+		if field.Names != nil {
+			for j, name := range field.Names {
+				fmt.Fprintf(out, "%s", name.Name())
+				if j != len(field.Names)-1 {
+					fmt.Fprintf(out, ", ")
+				}
+				count++
+			}
+			fmt.Fprintf(out, " ")
+		} else {
+			count++
+		}
+
+		// type
+		prettyPrintTypeExpr(out, field.Type)
+
+		// ,
+		if i != len(f.List)-1 {
+			fmt.Fprintf(out, ", ")
+		}
+	}
+	return count
+}
+
+func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
 	switch t := d.(type) {
 	case *ast.GenDecl:
 		switch t.Tok {
@@ -309,7 +386,7 @@ func prettyPrintDecl(d ast.Decl, p string) {
 					if len(name.Name()) < len(p) || (p != "" && name.Name()[0:len(p)] != p) {
 						continue
 					}
-					fmt.Printf("\tconst %s\n", name.Name())
+					fmt.Fprintf(out, "const %s\n", name.Name())
 				}
 			}
 		case token.TYPE:
@@ -318,7 +395,7 @@ func prettyPrintDecl(d ast.Decl, p string) {
 				if len(t.Name.Name()) < len(p) || (p != "" && t.Name.Name()[0:len(p)] != p) {
 					continue
 				}
-				fmt.Printf("\ttype %s\n", t.Name.Name())
+				fmt.Fprintf(out, "type %s\n", t.Name.Name())
 			}
 		case token.VAR:
 			for _, spec := range t.Specs {
@@ -327,11 +404,11 @@ func prettyPrintDecl(d ast.Decl, p string) {
 					if len(name.Name()) < len(p) || (p != "" && name.Name()[0:len(p)] != p) {
 						continue
 					}
-					fmt.Printf("\tvar %s\n", name.Name())
+					fmt.Fprintf(out, "var %s\n", name.Name())
 				}
 			}
 		default:
-			fmt.Printf("\tgen STUB\n")
+			fmt.Fprintf(out, "\tgen STUB\n")
 		}
 	case *ast.FuncDecl:
 		if t.Recv != nil {
@@ -341,7 +418,20 @@ func prettyPrintDecl(d ast.Decl, p string) {
 		if len(t.Name.Name()) < len(p) || (p != "" && t.Name.Name()[0:len(p)] != p) {
 			break
 		}
-		fmt.Printf("\tfunc %s\n", t.Name.Name())
+		fmt.Fprintf(out, "func %s(", t.Name.Name())
+		prettyPrintFuncFieldList(out, t.Type.Params)
+		fmt.Fprintf(out, ")")
+
+		buf := bytes.NewBuffer(make([]byte, 0, 256))
+		nresults := prettyPrintFuncFieldList(buf, t.Type.Results)
+		if nresults > 0 {
+			results := buf.String()
+			if strings.Index(results, " ") != -1 {
+				results = "(" + results + ")"
+			}
+			fmt.Fprintf(out, " %s", results)
+		}
+		fmt.Fprintf(out, "\n")
 	}
 }
 
@@ -353,8 +443,8 @@ func findFile(imp string) string {
 	return fmt.Sprintf("%s/pkg/%s_%s/%s.a", goroot, goos, goarch, imp)
 }
 
-func (self *AutoCompleteContext) processEndFile(filename string) {
-	file, err := parser.ParseFile(filename, nil, nil, parser.ImportsOnly)
+func (self *AutoCompleteContext) processData(data []byte) {
+	file, err := parser.ParseFile("", data, nil, parser.ImportsOnly)
 	if err != nil {
 		panic(err.String())
 	}
@@ -409,33 +499,29 @@ func (self *AutoCompleteContext) AddAlias(alias string, globalname string) {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		panic("usage: ./gocode <go file> <apropos request>")
+	if len(os.Args) != 2 {
+		panic("usage: ./gocode <apropos request>")
+	}
+
+	data, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		panic("Bad stdin")
 	}
 	ctx := NewAutoCompleteContext()
-	ctx.processEndFile(os.Args[1])
+	ctx.processData(data)
 
-	switch len(os.Args) {
-	case 2:
-		for alias, pkgid := range ctx.cfns {
-			decls := ctx.m[pkgid]
-			fmt.Printf("package: '%s'...\n", alias)
-			for _, decl := range decls {
-				prettyPrintDecl(decl, "")
-			}
+	request := os.Args[1]
+	parts := strings.Split(request, ".", 2)
+	res := ""
+	switch len(parts) {
+	case 1:
+		for _, decl := range ctx.m[ctx.cfns[request]] {
+			prettyPrintDecl(os.Stdout, decl, "")
 		}
-	case 3:
-		request := os.Args[2]
-		parts := strings.Split(request, ".", 2)
-		switch len(parts) {
-		case 1:
-			for _, decl := range ctx.m[ctx.cfns[request]] {
-				prettyPrintDecl(decl, "")
-			}
-		case 2:
-			for _, decl := range ctx.m[ctx.cfns[parts[0]]] {
-				prettyPrintDecl(decl, parts[1])
-			}
+	case 2:
+		for _, decl := range ctx.m[ctx.cfns[parts[0]]] {
+			prettyPrintDecl(os.Stdout, decl, parts[1])
 		}
 	}
+	print(res)
 }
