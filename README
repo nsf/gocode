@@ -1,0 +1,6 @@
+Autocompletion/refactoring daemon for Go language.
+
+Work in progress..
+
+Currently available things:
+ - .a (archive aka package) type info parser
