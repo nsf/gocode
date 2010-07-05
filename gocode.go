@@ -174,7 +174,7 @@ func preprocessConstDecl(s string) string {
 	}
 	e := i
 
-	return s[0:b-1] + "0" + s[e:]
+	return s[0:b] + "0" + s[e:]
 }
 
 // feed one definition line from .a file here
