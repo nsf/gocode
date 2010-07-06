@@ -1,12 +1,51 @@
 package main
 
 import (
+//	"os"
+//	"io/ioutil"
+//	"strings"
+	"rpc"
+	"rpc/jsonrpc"
+	"flag"
+	"fmt"
 	"os"
-	"io/ioutil"
-	"strings"
 )
 
+var (
+	server = flag.Bool("s", false, "run a server instead of a client")
+)
+
+func serverFunc() {
+	acrRPC := new(ACR)
+	rpc.Register(acrRPC)
+	acrRPC.acr = NewACRServer("/tmp/acrserver")
+	defer os.Remove("/tmp/acrserver")
+	acrRPC.acr.Loop()
+}
+
+func clientFunc() {
+	// client
+	var args, reply int
+
+	client, err := jsonrpc.Dial("unix", "/tmp/acrserver")
+	if err != nil {
+		panic(err.String())
+	}
+	err = client.Call("ACR.Shutdown", &args, &reply)
+	if err != nil {
+		panic(err.String())
+	}
+	fmt.Printf("close request send\n")
+}
+
 func main() {
+	flag.Parse()
+	if *server {
+		serverFunc()
+	} else {
+		clientFunc()
+	}
+	/*
 	if len(os.Args) != 2 {
 		panic("usage: ./gocode <apropos request>")
 	}
@@ -32,4 +71,5 @@ func main() {
 		}
 	}
 	print(res)
+	*/
 }
