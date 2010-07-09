@@ -62,19 +62,20 @@ var cmds = map[string]func(*rpc.Client) {
 	"close": Cmd_Close,
 }
 
-func clientFunc() {
+func clientFunc() int {
 	// client
 
 	client, err := rpc.Dial("unix", getSocketFilename())
 	if err != nil {
 		fmt.Printf("Failed to connect to the ACR server\n%s\n", err.String())
-		return
+		return 1
 	}
 	defer client.Close()
 
 	if len(flag.Args()) > 0 {
 		cmds[flag.Args()[0]](client)
 	}
+	return 0
 }
 
 func main() {
@@ -82,6 +83,7 @@ func main() {
 	if *server {
 		serverFunc()
 	} else {
-		clientFunc()
+		retval := clientFunc()
+		os.Exit(retval)
 	}
 }
