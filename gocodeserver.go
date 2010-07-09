@@ -2,36 +2,35 @@ package main
 
 import (
 	"net"
-	"rpc/jsonrpc"
-	"fmt"
-	"os"
-	"io"
+	"rpc"
+	"os/signal"
 )
 
 //-------------------------------------------------------------------------
-// ACR type (used in RPC)
+
+type AutoCompletionDaemon struct {
+	acr *ACRServer
+	ctx *AutoCompleteContext
+}
+
+func NewAutoCompletionDaemon(path string) *AutoCompletionDaemon {
+	self := new(AutoCompletionDaemon)
+	self.acr = NewACRServer(path)
+	self.ctx = NewAutoCompleteContext()
+	return self
+}
+
+var daemon *AutoCompletionDaemon
+
 //-------------------------------------------------------------------------
 
-type ACR struct {
-	acr *ACRServer
+func Server_AutoComplete(file []byte, apropos string) ([]string, []string) {
+	return daemon.ctx.Apropos(file, apropos)
 }
 
-// shutdown request
-
-func (self *ACR) Shutdown(notused1 *int, notused2 *int) os.Error {
-	self.acr.Close()
-	return nil
-}
-
-// top-level imported module autocomplete request
-
-type ACRImportedAC struct {
-	file string
-	apropos string
-}
-
-type ACRImportedACReply struct {
-	completions []string
+func Server_Close(notused int) int {
+	daemon.acr.Close()
+	return 0
 }
 
 //-------------------------------------------------------------------------
@@ -72,38 +71,6 @@ func acceptConnections(in chan net.Conn, listener *net.UnixListener) {
 	}
 }
 
-type RPCDebugProxy struct {
-	rwc io.ReadWriteCloser
-	debugout io.Writer
-}
-
-func (self *RPCDebugProxy) Read(p []byte) (n int, err os.Error) {
-	tmp := make([]byte, len(p))
-	n, err = self.rwc.Read(tmp)
-	copy(p, tmp)
-	fmt.Fprintf(self.debugout, "Request:\n")
-	self.debugout.Write(tmp)
-	return
-}
-
-func (self *RPCDebugProxy) Write(p []byte) (n int, err os.Error) {
-	n, err = self.rwc.Write(p)
-	fmt.Fprintf(self.debugout, "Response:\n")
-	self.debugout.Write(p)
-	return
-}
-
-func (self *RPCDebugProxy) Close() os.Error {
-	return self.rwc.Close()
-}
-
-func NewRPCDebugProxy(rwc io.ReadWriteCloser, debugout io.Writer) *RPCDebugProxy {
-	self := new(RPCDebugProxy)
-	self.rwc = rwc
-	self.debugout = debugout
-	return self
-}
-
 func (self *ACRServer) Loop() {
 	conn_in := make(chan net.Conn)
 	go acceptConnections(conn_in, self.listener)
@@ -112,11 +79,16 @@ func (self *ACRServer) Loop() {
 		select {
 		case c := <-conn_in:
 			go func(c net.Conn) {
-				jsonrpc.ServeConn(NewRPCDebugProxy(c, os.Stdout))
+				rpc.ServeConn(c)
 			}(c)
 		case cmd := <-self.cmd_in:
 			switch cmd {
 			case ACR_CLOSE:
+				return
+			}
+		case sig := <-signal.Incoming:
+			usig := sig.(signal.UnixSignal)
+			if usig == signal.SIGINT || usig == signal.SIGTERM {
 				return
 			}
 		}

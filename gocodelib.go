@@ -230,6 +230,10 @@ func processExport(s string) (string, string) {
 }
 
 func (self *AutoCompleteContext) processPackage(filename string, uniquename string, pkgname string) {
+	if self.cache[filename] {
+		return
+	}
+	self.cache[filename] = true
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic("Failed to open archive file")
@@ -347,6 +351,9 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		prettyPrintTypeExpr(out, t.Value)
 	case *ast.InterfaceType:
 		fmt.Fprintf(out, "interface{}")
+	case *ast.Ellipsis:
+		fmt.Fprintf(out, "...")
+		prettyPrintTypeExpr(out, t.Elt)
 	default:
 		fmt.Fprintf(out, "\n[!!] unknown type: %s\n", ty.String())
 	}
@@ -383,6 +390,13 @@ func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 	return count
 }
 
+func startsWith(s, prefix string) bool {
+	if len(s) >= len(prefix) && s[0:len(prefix)] == prefix {
+		return true
+	}
+	return false
+}
+
 func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
 	switch t := d.(type) {
 	case *ast.GenDecl:
@@ -391,7 +405,7 @@ func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
 			for _, spec := range t.Specs {
 				c := spec.(*ast.ValueSpec)
 				for _, name := range c.Names {
-					if len(name.Name()) < len(p) || (p != "" && name.Name()[0:len(p)] != p) {
+					if p != "" && !startsWith(name.Name(), p) {
 						continue
 					}
 					fmt.Fprintf(out, "const %s\n", name.Name())
@@ -400,7 +414,7 @@ func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
 		case token.TYPE:
 			for _, spec := range t.Specs {
 				t := spec.(*ast.TypeSpec)
-				if len(t.Name.Name()) < len(p) || (p != "" && t.Name.Name()[0:len(p)] != p) {
+				if p != "" && !startsWith(t.Name.Name(), p) {
 					continue
 				}
 				fmt.Fprintf(out, "type %s\n", t.Name.Name())
@@ -409,7 +423,7 @@ func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
 			for _, spec := range t.Specs {
 				v := spec.(*ast.ValueSpec)
 				for _, name := range v.Names {
-					if len(name.Name()) < len(p) || (p != "" && name.Name()[0:len(p)] != p) {
+					if p != "" && !startsWith(name.Name(), p) {
 						continue
 					}
 					fmt.Fprintf(out, "var %s\n", name.Name())
@@ -423,7 +437,7 @@ func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
 			//XXX: skip method, temporary
 			break
 		}
-		if len(t.Name.Name()) < len(p) || (p != "" && t.Name.Name()[0:len(p)] != p) {
+		if p != "" && !startsWith(t.Name.Name(), p) {
 			break
 		}
 		fmt.Fprintf(out, "func %s(", t.Name.Name())
@@ -440,6 +454,53 @@ func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
 			fmt.Fprintf(out, " %s", results)
 		}
 		fmt.Fprintf(out, "\n")
+	}
+}
+
+func autoCompleteDecl(out io.Writer, d ast.Decl, p string) {
+	switch t := d.(type) {
+	case *ast.GenDecl:
+		switch t.Tok {
+		case token.CONST:
+			for _, spec := range t.Specs {
+				c := spec.(*ast.ValueSpec)
+				for _, name := range c.Names {
+					if p != "" && !startsWith(name.Name(), p) {
+						continue
+					}
+					fmt.Fprintf(out, "%s\n", name.Name()[len(p):])
+				}
+			}
+		case token.TYPE:
+			for _, spec := range t.Specs {
+				t := spec.(*ast.TypeSpec)
+				if p != "" && !startsWith(t.Name.Name(), p) {
+					continue
+				}
+				fmt.Fprintf(out, "%s\n", t.Name.Name()[len(p):])
+			}
+		case token.VAR:
+			for _, spec := range t.Specs {
+				v := spec.(*ast.ValueSpec)
+				for _, name := range v.Names {
+					if p != "" && !startsWith(name.Name(), p) {
+						continue
+					}
+					fmt.Fprintf(out, "%s\n", name.Name()[len(p):])
+				}
+			}
+		default:
+			fmt.Fprintf(out, "[!!] STUB\n")
+		}
+	case *ast.FuncDecl:
+		if t.Recv != nil {
+			//XXX: skip method, temporary
+			break
+		}
+		if p != "" && !startsWith(t.Name.Name(), p) {
+			break
+		}
+		fmt.Fprintf(out, "%s(\n", t.Name.Name()[len(p):])
 	}
 }
 
@@ -489,6 +550,7 @@ type AutoCompleteContext struct {
 	// alias name ->
 	//	unique package name
 	cfns map[string]string
+	cache map[string]bool
 	debuglog io.Writer
 }
 
@@ -496,6 +558,7 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
 	self.m = make(map[string][]ast.Decl)
 	self.cfns = make(map[string]string)
+	self.cache = make(map[string]bool)
 	return self
 }
 
@@ -505,4 +568,29 @@ func (self *AutoCompleteContext) Add(globalname string, decls []ast.Decl) {
 
 func (self *AutoCompleteContext) AddAlias(alias string, globalname string) {
 	self.cfns[alias] = globalname
+}
+
+func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string, []string) {
+	self.processData(file)
+
+	buf := bytes.NewBuffer(make([]byte, 0, 4096))
+	buf2 := bytes.NewBuffer(make([]byte, 0, 4096))
+
+	parts := strings.Split(apropos, ".", 2)
+	switch len(parts) {
+	case 1:
+		for _, decl := range self.m[self.cfns[apropos]] {
+			prettyPrintDecl(buf, decl, "")
+			autoCompleteDecl(buf2, decl, "")
+		}
+	case 2:
+		for _, decl := range self.m[self.cfns[parts[0]]] {
+			prettyPrintDecl(buf, decl, parts[1])
+			autoCompleteDecl(buf2, decl, parts[1])
+		}
+	}
+
+	result := strings.Split(buf.String(), "\n", -1)
+	result2 := strings.Split(buf2.String(), "\n", -1)
+	return result, result2
 }
