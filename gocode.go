@@ -37,7 +37,12 @@ func Cmd_AutoComplete(c *rpc.Client) {
 	if err != nil {
 		panic(err.String())
 	}
-	apropos := flag.Args()[1]
+	if flag.NArg() < 2 {
+		fmt.Printf("[]")
+		return
+	}
+
+	apropos := flag.Arg(1)
 	abbrs, words := Client_AutoComplete(c, file, apropos)
 	if len(words) != len(abbrs) {
 		panic("Lengths should match!")
@@ -72,8 +77,8 @@ func clientFunc() int {
 	}
 	defer client.Close()
 
-	if len(flag.Args()) > 0 {
-		cmds[flag.Args()[0]](client)
+	if flag.NArg() > 0 {
+		cmds[flag.Arg(0)](client)
 	}
 	return 0
 }

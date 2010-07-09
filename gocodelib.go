@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"strings"
 	"io/ioutil"
+	"sort"
 	"io"
 	"os"
 )
@@ -570,6 +571,30 @@ func (self *AutoCompleteContext) AddAlias(alias string, globalname string) {
 	self.cfns[alias] = globalname
 }
 
+//-------------------------------------------------------------------------
+// SortTwoStringArrays
+//-------------------------------------------------------------------------
+
+type TwoStringArrays struct {
+	first []string
+	second []string
+}
+
+func (self TwoStringArrays) Len() int {
+	return len(self.first)
+}
+
+func (self TwoStringArrays) Less(i, j int) bool {
+	return self.first[i] < self.first[j]
+}
+
+func (self TwoStringArrays) Swap(i, j int) {
+	self.first[i], self.first[j] = self.first[j], self.first[i]
+	self.second[i], self.second[j] = self.second[j], self.second[i]
+}
+
+//-------------------------------------------------------------------------
+
 func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string, []string) {
 	self.processData(file)
 
@@ -590,7 +615,9 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string,
 		}
 	}
 
-	result := strings.Split(buf.String(), "\n", -1)
-	result2 := strings.Split(buf2.String(), "\n", -1)
-	return result, result2
+	var pair TwoStringArrays
+	pair.first = strings.Split(buf.String()[0:buf.Len()-1], "\n", -1)
+	pair.second = strings.Split(buf2.String()[0:buf2.Len()-1], "\n", -1)
+	sort.Sort(pair)
+	return pair.first, pair.second
 }
