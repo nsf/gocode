@@ -310,7 +310,7 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 	if pkgname == "" {
 		pkgname = s[len("package "):i-1]
 	}
-	self.AddAlias(pkgname, uniquename)
+	self.addAlias(pkgname, uniquename)
 	if self.debuglog != nil {
 		fmt.Fprintf(self.debuglog, "parsing package '%s'...\n", pkgname)
 	}
@@ -359,7 +359,7 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 			f := new(ast.File) // fake file
 			f.Decls = decls
 			ast.FileExports(f)
-			self.Add(key, f.Decls)
+			self.add(key, f.Decls)
 		}
 	}
 }
@@ -614,7 +614,7 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	return self
 }
 
-func (self *AutoCompleteContext) Add(globalname string, decls []ast.Decl) {
+func (self *AutoCompleteContext) add(globalname string, decls []ast.Decl) {
 	if self.m[globalname] == nil {
 		self.m[globalname] = make(map[string]ast.Decl)
 	}
@@ -630,7 +630,7 @@ func (self *AutoCompleteContext) Add(globalname string, decls []ast.Decl) {
 	}
 }
 
-func (self *AutoCompleteContext) AddAlias(alias string, globalname string) {
+func (self *AutoCompleteContext) addAlias(alias string, globalname string) {
 	self.cfns[alias] = globalname
 }
 
@@ -687,4 +687,21 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string,
 	pair.second = strings.Split(buf2.String()[0:buf2.Len()-1], "\n", -1)
 	sort.Sort(pair)
 	return pair.first, pair.second
+}
+
+func (self *AutoCompleteContext) Status() string {
+	buf := bytes.NewBuffer(make([]byte, 0, 4096))
+	fmt.Fprintf(buf, "Number of top level packages: %d\n", len(self.m))
+	if len(self.m) > 0 {
+		fmt.Fprintf(buf, "Listing packages: ")
+		i := 0
+		for key, _ := range self.m {
+			fmt.Fprintf(buf, "'%s'", key)
+			if i != len(self.m)-1 {
+				fmt.Fprintf(buf, ", ")
+			}
+			i++
+		}
+	}
+	return buf.String()
 }

@@ -33,6 +33,10 @@ func Server_Close(notused int) int {
 	return 0
 }
 
+func Server_Status(notused int) string {
+	return daemon.ctx.Status()
+}
+
 //-------------------------------------------------------------------------
 // Autocompletion Refactoring Server
 //-------------------------------------------------------------------------
@@ -78,9 +82,9 @@ func (self *ACRServer) Loop() {
 		// handle connections or server CMDs (currently one CMD)
 		select {
 		case c := <-conn_in:
-			go func(c net.Conn) {
-				rpc.ServeConn(c)
-			}(c)
+			//go func(c net.Conn) {
+			rpc.ServeConn(c)
+			//}(c)
 		case cmd := <-self.cmd_in:
 			switch cmd {
 			case ACR_CLOSE:

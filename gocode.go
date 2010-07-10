@@ -32,6 +32,10 @@ func serverFunc() {
 	daemon.acr.Loop()
 }
 
+func Cmd_Status(c *rpc.Client) {
+	fmt.Printf("%s\n", Client_Status(c, 0))
+}
+
 func Cmd_AutoComplete(c *rpc.Client) {
 	file, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
@@ -83,6 +87,8 @@ func clientFunc() int {
 			Cmd_AutoComplete(client)
 		case "close":
 			Cmd_Close(client)
+		case "status":
+			Cmd_Status(client)
 		}
 	}
 	return 0
