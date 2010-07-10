@@ -44,6 +44,11 @@ func Cmd_AutoComplete(c *rpc.Client) {
 
 	apropos := flag.Arg(1)
 	abbrs, words := Client_AutoComplete(c, file, apropos)
+	if words == nil {
+		fmt.Print("[]")
+		return
+	}
+
 	if len(words) != len(abbrs) {
 		panic("Lengths should match!")
 	}
@@ -62,11 +67,6 @@ func Cmd_Close(c *rpc.Client) {
 	Client_Close(c, 0)
 }
 
-var cmds = map[string]func(*rpc.Client) {
-	"autocomplete": Cmd_AutoComplete,
-	"close": Cmd_Close,
-}
-
 func clientFunc() int {
 	// client
 
@@ -78,7 +78,12 @@ func clientFunc() int {
 	defer client.Close()
 
 	if flag.NArg() > 0 {
-		cmds[flag.Arg(0)](client)
+		switch flag.Arg(0) {
+		case "autocomplete":
+			Cmd_AutoComplete(client)
+		case "close":
+			Cmd_Close(client)
+		}
 	}
 	return 0
 }

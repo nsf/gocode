@@ -201,10 +201,11 @@ func processExport(s string) (string, string) {
 	}
 	e := i
 
-	// skip import and const(TODO) decls, we don't need them
-	if s[b:e] == "import" {
+	switch s[b:e] {
+	case "import":
+		// skip import decls, we don't need them
 		return "", pkg
-	} else if s[b:e] == "const" {
+	case "const":
 		s = preprocessConstDecl(s)
 	}
 	i++ // skip space after a decl type
@@ -228,6 +229,55 @@ func processExport(s string) (string, string) {
 	}
 
 	return s, pkg
+}
+
+func declNames(d ast.Decl) []string {
+	var names []string
+
+	switch t := d.(type) {
+	case *ast.GenDecl:
+		switch t.Tok {
+		case token.CONST:
+			c := t.Specs[0].(*ast.ValueSpec)
+			names = make([]string, len(c.Names))
+			for i, name := range c.Names {
+				names[i] = name.Name()
+			}
+		case token.TYPE:
+			t := t.Specs[0].(*ast.TypeSpec)
+			names = make([]string, 1)
+			names[0] = t.Name.Name()
+		case token.VAR:
+			v := t.Specs[0].(*ast.ValueSpec)
+			names = make([]string, len(v.Names))
+			for i, name := range v.Names {
+				names[i] = name.Name()
+			}
+		}
+	case *ast.FuncDecl:
+		names = make([]string, 1)
+		names[0] = t.Name.Name()
+	}
+
+	return names
+}
+
+func splitDecls(d ast.Decl) []ast.Decl {
+	var decls []ast.Decl
+	if t, ok := d.(*ast.GenDecl); ok {
+		decls = make([]ast.Decl, len(t.Specs))
+		for i, s := range t.Specs {
+			decl := new(ast.GenDecl)
+			*decl = *t
+			decl.Specs = make([]ast.Spec, 1)
+			decl.Specs[0] = s
+			decls[i] = decl
+		}
+	} else {
+		decls = make([]ast.Decl, 1)
+		decls[0] = d
+	}
+	return decls
 }
 
 func (self *AutoCompleteContext) processPackage(filename string, uniquename string, pkgname string) {
@@ -544,27 +594,40 @@ type AutoCompleteContext struct {
 	// main map:
 	// unique package name ->
 	//	[]ast.Decl
-	m map[string][]ast.Decl
+	m map[string]map[string]ast.Decl
 	// TODO: ast.Decl is a bit evil here, we need our own stuff
 
 	// current file namespace:
 	// alias name ->
 	//	unique package name
 	cfns map[string]string
-	cache map[string]bool
+
+	cache map[string]bool // stupid, temporary
 	debuglog io.Writer
 }
 
 func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
-	self.m = make(map[string][]ast.Decl)
+	self.m = make(map[string]map[string]ast.Decl)
 	self.cfns = make(map[string]string)
 	self.cache = make(map[string]bool)
 	return self
 }
 
 func (self *AutoCompleteContext) Add(globalname string, decls []ast.Decl) {
-	self.m[globalname] = decls
+	if self.m[globalname] == nil {
+		self.m[globalname] = make(map[string]ast.Decl)
+	}
+
+	for _, decl := range decls {
+		decls2 := splitDecls(decl)
+		for _, decl2 := range decls2 {
+			names := declNames(decl2)
+			for _, name := range names {
+				self.m[globalname][name] = decl2
+			}
+		}
+	}
 }
 
 func (self *AutoCompleteContext) AddAlias(alias string, globalname string) {
@@ -572,7 +635,7 @@ func (self *AutoCompleteContext) AddAlias(alias string, globalname string) {
 }
 
 //-------------------------------------------------------------------------
-// SortTwoStringArrays
+// Sort interface for TwoStringArrays
 //-------------------------------------------------------------------------
 
 type TwoStringArrays struct {
@@ -613,6 +676,10 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string,
 			prettyPrintDecl(buf, decl, parts[1])
 			autoCompleteDecl(buf2, decl, parts[1])
 		}
+	}
+
+	if buf.Len() == 0 {
+		return nil, nil
 	}
 
 	var pair TwoStringArrays

@@ -87,7 +87,10 @@ func (self *ACRServer) Loop() {
 				return
 			}
 		case sig := <-signal.Incoming:
-			usig := sig.(signal.UnixSignal)
+			usig, ok := sig.(signal.UnixSignal)
+			if !ok {
+				break
+			}
 			if usig == signal.SIGINT || usig == signal.SIGTERM {
 				return
 			}

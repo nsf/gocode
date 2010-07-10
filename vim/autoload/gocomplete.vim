@@ -55,7 +55,6 @@ def gocomplete(context, match):
 	if gocode.returncode != 0:
 		vim.command('silent let g:gocomplete_completions = []')
 	else:
-		print "DONE!!!"
 		vim.command('silent let g:gocomplete_completions = %s' % output)
 
 PYTHONEOF
