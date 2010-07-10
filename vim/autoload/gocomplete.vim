@@ -50,7 +50,7 @@ python << PYTHONEOF
 def gocomplete(context, match):
 	import vim, subprocess
 	buf = "\n".join(vim.current.buffer)
-	gocode = subprocess.Popen("./gocode autocomplete %s" % context, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+	gocode = subprocess.Popen("gocode autocomplete %s" % context, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 	output = gocode.communicate(buf)[0]
 	if gocode.returncode != 0:
 		vim.command('silent let g:gocomplete_completions = []')
