@@ -21,8 +21,20 @@ func getSocketFilename() string {
 	return fmt.Sprintf("%s/acrserver.%s", os.TempDir(), user)
 }
 
-func serverFunc() {
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func serverFunc() int {
 	socketfname := getSocketFilename()
+	if fileExists(socketfname) {
+		fmt.Printf("unix socket: '%s' already exists\n", socketfname)
+		return 1
+	}
 	daemon = NewAutoCompletionDaemon(socketfname)
 	defer os.Remove(socketfname)
 
@@ -30,6 +42,7 @@ func serverFunc() {
 	rpc.Register(rpcremote)
 
 	daemon.acr.Loop()
+	return 0
 }
 
 func Cmd_Status(c *rpc.Client) {
@@ -96,10 +109,12 @@ func clientFunc() int {
 
 func main() {
 	flag.Parse()
+
+	var retval int
 	if *server {
-		serverFunc()
+		retval = serverFunc()
 	} else {
-		retval := clientFunc()
-		os.Exit(retval)
+		retval = clientFunc()
 	}
+	os.Exit(retval)
 }

@@ -82,9 +82,7 @@ func (self *ACRServer) Loop() {
 		// handle connections or server CMDs (currently one CMD)
 		select {
 		case c := <-conn_in:
-			//go func(c net.Conn) {
 			rpc.ServeConn(c)
-			//}(c)
 		case cmd := <-self.cmd_in:
 			switch cmd {
 			case ACR_CLOSE:
