@@ -284,11 +284,11 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 	if self.cache[filename] {
 		return
 	}
-	self.cache[filename] = true
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
-		panic("Failed to open archive file")
+		return
 	}
+	self.cache[filename] = true
 	s := string(data)
 
 	i := strings.Index(s, "import\n$$\n")
@@ -508,7 +508,7 @@ func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
 	}
 }
 
-func autoCompleteDecl(out io.Writer, d ast.Decl, p string) {
+func prettyPrintAutoCompleteDecl(out io.Writer, d ast.Decl, p string) {
 	switch t := d.(type) {
 	case *ast.GenDecl:
 		switch t.Tok {
@@ -669,12 +669,12 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string,
 	case 1:
 		for _, decl := range self.m[self.cfns[apropos]] {
 			prettyPrintDecl(buf, decl, "")
-			autoCompleteDecl(buf2, decl, "")
+			prettyPrintAutoCompleteDecl(buf2, decl, "")
 		}
 	case 2:
 		for _, decl := range self.m[self.cfns[parts[0]]] {
 			prettyPrintDecl(buf, decl, parts[1])
-			autoCompleteDecl(buf2, decl, parts[1])
+			prettyPrintAutoCompleteDecl(buf2, decl, parts[1])
 		}
 	}
 
@@ -702,6 +702,7 @@ func (self *AutoCompleteContext) Status() string {
 			}
 			i++
 		}
+		fmt.Fprintf(buf, "\n")
 	}
 	return buf.String()
 }

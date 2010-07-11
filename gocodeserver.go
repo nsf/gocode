@@ -61,7 +61,7 @@ func NewACRServer(path string) *ACRServer {
 	if err != nil {
 		panic(err.String())
 	}
-	self.cmd_in = make(chan int)
+	self.cmd_in = make(chan int, 1)
 	return self
 }
 
