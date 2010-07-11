@@ -480,8 +480,6 @@ func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
 					fmt.Fprintf(out, "var %s\n", name.Name())
 				}
 			}
-		default:
-			fmt.Fprintf(out, "\tgen STUB\n")
 		}
 	case *ast.FuncDecl:
 		if t.Recv != nil {
