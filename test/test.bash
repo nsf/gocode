@@ -1,2 +1,2 @@
 #!/bin/bash
-./gocodetest $(find ~/go/pkg/linux_386/ -name "*.a" | xargs)
+./gocodetest $(find ${GOROOT}/pkg/${GOOS}_${GOARCH}/ -name "*.a" | xargs)
