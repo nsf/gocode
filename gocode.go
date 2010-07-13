@@ -13,6 +13,8 @@ var (
 	format = flag.String("f", "vim", "output format (currently only 'vim' is valid)")
 )
 
+
+
 func getSocketFilename() string {
 	user := os.Getenv("USER")
 	if user == "" {
@@ -53,10 +55,6 @@ func Cmd_AutoComplete(c *rpc.Client) {
 	file, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		panic(err.String())
-	}
-	if flag.NArg() < 2 {
-		fmt.Printf("[]")
-		return
 	}
 
 	apropos := flag.Arg(1)

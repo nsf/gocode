@@ -262,6 +262,21 @@ func declNames(d ast.Decl) []string {
 	return names
 }
 
+func declValues(d ast.Decl) []ast.Expr {
+	switch t := d.(type) {
+	case *ast.GenDecl:
+		switch t.Tok {
+		case token.VAR:
+			v := t.Specs[0].(*ast.ValueSpec)
+			if v.Values != nil {
+				return v.Values
+			}
+
+		}
+	}
+	return nil
+}
+
 func splitDecls(d ast.Decl) []ast.Decl {
 	var decls []ast.Decl
 	if t, ok := d.(*ast.GenDecl); ok {
@@ -282,13 +297,15 @@ func splitDecls(d ast.Decl) []ast.Decl {
 
 func (self *AutoCompleteContext) processPackage(filename string, uniquename string, pkgname string) {
 	if self.cache[filename] {
+		self.addAlias(self.m[uniquename].Name, uniquename)
 		return
 	}
+	self.cache[filename] = true
+
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return
 	}
-	self.cache[filename] = true
 	s := string(data)
 
 	i := strings.Index(s, "import\n$$\n")
@@ -311,6 +328,7 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 		pkgname = s[len("package "):i-1]
 	}
 	self.addAlias(pkgname, uniquename)
+
 	if self.debuglog != nil {
 		fmt.Fprintf(self.debuglog, "parsing package '%s'...\n", pkgname)
 	}
@@ -359,7 +377,11 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 			f := new(ast.File) // fake file
 			f.Decls = decls
 			ast.FileExports(f)
-			self.add(key, f.Decls)
+			localname := ""
+			if key == uniquename {
+				localname = pkgname
+			}
+			self.add(key, localname, f.Decls)
 		}
 	}
 }
@@ -405,6 +427,13 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 	case *ast.Ellipsis:
 		fmt.Fprintf(out, "...")
 		prettyPrintTypeExpr(out, t.Elt)
+	case *ast.StructType:
+		fmt.Fprintf(out, "struct")
+	case *ast.CallExpr:
+		prettyPrintTypeExpr(out, t.Fun)
+	case *ast.ChanType:
+		fmt.Fprintf(out, "chan ")
+		prettyPrintTypeExpr(out, t.Value)
 	default:
 		fmt.Fprintf(out, "\n[!!] unknown type: %s\n", ty.String())
 	}
@@ -561,68 +590,168 @@ func findFile(imp string) string {
 	return fmt.Sprintf("%s/pkg/%s_%s/%s.a", goroot, goos, goarch, imp)
 }
 
+func pathAndAlias(imp *ast.ImportSpec) (string, string) {
+	path := string(imp.Path.Value)
+	alias := ""
+	if imp.Name != nil {
+		alias = imp.Name.Name()
+	}
+	path = path[1:len(path)-1]
+	return path, alias
+}
+
+func (self *AutoCompleteContext) processImportSpec(imp *ast.ImportSpec) {
+	path, alias := pathAndAlias(imp)
+	self.processPackage(findFile(path), path, alias)
+}
+
+func (self *AutoCompleteContext) processDecl(decl ast.Decl) {
+	switch t := decl.(type) {
+	case *ast.GenDecl:
+		switch t.Tok {
+		case token.IMPORT:
+			for _, spec := range t.Specs {
+				imp, ok := spec.(*ast.ImportSpec)
+				if !ok {
+					panic("Fail")
+				}
+				self.processImportSpec(imp)
+			}
+		}
+	}
+
+	decls := splitDecls(decl)
+	for _, decl := range decls {
+		names := declNames(decl)
+		values := declValues(decl)
+
+		for i, name := range names {
+			var value ast.Expr = nil
+			valueindex := -1
+			if values != nil {
+				if len(values) > 1 {
+					value = values[i]
+				} else {
+					value = values[0]
+					valueindex = i
+				}
+			}
+
+			d := astDeclToDecl(name, decl, value, valueindex)
+			if d == nil {
+				continue
+			}
+
+			methodof := MethodOf(decl)
+			if methodof != "" {
+				decl, ok := self.l[methodof]
+				if ok {
+					decl.AddChild(d)
+				} else {
+					decl = newDecl(methodof)
+					self.l[methodof] = decl
+					decl.AddChild(d)
+				}
+			} else {
+				decl, ok := self.l[d.Name]
+				if ok {
+					decl.ApplyDecl(d)
+				} else {
+					self.l[d.Name] = d
+				}
+			}
+		}
+	}
+}
+
 func (self *AutoCompleteContext) processData(data []byte) {
-	file, err := parser.ParseFile("", data, nil, parser.ImportsOnly)
-	if err != nil {
-		panic(err.String())
-	}
+	// drop namespace and locals
+	self.l = make(map[string]*Decl)
+	self.cfns = make(map[string]string)
 
-	decl, ok := file.Decls[0].(*ast.GenDecl)
-	if !ok {
-		panic("Fail")
-	}
-
-	for _, spec := range decl.Specs {
-		imp, ok := spec.(*ast.ImportSpec)
-		if !ok {
-			panic("Fail")
-		}
-
-		s := string(imp.Path.Value)
-		alias := ""
-		if imp.Name != nil {
-			alias = imp.Name.Name()
-		}
-		s = s[1:len(s)-1]
-		self.processPackage(findFile(s), s, alias)
+	// ignore errors here
+	file, _ := parser.ParseFile("", data, nil, 0)
+	for _, decl := range file.Decls {
+		self.processDecl(decl)
 	}
 }
 
 type AutoCompleteContext struct {
-	// main map:
-	// unique package name ->
-	//	[]ast.Decl
-	m map[string]map[string]ast.Decl
-	// TODO: ast.Decl is a bit evil here, we need our own stuff
+	m map[string]*Decl // all modules
+	l map[string]*Decl // locals
 
-	// current file namespace:
+	// current file namespace (used for modules):
 	// alias name ->
 	//	unique package name
 	cfns map[string]string
 
 	cache map[string]bool // stupid, temporary
+
 	debuglog io.Writer
 }
 
 func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
-	self.m = make(map[string]map[string]ast.Decl)
+	self.m = make(map[string]*Decl)
+	self.l = make(map[string]*Decl)
 	self.cfns = make(map[string]string)
 	self.cache = make(map[string]bool)
 	return self
 }
 
-func (self *AutoCompleteContext) add(globalname string, decls []ast.Decl) {
+func (self *AutoCompleteContext) add(globalname, localname string, decls []ast.Decl) {
 	if self.m[globalname] == nil {
-		self.m[globalname] = make(map[string]ast.Decl)
+		self.m[globalname] = NewDecl(localname, DECL_MODULE)
+	}
+
+	if self.m[globalname].Name == "" && localname != "" {
+		self.m[globalname].Name = localname
 	}
 
 	for _, decl := range decls {
-		decls2 := splitDecls(decl)
-		for _, decl2 := range decls2 {
-			names := declNames(decl2)
-			for _, name := range names {
-				self.m[globalname][name] = decl2
+		decls := splitDecls(decl)
+		for _, decl := range decls {
+			names := declNames(decl)
+			values := declValues(decl)
+
+			for i, name := range names {
+				var value ast.Expr = nil
+				valueindex := -1
+				if values != nil {
+					if len(values) > 1 {
+						value = values[i]
+					} else {
+						value = values[0]
+						valueindex = i
+					}
+				}
+
+				d := astDeclToDecl(name, decl, value, valueindex)
+				if d == nil {
+					continue
+				}
+
+				methodof := MethodOf(decl)
+				if methodof != "" {
+					if !ast.IsExported(methodof) {
+						continue
+					}
+					decl := self.m[globalname].FindChild(methodof)
+					if decl != nil {
+						decl.AddChild(d)
+					} else {
+						decl = newDecl(methodof)
+						self.m[globalname].AddChild(decl)
+						decl.AddChild(d)
+					}
+				} else {
+					decl := self.m[globalname].FindChild(d.Name)
+					if decl != nil {
+						decl.ApplyDecl(d)
+					} else {
+						self.m[globalname].AddChild(d)
+					}
+				}
 			}
 		}
 	}
@@ -630,6 +759,22 @@ func (self *AutoCompleteContext) add(globalname string, decls []ast.Decl) {
 
 func (self *AutoCompleteContext) addAlias(alias string, globalname string) {
 	self.cfns[alias] = globalname
+}
+
+func (self *AutoCompleteContext) findDecl(name string) *Decl {
+	realname, ok := self.cfns[name]
+	if ok {
+		d, ok := self.m[realname]
+		if ok {
+			return d
+		}
+	}
+
+	d, ok := self.l[name]
+	if ok {
+		return d
+	}
+	return nil
 }
 
 //-------------------------------------------------------------------------
@@ -665,18 +810,41 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string,
 	parts := strings.Split(apropos, ".", 2)
 	switch len(parts) {
 	case 1:
-		for _, decl := range self.m[self.cfns[apropos]] {
-			prettyPrintDecl(buf, decl, "")
-			prettyPrintAutoCompleteDecl(buf2, decl, "")
+		// propose modules
+		for _, value := range self.cfns {
+			if decl, ok := self.m[value]; ok {
+				decl.PrettyPrint(buf, parts[0])
+				decl.PrettyPrintAutoComplete(buf2, parts[0])
+			}
+		}
+		// and locals
+		for _, value := range self.l {
+			value.InferType(self)
+			value.PrettyPrint(buf, parts[0])
+			value.PrettyPrintAutoComplete(buf2, parts[0])
 		}
 	case 2:
-		for _, decl := range self.m[self.cfns[parts[0]]] {
-			prettyPrintDecl(buf, decl, parts[1])
-			prettyPrintAutoCompleteDecl(buf2, decl, parts[1])
+		if topdecl := self.findDecl(parts[0]); topdecl != nil {
+			switch topdecl.Class {
+			case DECL_MODULE:
+				for _, decl := range topdecl.Children {
+					decl.PrettyPrint(buf, parts[1])
+					decl.PrettyPrintAutoComplete(buf2, parts[1])
+				}
+			case DECL_VAR:
+				it := topdecl.InferType(self)
+				name := typeName(it)
+				if typdecl := self.findDecl(name); typdecl != nil {
+					for _, decl := range typdecl.Children {
+						decl.PrettyPrint(buf, parts[1])
+						decl.PrettyPrintAutoComplete(buf2, parts[1])
+					}
+				}
+			}
 		}
 	}
 
-	if buf.Len() == 0 {
+	if buf.Len() == 0 || buf2.Len() == 0 {
 		return nil, nil
 	}
 
