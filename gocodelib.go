@@ -264,6 +264,7 @@ func declNames(d ast.Decl) []string {
 }
 
 func declValues(d ast.Decl) []ast.Expr {
+	// TODO: CONST values here too
 	switch t := d.(type) {
 	case *ast.GenDecl:
 		switch t.Tok {
@@ -297,6 +298,7 @@ func splitDecls(d ast.Decl) []ast.Decl {
 }
 
 func (self *AutoCompleteContext) processPackage(filename string, uniquename string, pkgname string) {
+	// TODO: deal with packages imported in the current namespace
 	if self.cache[filename] {
 		self.addAlias(self.m[uniquename].Name, uniquename)
 		return
@@ -437,6 +439,7 @@ func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) 
 	case *ast.CallExpr:
 		self.prettyPrintTypeExpr(out, t.Fun)
 	case *ast.ChanType:
+		// TODO: different types of channels
 		fmt.Fprintf(out, "chan ")
 		self.prettyPrintTypeExpr(out, t.Value)
 	default:
@@ -505,6 +508,95 @@ func (self *AutoCompleteContext) processImportSpec(imp *ast.ImportSpec) {
 	self.processPackage(findFile(path), path, alias)
 }
 
+func (self *AutoCompleteContext) cursorIn(block *ast.BlockStmt) bool {
+	if self.cursor == -1 {
+		return false
+	}
+
+	if self.cursor >= block.Offset && self.cursor <= block.Rbrace.Offset {
+		return true
+	}
+	return false
+}
+
+func (self *AutoCompleteContext) processFieldList(fieldList *ast.FieldList) {
+	if fieldList != nil {
+		decls := astFieldListToDecls(fieldList, DECL_VAR)
+		for _, d := range decls {
+			self.l[d.Name] = d
+		}
+	}
+}
+
+func (self *AutoCompleteContext) processAssignStmt(a *ast.AssignStmt) {
+	if a.Tok != token.DEFINE {
+		return
+	}
+
+	names := make([]string, len(a.Lhs))
+	for i, name := range a.Lhs {
+		id, ok := name.(*ast.Ident)
+		if !ok {
+			// something is wrong, just ignore the whole stmt
+			return
+		}
+		names[i] = id.Name()
+	}
+
+	for i, name := range names {
+		var value ast.Expr
+		valueindex := -1
+		if len(a.Rhs) > 1 {
+			value = a.Rhs[i]
+		} else {
+			value = a.Rhs[0]
+			valueindex = i
+		}
+
+		d := NewDeclVar(name, nil, value, valueindex)
+		if d == nil {
+			continue
+		}
+
+		decl, ok := self.l[d.Name]
+		if ok {
+			decl.Expand(d)
+		} else {
+			self.l[d.Name] = d
+		}
+	}
+}
+
+func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
+	// TODO: process Inits only if the cursor is in the Body
+	switch t := stmt.(type) {
+	case *ast.DeclStmt:
+		self.processDecl(t.Decl)
+	case *ast.AssignStmt:
+		self.processAssignStmt(t)
+	case *ast.IfStmt:
+		self.processStmt(t.Init)
+		self.processBlockStmt(t.Body)
+		self.processStmt(t.Else)
+	case *ast.BlockStmt:
+		self.processBlockStmt(t)
+	case *ast.RangeStmt:
+		// TODO: t.Key, t.Value and t.X need special type inference scheme
+		self.processBlockStmt(t.Body)
+	case *ast.ForStmt:
+		self.processStmt(t.Init)
+		self.processBlockStmt(t.Body)
+	}
+}
+
+func (self *AutoCompleteContext) processBlockStmt(block *ast.BlockStmt) {
+	if block != nil && self.cursorIn(block) {
+		for _, stmt := range block.List {
+			self.processStmt(stmt)
+		}
+	}
+}
+
 func (self *AutoCompleteContext) processDecl(decl ast.Decl) {
 	switch t := decl.(type) {
 	case *ast.GenDecl:
@@ -517,6 +609,17 @@ func (self *AutoCompleteContext) processDecl(decl ast.Decl) {
 				}
 				self.processImportSpec(imp)
 			}
+		}
+	case *ast.FuncDecl:
+		if t.Body != nil && self.cursorIn(t.Body) {
+			// put into 'locals' (if any):
+			// 1. method var
+			// 2. args vars
+			// 3. results vars
+			self.processFieldList(t.Recv)
+			self.processFieldList(t.Type.Params)
+			self.processFieldList(t.Type.Results)
+			self.processBlockStmt(t.Body)
 		}
 	}
 
@@ -595,6 +698,10 @@ type AutoCompleteContext struct {
 	cache map[string]bool // stupid, temporary
 
 	debuglog io.Writer
+
+	// cursor position, in bytes, -1 if unknown
+	// used for parsing function locals (only in the current function)
+	cursor int
 }
 
 func NewAutoCompleteContext() *AutoCompleteContext {
@@ -604,6 +711,7 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.cfns = make(map[string]string)
 	self.foreigns = make(map[string]ForeignPackage)
 	self.cache = make(map[string]bool)
+	self.cursor = -1
 	return self
 }
 
@@ -747,7 +855,8 @@ func (self *AutoCompleteContext) appendDecl(buf, buf2 *bytes.Buffer, p string, d
 	}
 }
 
-func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string, []string) {
+func (self *AutoCompleteContext) Apropos(file []byte, apropos string, cursor int) ([]string, []string) {
+	self.cursor = cursor
 	self.processData(file)
 
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))

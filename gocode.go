@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"strconv"
 	"rpc"
 	"flag"
 	"fmt"
@@ -56,7 +57,16 @@ func Cmd_AutoComplete(c *rpc.Client) {
 	}
 
 	apropos := flag.Arg(1)
-	abbrs, words := Client_AutoComplete(c, file, apropos)
+	if apropos == "_" {
+		// XXX: tmp probably
+		apropos = ""
+	}
+
+	cursor := -1
+	if flag.NArg() > 1 {
+		cursor, _ = strconv.Atoi(flag.Arg(2))
+	}
+	abbrs, words := Client_AutoComplete(c, file, apropos, cursor)
 	if words == nil {
 		fmt.Print("[]")
 		return

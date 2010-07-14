@@ -114,6 +114,7 @@ func astFieldListToDecls(f *ast.FieldList, class int) []*Decl {
 }
 
 func astTypeToChildren(ty ast.Expr) []*Decl {
+	// TODO: type embedding
 	switch t := ty.(type) {
 	case *ast.StructType:
 		return astFieldListToDecls(t.Fields, DECL_VAR)
@@ -124,7 +125,7 @@ func astTypeToChildren(ty ast.Expr) []*Decl {
 }
 
 func astDeclToDecl(name string, d ast.Decl, value ast.Expr, vindex int) *Decl {
-	if !astDeclConvertable(d) {
+	if !astDeclConvertable(d) || name == "_" {
 		return nil
 	}
 	decl := new(Decl)
@@ -142,6 +143,17 @@ func NewDecl(name string, class int) *Decl {
 	decl := new(Decl)
 	decl.Name = name
 	decl.Class = class
+	decl.ValueIndex = -1
+	return decl
+}
+
+func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int) *Decl {
+	decl := new(Decl)
+	decl.Name = name
+	decl.Class = DECL_VAR
+	decl.Type = typ
+	decl.Value = value
+	decl.ValueIndex = vindex
 	return decl
 }
 
@@ -161,7 +173,24 @@ func MethodOf(d ast.Decl) string {
 	return ""
 }
 
+// complete deep copy
+func (d *Decl) Copy(other *Decl) {
+	d.Name = other.Name
+	d.Class = other.Class
+	d.Type = other.Type
+	d.Value = other.Value
+	d.ValueIndex = other.ValueIndex
+	d.Children = other.Children
+}
+
 func (d *Decl) Expand(other *Decl) {
+	// in case if it's a variable, just replace an old one with a new one
+	if d.Class == DECL_VAR {
+		d.Copy(other)
+		return
+	}
+
+	// otherwise apply Type and Class and append Children
 	d.Type = other.Type
 	d.Class = other.Class
 
@@ -329,8 +358,12 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 		case *ast.ArrayType:
 			return t.Elt, isType
 		case *ast.MapType:
-			// TODO: take index into account, returns t.Value or bool
-			return t.Value, isType
+			switch index {
+			case -1, 0:
+				return t.Value, isType
+			case 1:
+				return ast.NewIdent("bool"), true
+			}
 		}
 	case *ast.StarExpr:
 		it, isType := inferType(t.X, -1, topLevel)
@@ -378,6 +411,8 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 				return c.InferType(topLevel), c.Class == DECL_TYPE
 			}
 		}
+	case *ast.FuncLit:
+		return t.Type, true
 	case *ast.TypeAssertExpr:
 		// TODO: take index into account, returns t.Type or bool
 		return t.Type, true
@@ -385,8 +420,8 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 	case *ast.ArrayType, *ast.MapType:
 		return t, true
 	default:
-		ty := reflect.Typeof(v)
-		fmt.Println(ty)
+		_ = reflect.Typeof(v)
+		//fmt.Println(ty)
 	}
 	return nil, false
 }

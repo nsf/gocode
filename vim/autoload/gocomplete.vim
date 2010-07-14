@@ -38,7 +38,7 @@ function! gocomplete#Complete(findstart, base)
                 break
             endif
         endwhile
-        execute "python gocomplete('" . cword . "', '" . a:base . "')"
+        execute "python gocomplete('" . cword . "', '" . a:base . "', '" . line2byte(line('.')) . "')"
         return g:gocomplete_completions
     endif
 endfunction
@@ -47,10 +47,13 @@ function! s:DefPython()
 python << PYTHONEOF
 
 
-def gocomplete(context, match):
+def gocomplete(context, match, cursor=-1):
 	import vim, subprocess
 	buf = "\n".join(vim.current.buffer)
-	gocode = subprocess.Popen("gocode autocomplete %s" % context, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+	if not context:
+		context = "_"
+	gocode = subprocess.Popen("gocode autocomplete %s %s" % (context, cursor), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 	output = gocode.communicate(buf)[0]
 	if gocode.returncode != 0:
 		vim.command('silent let g:gocomplete_completions = []')
