@@ -112,7 +112,7 @@ func extractPackageFromMethod(i int, s string) (string, string) {
 	return "", ""
 }
 
-func expandPackages(s string) string {
+func (self *AutoCompleteContext) expandPackages(s, curpkg string) string {
 	i := 0
 	for {
 		pkg := ""
@@ -142,13 +142,14 @@ func expandPackages(s string) string {
 			i = e
 		} else if b+1 != e {
 			// wow, we actually have something here
-			pkg = identifyPackage(s[b+1:e])
+			pkg = self.addForeignAlias(identifyPackage(s[b+1:e]), s[b+1:e])
 			i++ // skip to a first symbol after second '"'
 			s = s[0:b] + pkg + s[i:] // strip package clause completely
 			i = b
 		} else {
-			i += 2
-			s = s[0:b] + s[i:]
+			pkg = self.addForeignAlias(identifyPackage(curpkg), curpkg)
+			i++
+			s = s[0:b] + pkg + s[i:]
 			i = b
 		}
 
@@ -185,7 +186,7 @@ func preprocessConstDecl(s string) string {
 // returns:
 // 1. a go/parser parsable string representing one Go declaration
 // 2. and a package name this declaration belongs to
-func processExport(s string) (string, string) {
+func (self *AutoCompleteContext) processExport(s, curpkg string) (string, string) {
 	i := 0
 	pkg := ""
 
@@ -220,7 +221,7 @@ func processExport(s string) (string, string) {
 
 	// make everything parser friendly
 	s = strings.Replace(s, "?", "", -1)
-	s = expandPackages(s)
+	s = self.expandPackages(s, curpkg)
 
 	// skip system functions (Init, etc.)
 	i = strings.Index(s, "·")
@@ -346,7 +347,7 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 			s = s[i+1:]
 			continue
 		}
-		decl2, pkg := processExport(decl)
+		decl2, pkg := self.processExport(decl, uniquename)
 		if len(decl2) == 0 {
 			s = s[i+1:]
 			continue
@@ -684,6 +685,7 @@ type AutoCompleteContext struct {
 	// alias name ->
 	//	unique package name
 	cfns map[string]string
+	foreigns map[string]string
 
 	cache map[string]bool // stupid, temporary
 
@@ -695,6 +697,7 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.m = make(map[string]*Decl)
 	self.l = make(map[string]*Decl)
 	self.cfns = make(map[string]string)
+	self.foreigns = make(map[string]string)
 	self.cache = make(map[string]bool)
 	return self
 }
@@ -761,8 +764,44 @@ func (self *AutoCompleteContext) addAlias(alias string, globalname string) {
 	self.cfns[alias] = globalname
 }
 
+func (self *AutoCompleteContext) addForeignAlias(alias string, globalname string) string {
+	if realname, ok := self.foreigns[alias]; ok {
+		if realname == globalname {
+			return alias
+		} else {
+			// figure out unique local name
+			for {
+				alias = alias + "_"
+				if realname, ok = self.foreigns[alias]; ok {
+					if realname == globalname {
+						break
+					}
+				} else {
+					break
+				}
+			}
+		}
+	}
+	self.foreigns[alias] = globalname
+	return alias
+}
+
+func (self *AutoCompleteContext) findDeclByPath(path string) *Decl {
+	s := strings.Split(path, ".", -1)
+	switch len(s) {
+	case 1:
+		return self.findDecl(s[0])
+	case 2:
+		d := self.findDecl(s[0])
+		if d != nil {
+			return d.FindChild(s[1])
+		}
+	}
+	return nil
+}
+
 func (self *AutoCompleteContext) findDecl(name string) *Decl {
-	realname, ok := self.cfns[name]
+	realname, ok := self.foreigns[name]
 	if ok {
 		d, ok := self.m[realname]
 		if ok {
@@ -833,12 +872,17 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string,
 				}
 			case DECL_VAR:
 				it := topdecl.InferType(self)
-				name := typeName(it)
-				if typdecl := self.findDecl(name); typdecl != nil {
+				name := typePath(it)
+				if typdecl := self.findDeclByPath(name); typdecl != nil {
 					for _, decl := range typdecl.Children {
 						decl.PrettyPrint(buf, parts[1])
 						decl.PrettyPrintAutoComplete(buf2, parts[1])
 					}
+				}
+			case DECL_TYPE:
+				for _, decl := range topdecl.Children {
+					decl.PrettyPrint(buf, parts[1])
+					decl.PrettyPrintAutoComplete(buf2, parts[1])
 				}
 			}
 		}

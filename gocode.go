@@ -13,8 +13,6 @@ var (
 	format = flag.String("f", "vim", "output format (currently only 'vim' is valid)")
 )
 
-
-
 func getSocketFilename() string {
 	user := os.Getenv("USER")
 	if user == "" {

@@ -4,7 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 	"fmt"
-//	"reflect"
+	"reflect"
 	"bytes"
 	"strings"
 	"io"
@@ -299,20 +299,26 @@ func funcReturnType(f *ast.FuncType, index int) ast.Expr {
 	return nil
 }
 
-func typeName(e ast.Expr) string {
+func typePath(e ast.Expr) string {
 	switch t := e.(type) {
 	case *ast.Ident:
 		return t.Name()
 	case *ast.StarExpr:
+		return typePath(t.X)
+	case *ast.SelectorExpr:
+		path := ""
 		if ident, ok := t.X.(*ast.Ident); ok {
-			return ident.Name()
+			path += ident.Name()
 		}
+		return path + "." + t.Sel.Name()
 	}
 	return ""
 }
 
 // return expr and true if it's a type or false if it's a value
 func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, bool) {
+	//ty := reflect.Typeof(v)
+	//fmt.Println(ty)
 	switch t := v.(type) {
 	case *ast.CompositeLit:
 		return t.Type, true
@@ -384,8 +390,8 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 			break
 		}
 
-		name := typeName(it)
-		if d := topLevel.findDecl(name); d != nil {
+		name := typePath(it)
+		if d := topLevel.findDeclByPath(name); d != nil {
 			c := d.FindChild(t.Sel.Name())
 			if c != nil {
 				return c.InferType(topLevel), c.Class == DECL_TYPE
@@ -396,15 +402,15 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 	// TODO: channels here
 	case *ast.ArrayType, *ast.MapType:
 		return t, true
-//	default:
-		//ty := reflect.Typeof(v)
-		//fmt.Println(ty)
+	default:
+		ty := reflect.Typeof(v)
+		fmt.Println(ty)
 	}
 	return nil, false
 }
 
 func (d *Decl) InferType(topLevel *AutoCompleteContext) ast.Expr {
-	if d.Class == DECL_TYPE {
+	if d.Class == DECL_TYPE || d.Class == DECL_MODULE {
 		// we're the type itself
 		return ast.NewIdent(d.Name)
 	}
