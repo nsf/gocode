@@ -92,16 +92,6 @@ func astDeclConvertable(d ast.Decl) bool {
 	return false
 }
 
-func astTypeToChildren(ty ast.Expr) []*Decl {
-	switch t := ty.(type) {
-	case *ast.StructType:
-		return astFieldListToDecls(t.Fields, DECL_VAR)
-	case *ast.InterfaceType:
-		return astFieldListToDecls(t.Methods, DECL_FUNC)
-	}
-	return nil
-}
-
 func astFieldListToDecls(f *ast.FieldList, class int) []*Decl {
 	count := 0
 	for _, field := range f.List {
@@ -123,6 +113,16 @@ func astFieldListToDecls(f *ast.FieldList, class int) []*Decl {
 	return decls
 }
 
+func astTypeToChildren(ty ast.Expr) []*Decl {
+	switch t := ty.(type) {
+	case *ast.StructType:
+		return astFieldListToDecls(t.Fields, DECL_VAR)
+	case *ast.InterfaceType:
+		return astFieldListToDecls(t.Methods, DECL_FUNC)
+	}
+	return nil
+}
+
 func astDeclToDecl(name string, d ast.Decl, value ast.Expr, vindex int) *Decl {
 	if !astDeclConvertable(d) {
 		return nil
@@ -135,12 +135,6 @@ func astDeclToDecl(name string, d ast.Decl, value ast.Expr, vindex int) *Decl {
 	decl.Value = value
 	decl.ValueIndex = vindex
 
-	return decl
-}
-
-func newDecl(name string) *Decl {
-	decl := new(Decl)
-	decl.Name = name
 	return decl
 }
 
@@ -167,7 +161,7 @@ func MethodOf(d ast.Decl) string {
 	return ""
 }
 
-func (d *Decl) ApplyDecl(other *Decl) {
+func (d *Decl) Expand(other *Decl) {
 	d.Type = other.Type
 	d.Class = other.Class
 
@@ -180,24 +174,14 @@ func (d *Decl) ApplyDecl(other *Decl) {
 	}
 }
 
-func (d *Decl) String() string {
-	var ty string
-	if d.Type != nil {
-		buf := bytes.NewBuffer(make([]byte, 0, 256))
-		prettyPrintTypeExpr(buf, d.Type)
-		ty = buf.String()
+func (d *Decl) Matches(p string) bool {
+	if p != "" && !startsWith(d.Name, p) {
+		return false
 	}
-	if d.Value != nil {
-		return fmt.Sprintf("%s %s %s (somevalue)", declClassToString[d.Class], d.Name, ty)
-	}
-	return fmt.Sprintf("%s %s %s", declClassToString[d.Class], d.Name, ty)
+	return true
 }
 
-func (d *Decl) PrettyPrint(out io.Writer, p string) {
-	if p != "" && !startsWith(d.Name, p) {
-		return
-	}
-
+func (d *Decl) PrettyPrint(out io.Writer) {
 	fmt.Fprintf(out, "%s %s", declClassToString[d.Class], d.Name)
 	switch d.Class {
 	case DECL_TYPE:
@@ -233,10 +217,6 @@ func (d *Decl) PrettyPrint(out io.Writer, p string) {
 }
 
 func (d *Decl) PrettyPrintAutoComplete(out io.Writer, p string) {
-	if p != "" && !startsWith(d.Name, p) {
-		return
-	}
-
 	fmt.Fprintf(out, "%s", d.Name[len(p):])
 	if d.Class == DECL_FUNC {
 		fmt.Fprintf(out, "(")
@@ -349,6 +329,7 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 		case *ast.ArrayType:
 			return t.Elt, isType
 		case *ast.MapType:
+			// TODO: take index into account, returns t.Value or bool
 			return t.Value, isType
 		}
 	case *ast.StarExpr:
@@ -398,6 +379,7 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 			}
 		}
 	case *ast.TypeAssertExpr:
+		// TODO: take index into account, returns t.Type or bool
 		return t.Type, true
 	// TODO: channels here
 	case *ast.ArrayType, *ast.MapType:

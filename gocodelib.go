@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"bytes"
-	"reflect"
 	"go/parser"
 	"go/ast"
 	"go/token"
@@ -388,10 +387,6 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 }
 
 func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
-	ty := reflect.Typeof(e)
-	if false {
-		fmt.Fprintf(out, "%s\n", ty.String())
-	}
 	switch t := e.(type) {
 	case *ast.StarExpr:
 		fmt.Fprintf(out, "*")
@@ -436,7 +431,7 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		fmt.Fprintf(out, "chan ")
 		prettyPrintTypeExpr(out, t.Value)
 	default:
-		fmt.Fprintf(out, "\n[!!] unknown type: %s\n", ty.String())
+		panic("unknown type!")
 	}
 }
 
@@ -476,111 +471,6 @@ func startsWith(s, prefix string) bool {
 		return true
 	}
 	return false
-}
-
-func prettyPrintDecl(out io.Writer, d ast.Decl, p string) {
-	switch t := d.(type) {
-	case *ast.GenDecl:
-		switch t.Tok {
-		case token.CONST:
-			for _, spec := range t.Specs {
-				c := spec.(*ast.ValueSpec)
-				for _, name := range c.Names {
-					if p != "" && !startsWith(name.Name(), p) {
-						continue
-					}
-					fmt.Fprintf(out, "const %s\n", name.Name())
-				}
-			}
-		case token.TYPE:
-			for _, spec := range t.Specs {
-				t := spec.(*ast.TypeSpec)
-				if p != "" && !startsWith(t.Name.Name(), p) {
-					continue
-				}
-				fmt.Fprintf(out, "type %s\n", t.Name.Name())
-			}
-		case token.VAR:
-			for _, spec := range t.Specs {
-				v := spec.(*ast.ValueSpec)
-				for _, name := range v.Names {
-					if p != "" && !startsWith(name.Name(), p) {
-						continue
-					}
-					fmt.Fprintf(out, "var %s\n", name.Name())
-				}
-			}
-		}
-	case *ast.FuncDecl:
-		if t.Recv != nil {
-			//XXX: skip method, temporary
-			break
-		}
-		if p != "" && !startsWith(t.Name.Name(), p) {
-			break
-		}
-		fmt.Fprintf(out, "func %s(", t.Name.Name())
-		prettyPrintFuncFieldList(out, t.Type.Params)
-		fmt.Fprintf(out, ")")
-
-		buf := bytes.NewBuffer(make([]byte, 0, 256))
-		nresults := prettyPrintFuncFieldList(buf, t.Type.Results)
-		if nresults > 0 {
-			results := buf.String()
-			if strings.Index(results, " ") != -1 {
-				results = "(" + results + ")"
-			}
-			fmt.Fprintf(out, " %s", results)
-		}
-		fmt.Fprintf(out, "\n")
-	}
-}
-
-func prettyPrintAutoCompleteDecl(out io.Writer, d ast.Decl, p string) {
-	switch t := d.(type) {
-	case *ast.GenDecl:
-		switch t.Tok {
-		case token.CONST:
-			for _, spec := range t.Specs {
-				c := spec.(*ast.ValueSpec)
-				for _, name := range c.Names {
-					if p != "" && !startsWith(name.Name(), p) {
-						continue
-					}
-					fmt.Fprintf(out, "%s\n", name.Name()[len(p):])
-				}
-			}
-		case token.TYPE:
-			for _, spec := range t.Specs {
-				t := spec.(*ast.TypeSpec)
-				if p != "" && !startsWith(t.Name.Name(), p) {
-					continue
-				}
-				fmt.Fprintf(out, "%s\n", t.Name.Name()[len(p):])
-			}
-		case token.VAR:
-			for _, spec := range t.Specs {
-				v := spec.(*ast.ValueSpec)
-				for _, name := range v.Names {
-					if p != "" && !startsWith(name.Name(), p) {
-						continue
-					}
-					fmt.Fprintf(out, "%s\n", name.Name()[len(p):])
-				}
-			}
-		default:
-			fmt.Fprintf(out, "[!!] STUB\n")
-		}
-	case *ast.FuncDecl:
-		if t.Recv != nil {
-			//XXX: skip method, temporary
-			break
-		}
-		if p != "" && !startsWith(t.Name.Name(), p) {
-			break
-		}
-		fmt.Fprintf(out, "%s(\n", t.Name.Name()[len(p):])
-	}
 }
 
 func findFile(imp string) string {
@@ -649,14 +539,14 @@ func (self *AutoCompleteContext) processDecl(decl ast.Decl) {
 				if ok {
 					decl.AddChild(d)
 				} else {
-					decl = newDecl(methodof)
+					decl = NewDecl(methodof, DECL_TYPE)
 					self.l[methodof] = decl
 					decl.AddChild(d)
 				}
 			} else {
 				decl, ok := self.l[d.Name]
 				if ok {
-					decl.ApplyDecl(d)
+					decl.Expand(d)
 				} else {
 					self.l[d.Name] = d
 				}
@@ -678,7 +568,7 @@ func (self *AutoCompleteContext) processData(data []byte) {
 }
 
 type AutoCompleteContext struct {
-	m map[string]*Decl // all modules
+	m map[string]*Decl // all modules (lifetime cache)
 	l map[string]*Decl // locals
 
 	// current file namespace (used for modules):
@@ -743,14 +633,14 @@ func (self *AutoCompleteContext) add(globalname, localname string, decls []ast.D
 					if decl != nil {
 						decl.AddChild(d)
 					} else {
-						decl = newDecl(methodof)
+						decl = NewDecl(methodof, DECL_TYPE)
 						self.m[globalname].AddChild(decl)
 						decl.AddChild(d)
 					}
 				} else {
 					decl := self.m[globalname].FindChild(d.Name)
 					if decl != nil {
-						decl.ApplyDecl(d)
+						decl.Expand(d)
 					} else {
 						self.m[globalname].AddChild(d)
 					}
@@ -840,6 +730,13 @@ func (self TwoStringArrays) Swap(i, j int) {
 
 //-------------------------------------------------------------------------
 
+func appendDecl(buf, buf2 *bytes.Buffer, p string, decl *Decl) {
+	if decl.Matches(p) {
+		decl.PrettyPrint(buf)
+		decl.PrettyPrintAutoComplete(buf2, p)
+	}
+}
+
 func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string, []string) {
 	self.processData(file)
 
@@ -852,37 +749,32 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string,
 		// propose modules
 		for _, value := range self.cfns {
 			if decl, ok := self.m[value]; ok {
-				decl.PrettyPrint(buf, parts[0])
-				decl.PrettyPrintAutoComplete(buf2, parts[0])
+				appendDecl(buf, buf2, parts[0], decl)
 			}
 		}
 		// and locals
 		for _, value := range self.l {
 			value.InferType(self)
-			value.PrettyPrint(buf, parts[0])
-			value.PrettyPrintAutoComplete(buf2, parts[0])
+			appendDecl(buf, buf2, parts[0], value)
 		}
 	case 2:
 		if topdecl := self.findDecl(parts[0]); topdecl != nil {
 			switch topdecl.Class {
 			case DECL_MODULE:
 				for _, decl := range topdecl.Children {
-					decl.PrettyPrint(buf, parts[1])
-					decl.PrettyPrintAutoComplete(buf2, parts[1])
+					appendDecl(buf, buf2, parts[1], decl)
 				}
 			case DECL_VAR:
 				it := topdecl.InferType(self)
 				name := typePath(it)
 				if typdecl := self.findDeclByPath(name); typdecl != nil {
 					for _, decl := range typdecl.Children {
-						decl.PrettyPrint(buf, parts[1])
-						decl.PrettyPrintAutoComplete(buf2, parts[1])
+						appendDecl(buf, buf2, parts[1], decl)
 					}
 				}
 			case DECL_TYPE:
 				for _, decl := range topdecl.Children {
-					decl.PrettyPrint(buf, parts[1])
-					decl.PrettyPrintAutoComplete(buf2, parts[1])
+					appendDecl(buf, buf2, parts[1], decl)
 				}
 			}
 		}
