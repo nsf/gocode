@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"strings"
 	"io/ioutil"
+	"hash/crc32"
 	"sort"
 	"io"
 	"os"
@@ -386,26 +387,34 @@ func (self *AutoCompleteContext) processPackage(filename string, uniquename stri
 	}
 }
 
-func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
+func (self *AutoCompleteContext) beautifyIdent(ident string) string {
+	foreign, ok := self.foreigns[ident]
+	if ok {
+		return foreign.Abbrev
+	}
+	return ident
+}
+
+func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 	switch t := e.(type) {
 	case *ast.StarExpr:
 		fmt.Fprintf(out, "*")
-		prettyPrintTypeExpr(out, t.X)
+		self.prettyPrintTypeExpr(out, t.X)
 	case *ast.Ident:
-		fmt.Fprintf(out, t.Name())
+		fmt.Fprintf(out, self.beautifyIdent(t.Name()))
 	case *ast.ArrayType:
 		fmt.Fprintf(out, "[]")
-		prettyPrintTypeExpr(out, t.Elt)
+		self.prettyPrintTypeExpr(out, t.Elt)
 	case *ast.SelectorExpr:
-		prettyPrintTypeExpr(out, t.X)
+		self.prettyPrintTypeExpr(out, t.X)
 		fmt.Fprintf(out, ".%s", t.Sel.Name())
 	case *ast.FuncType:
 		fmt.Fprintf(out, "func(")
-		prettyPrintFuncFieldList(out, t.Params)
+		self.prettyPrintFuncFieldList(out, t.Params)
 		fmt.Fprintf(out, ")")
 
 		buf := bytes.NewBuffer(make([]byte, 0, 256))
-		nresults := prettyPrintFuncFieldList(buf, t.Results)
+		nresults := self.prettyPrintFuncFieldList(buf, t.Results)
 		if nresults > 0 {
 			results := buf.String()
 			if strings.Index(results, " ") != -1 {
@@ -415,27 +424,27 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		}
 	case *ast.MapType:
 		fmt.Fprintf(out, "map[")
-		prettyPrintTypeExpr(out, t.Key)
+		self.prettyPrintTypeExpr(out, t.Key)
 		fmt.Fprintf(out, "]")
-		prettyPrintTypeExpr(out, t.Value)
+		self.prettyPrintTypeExpr(out, t.Value)
 	case *ast.InterfaceType:
 		fmt.Fprintf(out, "interface{}")
 	case *ast.Ellipsis:
 		fmt.Fprintf(out, "...")
-		prettyPrintTypeExpr(out, t.Elt)
+		self.prettyPrintTypeExpr(out, t.Elt)
 	case *ast.StructType:
 		fmt.Fprintf(out, "struct")
 	case *ast.CallExpr:
-		prettyPrintTypeExpr(out, t.Fun)
+		self.prettyPrintTypeExpr(out, t.Fun)
 	case *ast.ChanType:
 		fmt.Fprintf(out, "chan ")
-		prettyPrintTypeExpr(out, t.Value)
+		self.prettyPrintTypeExpr(out, t.Value)
 	default:
 		panic("unknown type!")
 	}
 }
 
-func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
+func (self *AutoCompleteContext) prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 	count := 0
 	if f == nil {
 		return count
@@ -456,7 +465,7 @@ func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 		}
 
 		// type
-		prettyPrintTypeExpr(out, field.Type)
+		self.prettyPrintTypeExpr(out, field.Type)
 
 		// ,
 		if i != len(f.List)-1 {
@@ -567,6 +576,12 @@ func (self *AutoCompleteContext) processData(data []byte) {
 	}
 }
 
+// represents foreign package (e.g. a package in the package, not imported directly)
+type ForeignPackage struct {
+	Abbrev string // nice name, like "ast"
+	Unique string // real global unique name, like "go/ast"
+}
+
 type AutoCompleteContext struct {
 	m map[string]*Decl // all modules (lifetime cache)
 	l map[string]*Decl // locals
@@ -575,7 +590,7 @@ type AutoCompleteContext struct {
 	// alias name ->
 	//	unique package name
 	cfns map[string]string
-	foreigns map[string]string
+	foreigns map[string]ForeignPackage
 
 	cache map[string]bool // stupid, temporary
 
@@ -587,7 +602,7 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.m = make(map[string]*Decl)
 	self.l = make(map[string]*Decl)
 	self.cfns = make(map[string]string)
-	self.foreigns = make(map[string]string)
+	self.foreigns = make(map[string]ForeignPackage)
 	self.cache = make(map[string]bool)
 	return self
 }
@@ -655,25 +670,10 @@ func (self *AutoCompleteContext) addAlias(alias string, globalname string) {
 }
 
 func (self *AutoCompleteContext) addForeignAlias(alias string, globalname string) string {
-	if realname, ok := self.foreigns[alias]; ok {
-		if realname == globalname {
-			return alias
-		} else {
-			// figure out unique local name
-			for {
-				alias = alias + "_"
-				if realname, ok = self.foreigns[alias]; ok {
-					if realname == globalname {
-						break
-					}
-				} else {
-					break
-				}
-			}
-		}
-	}
-	self.foreigns[alias] = globalname
-	return alias
+	sum := crc32.ChecksumIEEE([]byte(globalname))
+	name := fmt.Sprintf("__%X__", sum)
+	self.foreigns[name] = ForeignPackage{alias, globalname}
+	return name
 }
 
 func (self *AutoCompleteContext) findDeclByPath(path string) *Decl {
@@ -691,7 +691,8 @@ func (self *AutoCompleteContext) findDeclByPath(path string) *Decl {
 }
 
 func (self *AutoCompleteContext) findDecl(name string) *Decl {
-	realname, ok := self.foreigns[name]
+	// first, check cfns and locals
+	realname, ok := self.cfns[name]
 	if ok {
 		d, ok := self.m[realname]
 		if ok {
@@ -702,6 +703,15 @@ func (self *AutoCompleteContext) findDecl(name string) *Decl {
 	d, ok := self.l[name]
 	if ok {
 		return d
+	}
+
+	// then check foreigns
+	foreign, ok := self.foreigns[name]
+	if ok {
+		d, ok := self.m[foreign.Unique]
+		if ok {
+			return d
+		}
 	}
 	return nil
 }
@@ -730,9 +740,9 @@ func (self TwoStringArrays) Swap(i, j int) {
 
 //-------------------------------------------------------------------------
 
-func appendDecl(buf, buf2 *bytes.Buffer, p string, decl *Decl) {
+func (self *AutoCompleteContext) appendDecl(buf, buf2 *bytes.Buffer, p string, decl *Decl) {
 	if decl.Matches(p) {
-		decl.PrettyPrint(buf)
+		decl.PrettyPrint(buf, self)
 		decl.PrettyPrintAutoComplete(buf2, p)
 	}
 }
@@ -749,32 +759,32 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string) ([]string,
 		// propose modules
 		for _, value := range self.cfns {
 			if decl, ok := self.m[value]; ok {
-				appendDecl(buf, buf2, parts[0], decl)
+				self.appendDecl(buf, buf2, parts[0], decl)
 			}
 		}
 		// and locals
 		for _, value := range self.l {
 			value.InferType(self)
-			appendDecl(buf, buf2, parts[0], value)
+			self.appendDecl(buf, buf2, parts[0], value)
 		}
 	case 2:
 		if topdecl := self.findDecl(parts[0]); topdecl != nil {
 			switch topdecl.Class {
 			case DECL_MODULE:
 				for _, decl := range topdecl.Children {
-					appendDecl(buf, buf2, parts[1], decl)
+					self.appendDecl(buf, buf2, parts[1], decl)
 				}
 			case DECL_VAR:
 				it := topdecl.InferType(self)
 				name := typePath(it)
 				if typdecl := self.findDeclByPath(name); typdecl != nil {
 					for _, decl := range typdecl.Children {
-						appendDecl(buf, buf2, parts[1], decl)
+						self.appendDecl(buf, buf2, parts[1], decl)
 					}
 				}
 			case DECL_TYPE:
 				for _, decl := range topdecl.Children {
-					appendDecl(buf, buf2, parts[1], decl)
+					self.appendDecl(buf, buf2, parts[1], decl)
 				}
 			}
 		}

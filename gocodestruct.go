@@ -181,7 +181,7 @@ func (d *Decl) Matches(p string) bool {
 	return true
 }
 
-func (d *Decl) PrettyPrint(out io.Writer) {
+func (d *Decl) PrettyPrint(out io.Writer, ac *AutoCompleteContext) {
 	fmt.Fprintf(out, "%s %s", declClassToString[d.Class], d.Name)
 	switch d.Class {
 	case DECL_TYPE:
@@ -191,20 +191,20 @@ func (d *Decl) PrettyPrint(out io.Writer) {
 		case *ast.InterfaceType:
 			fmt.Fprintf(out, " interface")
 		default:
-			prettyPrintTypeExpr(out, d.Type)
+			ac.prettyPrintTypeExpr(out, d.Type)
 		}
 	case DECL_VAR:
 		if d.Type != nil {
 			fmt.Fprintf(out, " ")
-			prettyPrintTypeExpr(out, d.Type)
+			ac.prettyPrintTypeExpr(out, d.Type)
 		}
 	case DECL_FUNC:
 		fmt.Fprintf(out, "(")
-		prettyPrintFuncFieldList(out, d.Type.(*ast.FuncType).Params)
+		ac.prettyPrintFuncFieldList(out, d.Type.(*ast.FuncType).Params)
 		fmt.Fprintf(out, ")")
 
 		buf := bytes.NewBuffer(make([]byte, 0, 256))
-		nresults := prettyPrintFuncFieldList(buf, d.Type.(*ast.FuncType).Results)
+		nresults := ac.prettyPrintFuncFieldList(buf, d.Type.(*ast.FuncType).Results)
 		if nresults > 0 {
 			results := buf.String()
 			if strings.Index(results, " ") != -1 {
