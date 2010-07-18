@@ -31,7 +31,8 @@ endf
 
 fu! s:gocodeAutocomplete(apropos)
 	let filename = s:gocodeCurrentBuffer()
-	let result = s:gocodeCommand([s:gocodeCurrentBufferOpt(filename)], [a:apropos, s:gocodeCursor()])
+	let result = s:gocodeCommand([s:gocodeCurrentBufferOpt(filename), '-f=vim'],
+				   \ [a:apropos, s:gocodeCursor()])
 	call delete(filename)
 	return result
 endf

@@ -12,7 +12,7 @@ import (
 
 var (
 	server = flag.Bool("s", false, "run a server instead of a client")
-	format = flag.String("f", "vim", "output format (currently only 'vim' is valid)")
+	format = flag.String("f", "nice", "output format (vim | emacs | nice)")
 	input = flag.String("in", "", "use this file instead of stdin input")
 )
 
