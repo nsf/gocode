@@ -12,7 +12,67 @@ import (
 var (
 	server = flag.Bool("s", false, "run a server instead of a client")
 	format = flag.String("f", "vim", "output format (currently only 'vim' is valid)")
+	input = flag.String("in", "", "use this file instead of stdin input")
 )
+
+type Formatter interface {
+	WriteEmpty()
+	WriteCandidates(names, types, classes []string)
+}
+
+type VimFormatter struct {
+}
+
+func (*VimFormatter) WriteEmpty() {
+	fmt.Print("[]")
+}
+
+func (*VimFormatter) WriteCandidates(names, types, classes []string) {
+	fmt.Printf("[")
+	for i := 0; i < len(names); i++ {
+		word := names[i]
+		if classes[i] == "func" {
+			word += "("
+		}
+
+		abbr := fmt.Sprintf("%s %s %s", classes[i], names[i], types[i])
+		if classes[i] == "func" {
+			abbr = fmt.Sprintf("%s %s%s", classes[i], names[i], types[i][len("func "):])
+		}
+		fmt.Printf("{'word': '%s', 'abbr': '%s'}", word, abbr)
+		if i != len(names)-1 {
+			fmt.Printf(", ")
+		}
+	}
+	fmt.Printf("]")
+}
+
+type EmacsFormatter struct {
+}
+
+func (*EmacsFormatter) WriteEmpty() {
+}
+
+func (*EmacsFormatter) WriteCandidates(names, types, classes []string) {
+	for i := 0; i < len(names); i++ {
+		name := names[i]
+		hint := classes[i] + " " + types[i]
+		if classes[i] == "func" {
+			hint = types[i]
+		}
+		fmt.Printf("%s,,%s\n", name, hint)
+	}
+}
+
+func getFormatter() Formatter {
+	switch *format {
+	case "vim":
+		return new(VimFormatter)
+	case "emacs":
+		return new(EmacsFormatter)
+	}
+	return new(VimFormatter)
+}
 
 func getSocketFilename() string {
 	user := os.Getenv("USER")
@@ -51,7 +111,15 @@ func Cmd_Status(c *rpc.Client) {
 }
 
 func Cmd_AutoComplete(c *rpc.Client) {
-	file, err := ioutil.ReadAll(os.Stdin)
+	var file []byte
+	var err os.Error
+
+	if *input != "" {
+		file, err = ioutil.ReadFile(*input)
+	} else {
+		file, err = ioutil.ReadAll(os.Stdin)
+	}
+
 	if err != nil {
 		panic(err.String())
 	}
@@ -66,24 +134,18 @@ func Cmd_AutoComplete(c *rpc.Client) {
 	if flag.NArg() > 1 {
 		cursor, _ = strconv.Atoi(flag.Arg(2))
 	}
-	abbrs, words := Client_AutoComplete(c, file, apropos, cursor)
-	if words == nil {
-		fmt.Print("[]")
+	formatter := getFormatter()
+	names, types, classes := Client_AutoComplete(c, file, apropos, cursor)
+	if names == nil {
+		formatter.WriteEmpty()
 		return
 	}
 
-	if len(words) != len(abbrs) {
+	if len(names) != len(types) || len(names) != len(classes) {
 		panic("Lengths should match!")
 	}
 
-	fmt.Printf("[")
-	for i := 0; i < len(words); i++ {
-		fmt.Printf("{'word': '%s', 'abbr': '%s'}", words[i], abbrs[i])
-		if i != len(words)-1 {
-			fmt.Printf(", ")
-		}
-	}
-	fmt.Printf("]")
+	formatter.WriteCandidates(names, types, classes)
 }
 
 func Cmd_Close(c *rpc.Client) {

@@ -828,39 +828,48 @@ func (self *AutoCompleteContext) findDecl(name string) *Decl {
 // Sort interface for TwoStringArrays
 //-------------------------------------------------------------------------
 
-type TwoStringArrays struct {
+type TriStringArrays struct {
 	first []string
 	second []string
+	third []string
 }
 
-func (self TwoStringArrays) Len() int {
+func (self TriStringArrays) Len() int {
 	return len(self.first)
 }
 
-func (self TwoStringArrays) Less(i, j int) bool {
-	return self.first[i] < self.first[j]
+func (self TriStringArrays) Less(i, j int) bool {
+	return self.third[i] + self.first[i] < self.third[j] + self.first[j]
 }
 
-func (self TwoStringArrays) Swap(i, j int) {
+func (self TriStringArrays) Swap(i, j int) {
 	self.first[i], self.first[j] = self.first[j], self.first[i]
 	self.second[i], self.second[j] = self.second[j], self.second[i]
+	self.third[i], self.third[j] = self.third[j], self.third[i]
 }
 
 //-------------------------------------------------------------------------
 
-func (self *AutoCompleteContext) appendDecl(buf, buf2 *bytes.Buffer, p string, decl *Decl) {
+func (self *AutoCompleteContext) appendDecl(names, types, classes *bytes.Buffer, p string, decl *Decl) {
 	if decl.Matches(p) {
-		decl.PrettyPrint(buf, self)
-		decl.PrettyPrintAutoComplete(buf2, p)
+		fmt.Fprintf(names, "%s\n", decl.Name)
+		decl.PrettyPrintType(types, self)
+		fmt.Fprintf(types, "\n")
+		fmt.Fprintf(classes, "%s\n", decl.ClassName())
 	}
 }
 
-func (self *AutoCompleteContext) Apropos(file []byte, apropos string, cursor int) ([]string, []string) {
+// return three slices of the same length containing:
+// 1. apropos names
+// 2. apropos types (pretty-printed)
+// 3. apropos classes
+func (self *AutoCompleteContext) Apropos(file []byte, apropos string, cursor int) ([]string, []string, []string) {
 	self.cursor = cursor
 	self.processData(file)
 
-	buf := bytes.NewBuffer(make([]byte, 0, 4096))
-	buf2 := bytes.NewBuffer(make([]byte, 0, 4096))
+	out_names := bytes.NewBuffer(make([]byte, 0, 4096))
+	out_types := bytes.NewBuffer(make([]byte, 0, 4096))
+	out_classes := bytes.NewBuffer(make([]byte, 0, 4096))
 
 	parts := strings.Split(apropos, ".", 2)
 	switch len(parts) {
@@ -868,46 +877,47 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string, cursor int
 		// propose modules
 		for _, value := range self.cfns {
 			if decl, ok := self.m[value]; ok {
-				self.appendDecl(buf, buf2, parts[0], decl)
+				self.appendDecl(out_names, out_types, out_classes, parts[0], decl)
 			}
 		}
 		// and locals
 		for _, value := range self.l {
 			value.InferType(self)
-			self.appendDecl(buf, buf2, parts[0], value)
+			self.appendDecl(out_names, out_types, out_classes, parts[0], value)
 		}
 	case 2:
 		if topdecl := self.findDecl(parts[0]); topdecl != nil {
 			switch topdecl.Class {
 			case DECL_MODULE:
 				for _, decl := range topdecl.Children {
-					self.appendDecl(buf, buf2, parts[1], decl)
+					self.appendDecl(out_names, out_types, out_classes, parts[1], decl)
 				}
 			case DECL_VAR:
 				it := topdecl.InferType(self)
 				name := typePath(it)
 				if typdecl := self.findDeclByPath(name); typdecl != nil {
 					for _, decl := range typdecl.Children {
-						self.appendDecl(buf, buf2, parts[1], decl)
+						self.appendDecl(out_names, out_types, out_classes, parts[1], decl)
 					}
 				}
 			case DECL_TYPE:
 				for _, decl := range topdecl.Children {
-					self.appendDecl(buf, buf2, parts[1], decl)
+					self.appendDecl(out_names, out_types, out_classes, parts[1], decl)
 				}
 			}
 		}
 	}
 
-	if buf.Len() == 0 || buf2.Len() == 0 {
-		return nil, nil
+	if out_names.Len() == 0 || out_types.Len() == 0 || out_classes.Len() == 0 {
+		return nil, nil, nil
 	}
 
-	var pair TwoStringArrays
-	pair.first = strings.Split(buf.String()[0:buf.Len()-1], "\n", -1)
-	pair.second = strings.Split(buf2.String()[0:buf2.Len()-1], "\n", -1)
-	sort.Sort(pair)
-	return pair.first, pair.second
+	var tri TriStringArrays
+	tri.first = strings.Split(out_names.String()[0:out_names.Len()-1], "\n", -1)
+	tri.second = strings.Split(out_types.String()[0:out_types.Len()-1], "\n", -1)
+	tri.third = strings.Split(out_classes.String()[0:out_classes.Len()-1], "\n", -1)
+	sort.Sort(tri)
+	return tri.first, tri.second, tri.third
 }
 
 func (self *AutoCompleteContext) Status() string {

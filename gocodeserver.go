@@ -24,7 +24,7 @@ var daemon *AutoCompletionDaemon
 
 //-------------------------------------------------------------------------
 
-func Server_AutoComplete(file []byte, apropos string, cursor int) ([]string, []string) {
+func Server_AutoComplete(file []byte, apropos string, cursor int) ([]string, []string, []string) {
 	return daemon.ctx.Apropos(file, apropos, cursor)
 }
 

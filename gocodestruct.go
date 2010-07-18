@@ -183,6 +183,10 @@ func (d *Decl) Copy(other *Decl) {
 	d.Children = other.Children
 }
 
+func (d *Decl) ClassName() string {
+	return declClassToString[d.Class]
+}
+
 func (d *Decl) Expand(other *Decl) {
 	// in case if it's a variable, just replace an old one with a new one
 	if d.Class == DECL_VAR {
@@ -210,25 +214,23 @@ func (d *Decl) Matches(p string) bool {
 	return true
 }
 
-func (d *Decl) PrettyPrint(out io.Writer, ac *AutoCompleteContext) {
-	fmt.Fprintf(out, "%s %s", declClassToString[d.Class], d.Name)
+func (d *Decl) PrettyPrintType(out io.Writer, ac *AutoCompleteContext) {
 	switch d.Class {
 	case DECL_TYPE:
 		switch t := d.Type.(type) {
 		case *ast.StructType:
-			fmt.Fprintf(out, " struct")
+			fmt.Fprintf(out, "struct")
 		case *ast.InterfaceType:
-			fmt.Fprintf(out, " interface")
+			fmt.Fprintf(out, "interface")
 		default:
 			ac.prettyPrintTypeExpr(out, d.Type)
 		}
 	case DECL_VAR:
 		if d.Type != nil {
-			fmt.Fprintf(out, " ")
 			ac.prettyPrintTypeExpr(out, d.Type)
 		}
 	case DECL_FUNC:
-		fmt.Fprintf(out, "(")
+		fmt.Fprintf(out, "func (")
 		ac.prettyPrintFuncFieldList(out, d.Type.(*ast.FuncType).Params)
 		fmt.Fprintf(out, ")")
 
@@ -242,16 +244,6 @@ func (d *Decl) PrettyPrint(out io.Writer, ac *AutoCompleteContext) {
 			fmt.Fprintf(out, " %s", results)
 		}
 	}
-	fmt.Fprintf(out, "\n")
-}
-
-func (d *Decl) PrettyPrintAutoComplete(out io.Writer, p string) {
-	fmt.Fprintf(out, "%s", d.Name[len(p):])
-	if d.Class == DECL_FUNC {
-		fmt.Fprintf(out, "(")
-	}
-
-	fmt.Fprintf(out, "\n")
 }
 
 func (d *Decl) AddChild(cd *Decl) {
