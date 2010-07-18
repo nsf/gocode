@@ -247,6 +247,10 @@ func (d *Decl) PrettyPrintType(out io.Writer, ac *AutoCompleteContext) {
 }
 
 func (d *Decl) AddChild(cd *Decl) {
+	if d.FindChild(cd.Name) != nil {
+		return
+	}
+
 	if d.Children == nil {
 		d.Children = make([]*Decl, 0, 4)
 	}
