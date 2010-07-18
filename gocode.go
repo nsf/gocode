@@ -20,6 +20,10 @@ type Formatter interface {
 	WriteCandidates(names, types, classes []string)
 }
 
+//-------------------------------------------------------------------------
+// VimFormatter
+//-------------------------------------------------------------------------
+
 type VimFormatter struct {
 }
 
@@ -30,6 +34,7 @@ func (*VimFormatter) WriteEmpty() {
 func (*VimFormatter) WriteCandidates(names, types, classes []string) {
 	fmt.Printf("[")
 	for i := 0; i < len(names); i++ {
+		// TODO: rip off part of the name somehow (?)
 		word := names[i]
 		if classes[i] == "func" {
 			word += "("
@@ -46,6 +51,10 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string) {
 	}
 	fmt.Printf("]")
 }
+
+//-------------------------------------------------------------------------
+// EmacsFormatter
+//-------------------------------------------------------------------------
 
 type EmacsFormatter struct {
 }

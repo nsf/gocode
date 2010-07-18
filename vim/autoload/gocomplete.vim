@@ -1,9 +1,42 @@
-if !has('python')
-    echo "Error: Required vim compiled with +python"
-    finish
+if exists('g:loaded_gocode')
+	finish
 endif
+let g:loaded_gocode = 1
 
-function! gocomplete#Complete(findstart, base)
+fu! s:gocodeCurrentBuffer()
+	let buf = getline(1, '$')
+	let file = tempname()
+	call writefile(buf, file)
+	return file
+endf
+
+fu! s:system(str, ...)
+	return (a:0 == 0 ? system(a:str) : system(a:str, join(a:000)))
+endf
+
+fu! s:gocodeCommand(preargs, args)
+	for i in range(0, len(a:args) - 1)
+		let a:args[i] = shellescape(a:args[i])
+	endfor
+	return s:system(printf('gocode %s autocomplete %s', join(a:preargs), join(a:args)))
+endf
+
+fu! s:gocodeCurrentBufferOpt(filename)
+	return '-in=' . a:filename
+endf
+
+fu! s:gocodeCursor()
+	return printf('%d', line2byte(line('.')))
+endf
+
+fu! s:gocodeAutocomplete(apropos)
+	let filename = s:gocodeCurrentBuffer()
+	let result = s:gocodeCommand([s:gocodeCurrentBufferOpt(filename)], [a:apropos, s:gocodeCursor()])
+	call delete(filename)
+	return result
+endf
+
+fu! gocomplete#Complete(findstart, base)
     "findstart = 1 when we need to get the text length
     if a:findstart == 1
         let line = getline('.')
@@ -38,29 +71,7 @@ function! gocomplete#Complete(findstart, base)
                 break
             endif
         endwhile
-        execute "python gocomplete('" . cword . "', '" . a:base . "', '" . line2byte(line('.')) . "')"
+	execute "silent let g:gocomplete_completions = " . s:gocodeAutocomplete(cword)
         return g:gocomplete_completions
     endif
-endfunction
-
-function! s:DefPython()
-python << PYTHONEOF
-
-
-def gocomplete(context, match, cursor=-1):
-	import vim, subprocess
-	buf = "\n".join(vim.current.buffer)
-
-	if not context:
-		context = "_"
-	gocode = subprocess.Popen("gocode autocomplete %s %s" % (context, cursor), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-	output = gocode.communicate(buf)[0]
-	if gocode.returncode != 0:
-		vim.command('silent let g:gocomplete_completions = []')
-	else:
-		vim.command('silent let g:gocomplete_completions = %s' % output)
-
-PYTHONEOF
-endfunction
-
-call s:DefPython()
+endf
