@@ -140,6 +140,7 @@ func (self *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []b
 	if beg == -1 || end == -1 {
 		return cursor, file, nil
 	}
+
 	ripped := make([]byte, end + 1 - beg)
 	copy(ripped, file[beg:end+1])
 

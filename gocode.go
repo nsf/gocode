@@ -4,8 +4,10 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"exec"
 	"rpc"
 	"flag"
+	"time"
 	"fmt"
 	"os"
 )
@@ -193,13 +195,63 @@ func Cmd_Close(c *rpc.Client) {
 	Client_Close(c, 0)
 }
 
+func makeFDs() ([]*os.File, os.Error) {
+	var fds [3]*os.File
+	var err os.Error
+	fds[0], err = os.Open("/dev/null", os.O_RDONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+	fds[1], err = os.Open("/dev/null", os.O_WRONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+	fds[2], err = os.Open("/dev/null", os.O_WRONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fds, nil
+}
+
+func tryRunServer() os.Error {
+	fds, err := makeFDs()
+	if err != nil {
+		return err
+	}
+	defer fds[0].Close()
+	defer fds[1].Close()
+	defer fds[2].Close()
+
+	var path string
+	path, err = exec.LookPath("gocode")
+	if err != nil {
+		return err
+	}
+
+	_, err = os.ForkExec(path, []string{"gocode", "-s"}, os.Environ(), "", fds)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func clientFunc() int {
 	// client
 
 	client, err := rpc.Dial("unix", getSocketFilename())
 	if err != nil {
-		fmt.Printf("Failed to connect to the ACR server\n%s\n", err.String())
-		return 1
+		err = tryRunServer()
+		if err != nil {
+			fmt.Printf("%s\n", err.String())
+			return 1
+		}
+		time.Sleep(100000000) // 0.1
+		client, err = rpc.Dial("unix", getSocketFilename())
+		if err != nil {
+			fmt.Printf("%s\n", err.String())
+			return 1
+		}
 	}
 	defer client.Close()
 
