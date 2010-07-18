@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"strconv"
+	"strings"
 	"rpc"
 	"flag"
 	"fmt"
@@ -17,7 +18,7 @@ var (
 
 type Formatter interface {
 	WriteEmpty()
-	WriteCandidates(names, types, classes []string)
+	WriteCandidates(names, types, classes []string, num int)
 }
 
 //-------------------------------------------------------------------------
@@ -31,11 +32,11 @@ func (*VimFormatter) WriteEmpty() {
 	fmt.Print("[]")
 }
 
-func (*VimFormatter) WriteCandidates(names, types, classes []string) {
+func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 	fmt.Printf("[")
 	for i := 0; i < len(names); i++ {
 		// TODO: rip off part of the name somehow (?)
-		word := names[i]
+		word := names[i][num:]
 		if classes[i] == "func" {
 			word += "("
 		}
@@ -62,7 +63,7 @@ type EmacsFormatter struct {
 func (*EmacsFormatter) WriteEmpty() {
 }
 
-func (*EmacsFormatter) WriteCandidates(names, types, classes []string) {
+func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) {
 	for i := 0; i < len(names); i++ {
 		name := names[i]
 		hint := classes[i] + " " + types[i]
@@ -154,7 +155,12 @@ func Cmd_AutoComplete(c *rpc.Client) {
 		panic("Lengths should match!")
 	}
 
-	formatter.WriteCandidates(names, types, classes)
+	i := strings.LastIndex(apropos, ".")
+	num := 0
+	if i != -1 {
+		num = len(apropos) - i - 1
+	}
+	formatter.WriteCandidates(names, types, classes, num)
 }
 
 func Cmd_Close(c *rpc.Client) {
