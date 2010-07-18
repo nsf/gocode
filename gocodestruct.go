@@ -406,8 +406,12 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 	case *ast.FuncLit:
 		return t.Type, true
 	case *ast.TypeAssertExpr:
-		// TODO: take index into account, returns t.Type or bool
-		return t.Type, true
+		switch index {
+		case -1, 0:
+			return t.Type, true
+		case 1:
+			return ast.NewIdent("bool"), true
+		}
 	// TODO: channels here
 	case *ast.ArrayType, *ast.MapType:
 		return t, true
