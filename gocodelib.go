@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/ast"
 	"go/token"
+	"go/scanner"
 	"strings"
 	"io/ioutil"
 	"hash/crc32"
@@ -13,6 +14,141 @@ import (
 	"io"
 	"os"
 )
+
+type TokPos struct {
+	Tok token.Token
+	Pos token.Position
+}
+
+type TokCollection struct {
+	tokens []TokPos
+}
+
+func (self *TokCollection) appendToken(pos token.Position, tok token.Token) {
+	if self.tokens == nil {
+		self.tokens = make([]TokPos, 0, 4)
+	}
+
+	// test {
+
+	if cap(self.tokens) < len(self.tokens)+1 {
+		newcap := cap(self.tokens) * 2
+		if newcap == 0 {
+			newcap = 4
+		}
+
+		s := make([]TokPos, len(self.tokens), newcap)
+		copy(s, self.tokens)
+		self.tokens = s
+	}
+
+	i := len(self.tokens)
+	self.tokens = self.tokens[0:i+1]
+	self.tokens[i] = TokPos{tok, pos}
+}
+
+func (self *TokCollection) next(s *scanner.Scanner) bool {
+	pos, tok, _ := s.Scan()
+	if tok == token.EOF {
+		return false
+	}
+
+	self.appendToken(pos, tok)
+	return true
+}
+
+func (self *TokCollection) findExpBeg(pos int) int {
+	lowest := 0
+	lowpos := -1
+	lowi := -1
+	cur := 0
+	for i := pos; i >= 0; i-- {
+		switch self.tokens[i].Tok {
+		case token.RBRACE:
+			cur++
+		case token.LBRACE:
+			cur--
+		}
+
+		if cur < lowest {
+			lowest = cur
+			lowpos = self.tokens[i].Pos.Offset
+			lowi = i
+		}
+	}
+
+	for i := lowi; i >= 0; i-- {
+		if self.tokens[i].Tok == token.SEMICOLON {
+			lowpos = self.tokens[i+1].Pos.Offset
+			break
+		}
+	}
+
+	return lowpos
+}
+
+func (self *TokCollection) findExpEnd(pos int) int {
+	highest := 0
+	highpos := -1
+	cur := 0
+
+	if self.tokens[pos].Tok == token.LBRACE {
+		pos++
+	}
+
+	for i := pos; i < len(self.tokens); i++ {
+		switch self.tokens[i].Tok {
+		case token.RBRACE:
+			cur++
+		case token.LBRACE:
+			cur--
+		}
+
+		if cur > highest {
+			highest = cur
+			highpos = self.tokens[i].Pos.Offset
+		}
+	}
+
+	return highpos
+}
+
+func (self *TokCollection) findOutermostScope(cursor int) (int, int) {
+	pos := 0
+
+	for i, t := range self.tokens {
+		if cursor <= t.Pos.Offset {
+			break
+		}
+		pos = i
+	}
+
+	return self.findExpBeg(pos), self.findExpEnd(pos)
+}
+
+// return new cursor position, file without ripped part and the ripped part itself
+// variants:
+//   new-cursor, file-without-ripped-part, ripped-part
+//   old-cursor, file, nil
+func (self *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []byte) {
+	s := new(scanner.Scanner)
+	s.Init("", file, nil, scanner.ScanComments | scanner.InsertSemis)
+	for self.next(s) {
+	}
+
+	beg, end := self.findOutermostScope(cursor)
+	if beg == -1 || end == -1 {
+		return cursor, file, nil
+	}
+	ripped := make([]byte, end + 1 - beg)
+	copy(ripped, file[beg:end+1])
+
+	newfile := make([]byte, len(file) - len(ripped))
+	copy(newfile, file[0:beg])
+	copy(newfile[beg:], file[end+1:])
+
+	return cursor - beg, newfile, ripped
+}
 
 // TODO: probably change hand-written string literals processing to a
 // "scanner"-based one
@@ -571,7 +707,7 @@ func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
 	// TODO: process Inits only if the cursor is in the Body
 	switch t := stmt.(type) {
 	case *ast.DeclStmt:
-		self.processDecl(t.Decl)
+		self.processDecl(t.Decl, true)
 	case *ast.AssignStmt:
 		self.processAssignStmt(t)
 	case *ast.IfStmt:
@@ -597,7 +733,7 @@ func (self *AutoCompleteContext) processBlockStmt(block *ast.BlockStmt) {
 	}
 }
 
-func (self *AutoCompleteContext) processDecl(decl ast.Decl) {
+func (self *AutoCompleteContext) processDecl(decl ast.Decl, parseLocals bool) {
 	switch t := decl.(type) {
 	case *ast.GenDecl:
 		switch t.Tok {
@@ -611,7 +747,7 @@ func (self *AutoCompleteContext) processDecl(decl ast.Decl) {
 			}
 		}
 	case *ast.FuncDecl:
-		if t.Body != nil && self.cursorIn(t.Body) {
+		if parseLocals && t.Body != nil && self.cursorIn(t.Body) {
 			// put into 'locals' (if any):
 			// 1. method var
 			// 2. args vars
@@ -672,10 +808,27 @@ func (self *AutoCompleteContext) processData(data []byte) {
 	self.l = make(map[string]*Decl)
 	self.cfns = make(map[string]string)
 
-	// ignore errors here
-	file, _ := parser.ParseFile("", data, nil, 0)
-	for _, decl := range file.Decls {
-		self.processDecl(decl)
+	tc := new(TokCollection)
+	cur, file, block := tc.ripOffDecl(data, self.cursor)
+	if block != nil {
+		// process file without locals first
+		file, _ := parser.ParseFile("", file, nil, 0)
+		for _, decl := range file.Decls {
+			self.processDecl(decl, false)
+		}
+
+		// parse local function
+		self.cursor = cur
+		decls, _ := parser.ParseDeclList("", block, nil)
+		for _, decl := range decls {
+			self.processDecl(decl, true)
+		}
+	} else {
+		// probably we don't have locals anyway
+		file, _ := parser.ParseFile("", file, nil, 0)
+		for _, decl := range file.Decls {
+			self.processDecl(decl, false)
+		}
 	}
 }
 
@@ -825,7 +978,7 @@ func (self *AutoCompleteContext) findDecl(name string) *Decl {
 }
 
 //-------------------------------------------------------------------------
-// Sort interface for TwoStringArrays
+// Sort interface for TriStringArrays
 //-------------------------------------------------------------------------
 
 type TriStringArrays struct {
