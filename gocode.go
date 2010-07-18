@@ -59,7 +59,6 @@ func (*VimFormatter) WriteEmpty() {
 func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 	fmt.Printf("[")
 	for i := 0; i < len(names); i++ {
-		// TODO: rip off part of the name somehow (?)
 		word := names[i][num:]
 		if classes[i] == "func" {
 			word += "("
