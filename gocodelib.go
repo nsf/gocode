@@ -297,7 +297,7 @@ func splitDecls(d ast.Decl) []ast.Decl {
 	return decls
 }
 
-func (self *AutoCompleteContext) processPackage(filename string, uniquename string, pkgname string) {
+func (self *AutoCompleteContext) processPackage(filename, uniquename, pkgname string) {
 	// TODO: deal with packages imported in the current namespace
 	if self.cache[filename] {
 		self.addAlias(self.m[uniquename].Name, uniquename)

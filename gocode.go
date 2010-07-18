@@ -22,6 +22,28 @@ type Formatter interface {
 }
 
 //-------------------------------------------------------------------------
+// NiceFormatter (just for testing, simple textual output)
+//-------------------------------------------------------------------------
+
+type NiceFormatter struct {
+}
+
+func (*NiceFormatter) WriteEmpty() {
+	fmt.Printf("Nothing to complete.\n")
+}
+
+func (*NiceFormatter) WriteCandidates(names, types, classes []string, num int) {
+	fmt.Printf("Found %d candidates:\n", len(names))
+	for i := 0; i < len(names); i++ {
+		abbr := fmt.Sprintf("%s %s %s", classes[i], names[i], types[i])
+		if classes[i] == "func" {
+			abbr = fmt.Sprintf("%s %s%s", classes[i], names[i], types[i][len("func "):])
+		}
+		fmt.Printf("  %s\n", abbr)
+	}
+}
+
+//-------------------------------------------------------------------------
 // VimFormatter
 //-------------------------------------------------------------------------
 
@@ -74,12 +96,16 @@ func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) 
 	}
 }
 
+//-------------------------------------------------------------------------
+
 func getFormatter() Formatter {
 	switch *format {
 	case "vim":
 		return new(VimFormatter)
 	case "emacs":
 		return new(EmacsFormatter)
+	case "nice":
+		return new(NiceFormatter)
 	}
 	return new(VimFormatter)
 }
