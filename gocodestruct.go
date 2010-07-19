@@ -5,8 +5,6 @@ import (
 	"go/token"
 	"fmt"
 	"reflect"
-	"bytes"
-	"strings"
 	"io"
 )
 
@@ -230,19 +228,7 @@ func (d *Decl) PrettyPrintType(out io.Writer, ac *AutoCompleteContext) {
 			ac.prettyPrintTypeExpr(out, d.Type)
 		}
 	case DECL_FUNC:
-		fmt.Fprintf(out, "func (")
-		ac.prettyPrintFuncFieldList(out, d.Type.(*ast.FuncType).Params)
-		fmt.Fprintf(out, ")")
-
-		buf := bytes.NewBuffer(make([]byte, 0, 256))
-		nresults := ac.prettyPrintFuncFieldList(buf, d.Type.(*ast.FuncType).Results)
-		if nresults > 0 {
-			results := buf.String()
-			if strings.Index(results, " ") != -1 {
-				results = "(" + results + ")"
-			}
-			fmt.Fprintf(out, " %s", results)
-		}
+		ac.prettyPrintTypeExpr(out, d.Type)
 	}
 }
 

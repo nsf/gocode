@@ -66,7 +66,7 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 
 		abbr := fmt.Sprintf("%s %s %s", classes[i], names[i], types[i])
 		if classes[i] == "func" {
-			abbr = fmt.Sprintf("%s %s%s", classes[i], names[i], types[i][len("func "):])
+			abbr = fmt.Sprintf("%s %s%s", classes[i], names[i], types[i][len("func"):])
 		}
 		fmt.Printf("{'word': '%s', 'abbr': '%s'}", word, abbr)
 		if i != len(names)-1 {
@@ -186,6 +186,8 @@ func Cmd_AutoComplete(c *rpc.Client) {
 	num := 0
 	if i != -1 {
 		num = len(apropos) - i - 1
+	} else {
+		num = len(apropos)
 	}
 	formatter.WriteCandidates(names, types, classes, num)
 }

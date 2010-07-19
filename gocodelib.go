@@ -574,7 +574,7 @@ func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) 
 		nresults := self.prettyPrintFuncFieldList(buf, t.Results)
 		if nresults > 0 {
 			results := buf.String()
-			if strings.Index(results, " ") != -1 {
+			if strings.Index(results, ",") != -1 {
 				results = "(" + results + ")"
 			}
 			fmt.Fprintf(out, " %s", results)
