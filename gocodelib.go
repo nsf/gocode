@@ -832,6 +832,7 @@ func (self *AutoCompleteContext) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 }
 
 func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
+	// TODO: we need to process func literals somehow too as locals
 	switch t := stmt.(type) {
 	case *ast.DeclStmt:
 		self.processDecl(t.Decl, true)
