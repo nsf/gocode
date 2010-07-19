@@ -534,6 +534,10 @@ func (self *AutoCompleteContext) beautifyIdent(ident string) string {
 	return ident
 }
 
+func getLiteralString(lit *ast.BasicLit) string {
+	return string(lit.Value)
+}
+
 func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 	switch t := e.(type) {
 	case *ast.StarExpr:
@@ -542,7 +546,11 @@ func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) 
 	case *ast.Ident:
 		fmt.Fprintf(out, self.beautifyIdent(t.Name()))
 	case *ast.ArrayType:
-		fmt.Fprintf(out, "[]")
+		if t, ok := t.Len.(*ast.BasicLit); ok {
+			fmt.Fprintf(out, "[%s]", getLiteralString(t))
+		} else {
+			fmt.Fprintf(out, "[]")
+		}
 		self.prettyPrintTypeExpr(out, t.Elt)
 	case *ast.SelectorExpr:
 		self.prettyPrintTypeExpr(out, t.X)
