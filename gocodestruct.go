@@ -146,6 +146,9 @@ func NewDecl(name string, class int) *Decl {
 }
 
 func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int) *Decl {
+	if name == "_" {
+		return nil
+	}
 	decl := new(Decl)
 	decl.Name = name
 	decl.Class = DECL_VAR
@@ -164,7 +167,7 @@ func MethodOf(d ast.Decl) string {
 			case *ast.Ident:
 				return t.Name()
 			default:
-				panic("unreachable")
+				return ""
 			}
 		}
 	}
@@ -266,6 +269,8 @@ func checkForBuiltinFuncs(c *ast.CallExpr) ast.Expr {
 			return e
 		case "make":
 			return c.Args[0]
+		case "cmplx":
+			return ast.NewIdent("complex")
 		}
 	}
 	return nil
@@ -278,13 +283,13 @@ func funcReturnType(f *ast.FuncType, index int) ast.Expr {
 
 	i := 0
 	for _, field := range f.Results.List {
-		if i >= index {
-			return field.Type
-		}
 		if field.Names != nil {
 			i += len(field.Names)
 		} else {
 			i++
+		}
+		if i >= index {
+			return field.Type
 		}
 	}
 	return nil
@@ -396,6 +401,9 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 	case *ast.FuncLit:
 		return t.Type, true
 	case *ast.TypeAssertExpr:
+		if t.Type == nil {
+			return inferType(t.X, -1, topLevel)
+		}
 		switch index {
 		case -1, 0:
 			return t.Type, true

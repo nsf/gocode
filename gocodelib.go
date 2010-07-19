@@ -667,7 +667,7 @@ func (self *AutoCompleteContext) processImportSpec(imp *ast.ImportSpec) {
 }
 
 func (self *AutoCompleteContext) cursorIn(block *ast.BlockStmt) bool {
-	if self.cursor == -1 {
+	if self.cursor == -1 || block == nil {
 		return false
 	}
 
@@ -683,6 +683,15 @@ func (self *AutoCompleteContext) processFieldList(fieldList *ast.FieldList) {
 		for _, d := range decls {
 			self.l[d.Name] = d
 		}
+	}
+}
+
+func (self *AutoCompleteContext) addVarDecl(d *Decl) {
+	decl, ok := self.l[d.Name]
+	if ok {
+		decl.Expand(d)
+	} else {
+		self.l[d.Name] = d
 	}
 }
 
@@ -716,36 +725,137 @@ func (self *AutoCompleteContext) processAssignStmt(a *ast.AssignStmt) {
 			continue
 		}
 
-		decl, ok := self.l[d.Name]
-		if ok {
-			decl.Expand(d)
-		} else {
-			self.l[d.Name] = d
+		self.addVarDecl(d)
+	}
+}
+
+func (self *AutoCompleteContext) processRangeStmt(a *ast.RangeStmt) {
+	if !self.cursorIn(a.Body) {
+		return
+	}
+	if a.Tok == token.DEFINE {
+		var t1, t2 ast.Expr
+		t1 = NewDeclVar("tmp", nil, a.X, -1).InferType(self)
+		if t1 != nil {
+			// figure out range Key, Value types
+			switch t := t1.(type) {
+			case *ast.Ident:
+				// string
+				if t.Name() == "string" {
+					t1 = ast.NewIdent("int")
+					t2 = ast.NewIdent("int")
+				} else {
+					t1, t2 = nil, nil
+				}
+			case *ast.ArrayType:
+				t1 = ast.NewIdent("int")
+				t2 = t.Elt
+			case *ast.MapType:
+				t1 = t.Key
+				t2 = t.Value
+			// TODO: add channels
+			default:
+				t1, t2 = nil, nil
+			}
+
+			if t, ok := a.Key.(*ast.Ident); ok {
+				d := NewDeclVar(t.Name(), t1, nil, -1)
+				if d != nil {
+					self.addVarDecl(d)
+				}
+			}
+
+			if a.Value != nil {
+				if t, ok := a.Value.(*ast.Ident); ok {
+					d := NewDeclVar(t.Name(), t2, nil, -1)
+					if d != nil {
+						self.addVarDecl(d)
+					}
+				}
+			}
+		}
+	}
+
+	self.processBlockStmt(a.Body)
+}
+
+func (self *AutoCompleteContext) processSwitchStmt(a *ast.SwitchStmt) {
+	if !self.cursorIn(a.Body) {
+		return
+	}
+	self.processStmt(a.Init)
+	var lastCursorAfter *ast.CaseClause
+	for _, s := range a.Body.List {
+		if cc := s.(*ast.CaseClause); self.cursor > cc.Colon.Offset {
+			lastCursorAfter = cc
+		}
+	}
+	if lastCursorAfter != nil {
+		for _, s := range lastCursorAfter.Body {
+			self.processStmt(s)
+		}
+	}
+}
+
+func (self *AutoCompleteContext) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
+	if !self.cursorIn(a.Body) {
+		return
+	}
+	self.processStmt(a.Init)
+	// type var
+	var tv *Decl
+	lhs := a.Assign.(*ast.AssignStmt).Lhs
+	rhs := a.Assign.(*ast.AssignStmt).Rhs
+	if lhs != nil && len(lhs) == 1 {
+		tvname := lhs[0].(*ast.Ident).Name()
+		tv = NewDeclVar(tvname, nil, rhs[0], -1)
+	}
+
+	var lastCursorAfter *ast.TypeCaseClause
+	for _, s := range a.Body.List {
+		if cc := s.(*ast.TypeCaseClause); self.cursor > cc.Colon.Offset {
+			lastCursorAfter = cc
+		}
+	}
+
+	if lastCursorAfter != nil {
+		if tv != nil {
+			if lastCursorAfter.Types != nil && len(lastCursorAfter.Types) == 1 {
+				tv.Type = lastCursorAfter.Types[0]
+			}
+			self.addVarDecl(tv)
+		}
+		for _, s := range lastCursorAfter.Body {
+			self.processStmt(s)
 		}
 	}
 }
 
 func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
-	// TODO: process Inits only if the cursor is in the Body
 	switch t := stmt.(type) {
 	case *ast.DeclStmt:
 		self.processDecl(t.Decl, true)
 	case *ast.AssignStmt:
 		self.processAssignStmt(t)
 	case *ast.IfStmt:
-		self.processStmt(t.Init)
-		self.processBlockStmt(t.Body)
+		if self.cursorIn(t.Body) {
+			self.processStmt(t.Init)
+			self.processBlockStmt(t.Body)
+		}
 		self.processStmt(t.Else)
 	case *ast.BlockStmt:
 		self.processBlockStmt(t)
 	case *ast.RangeStmt:
-		// TODO: t.Key, t.Value and t.X need special type inference scheme
-		self.processBlockStmt(t.Body)
+		self.processRangeStmt(t)
 	case *ast.ForStmt:
 		if self.cursorIn(t.Body) {
 			self.processStmt(t.Init)
 			self.processBlockStmt(t.Body)
 		}
+	case *ast.SwitchStmt:
+		self.processSwitchStmt(t)
+	case *ast.TypeSwitchStmt:
+		self.processTypeSwitchStmt(t)
 	}
 }
 
@@ -778,7 +888,7 @@ func (self *AutoCompleteContext) processDecl(decl ast.Decl, parseLocals bool) {
 			}
 		}
 	case *ast.FuncDecl:
-		if parseLocals && t.Body != nil && self.cursorIn(t.Body) {
+		if parseLocals && self.cursorIn(t.Body) {
 			// put into 'locals' (if any):
 			// 1. method var
 			// 2. args vars

@@ -25,6 +25,7 @@ var daemon *AutoCompletionDaemon
 //-------------------------------------------------------------------------
 
 func Server_AutoComplete(file []byte, apropos string, cursor int) ([]string, []string, []string) {
+	//fmt.Printf("Request: '%s' '%d'\n", apropos, cursor)
 	return daemon.ctx.Apropos(file, apropos, cursor)
 }
 
