@@ -271,6 +271,8 @@ func checkForBuiltinFuncs(c *ast.CallExpr) ast.Expr {
 			return c.Args[0]
 		case "cmplx":
 			return ast.NewIdent("complex")
+		case "closed":
+			return ast.NewIdent("bool")
 		}
 	}
 	return nil
