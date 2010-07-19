@@ -4,6 +4,8 @@ import (
 	"net"
 	"rpc"
 	"os/signal"
+	"fmt"
+	"runtime"
 )
 
 //-------------------------------------------------------------------------
@@ -24,9 +26,32 @@ var daemon *AutoCompletionDaemon
 
 //-------------------------------------------------------------------------
 
-func Server_AutoComplete(file []byte, apropos string, cursor int) ([]string, []string, []string) {
-	//fmt.Printf("Request: '%s' '%d'\n", apropos, cursor)
-	return daemon.ctx.Apropos(file, apropos, cursor)
+func printBacktrace() {
+	i := 2
+	for {
+		pc, file, line, ok := runtime.Caller(i)
+		if !ok {
+			break
+		}
+		f := runtime.FuncForPC(pc)
+		fmt.Printf("%d(%s): %s:%d\n", i-1, f.Name(), file, line)
+		i++
+	}
+}
+
+func Server_AutoComplete(file []byte, apropos string, cursor int) (a, b, c []string) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("GOT PANIC!!!:\n")
+			fmt.Println(err)
+			printBacktrace()
+			a = []string{"PANIC"}
+			b = a
+			c = a
+		}
+	}()
+	a, b, c = daemon.ctx.Apropos(file, apropos, cursor)
+	return
 }
 
 func Server_Close(notused int) int {
