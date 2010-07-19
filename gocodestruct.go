@@ -282,15 +282,19 @@ func funcReturnType(f *ast.FuncType, index int) ast.Expr {
 	}
 
 	i := 0
-	for _, field := range f.Results.List {
+	var field *ast.Field
+	for _, field = range f.Results.List {
+		if i >= index {
+			return field.Type
+		}
 		if field.Names != nil {
 			i += len(field.Names)
 		} else {
 			i++
 		}
-		if i >= index {
-			return field.Type
-		}
+	}
+	if i >= index {
+		return field.Type
 	}
 	return nil
 }
