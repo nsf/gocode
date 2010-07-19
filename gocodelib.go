@@ -10,6 +10,7 @@ import (
 	"strings"
 	"io/ioutil"
 	"hash/crc32"
+	"reflect"
 	"sort"
 	"io"
 	"os"
@@ -598,7 +599,9 @@ func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) 
 		fmt.Fprintf(out, "chan ")
 		self.prettyPrintTypeExpr(out, t.Value)
 	default:
-		panic("unknown type!")
+		ty := reflect.Typeof(t)
+		s := fmt.Sprintf("unknown type: %s\n", ty.String())
+		panic(s)
 	}
 }
 
@@ -684,7 +687,7 @@ func (self *AutoCompleteContext) processFieldList(fieldList *ast.FieldList) {
 }
 
 func (self *AutoCompleteContext) processAssignStmt(a *ast.AssignStmt) {
-	if a.Tok != token.DEFINE {
+	if a.Tok != token.DEFINE || a.TokPos.Offset > self.cursor {
 		return
 	}
 
@@ -739,8 +742,10 @@ func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
 		// TODO: t.Key, t.Value and t.X need special type inference scheme
 		self.processBlockStmt(t.Body)
 	case *ast.ForStmt:
-		self.processStmt(t.Init)
-		self.processBlockStmt(t.Body)
+		if self.cursorIn(t.Body) {
+			self.processStmt(t.Init)
+			self.processBlockStmt(t.Body)
+		}
 	}
 }
 
@@ -755,14 +760,21 @@ func (self *AutoCompleteContext) processBlockStmt(block *ast.BlockStmt) {
 func (self *AutoCompleteContext) processDecl(decl ast.Decl, parseLocals bool) {
 	switch t := decl.(type) {
 	case *ast.GenDecl:
-		switch t.Tok {
-		case token.IMPORT:
-			for _, spec := range t.Specs {
-				imp, ok := spec.(*ast.ImportSpec)
-				if !ok {
-					panic("Fail")
+		if parseLocals {
+			// break if we're too far
+			if t.Offset > self.cursor {
+				return
+			}
+		} else {
+			switch t.Tok {
+			case token.IMPORT:
+				for _, spec := range t.Specs {
+					imp, ok := spec.(*ast.ImportSpec)
+					if !ok {
+						panic("Fail")
+					}
+					self.processImportSpec(imp)
 				}
-				self.processImportSpec(imp)
 			}
 		}
 	case *ast.FuncDecl:
