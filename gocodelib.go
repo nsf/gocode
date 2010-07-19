@@ -534,8 +534,14 @@ func (self *AutoCompleteContext) beautifyIdent(ident string) string {
 	return ident
 }
 
-func getLiteralString(lit *ast.BasicLit) string {
-	return string(lit.Value)
+func getArrayLen(e ast.Expr) string {
+	switch t := e.(type) {
+	case *ast.BasicLit:
+		return string(t.Value)
+	case *ast.Ellipsis:
+		return "..."
+	}
+	return ""
 }
 
 func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
@@ -546,8 +552,12 @@ func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) 
 	case *ast.Ident:
 		fmt.Fprintf(out, self.beautifyIdent(t.Name()))
 	case *ast.ArrayType:
-		if t, ok := t.Len.(*ast.BasicLit); ok {
-			fmt.Fprintf(out, "[%s]", getLiteralString(t))
+		al := ""
+		if t.Len != nil {
+			al = getArrayLen(t.Len)
+		}
+		if al != "" {
+			fmt.Fprintf(out, "[%s]", al)
 		} else {
 			fmt.Fprintf(out, "[]")
 		}
