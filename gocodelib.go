@@ -595,8 +595,14 @@ func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) 
 	case *ast.CallExpr:
 		self.prettyPrintTypeExpr(out, t.Fun)
 	case *ast.ChanType:
-		// TODO: different types of channels
-		fmt.Fprintf(out, "chan ")
+		switch t.Dir {
+		case ast.RECV:
+			fmt.Fprintf(out, "<-chan ")
+		case ast.SEND:
+			fmt.Fprintf(out, "chan<- ")
+		case ast.SEND | ast.RECV:
+			fmt.Fprintf(out, "chan ")
+		}
 		self.prettyPrintTypeExpr(out, t.Value)
 	default:
 		ty := reflect.Typeof(t)
