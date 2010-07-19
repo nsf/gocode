@@ -857,6 +857,7 @@ func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
 		self.processSwitchStmt(t)
 	case *ast.TypeSwitchStmt:
 		self.processTypeSwitchStmt(t)
+	// TODO: *ast.SelectStmt
 	}
 }
 
