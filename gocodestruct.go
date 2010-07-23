@@ -396,10 +396,11 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 		if it == nil {
 			break
 		}
-		if f, ok := it.(*ast.FuncType); ok {
-			return funcReturnType(f, index), true
-		} else {
-			return it, true
+		switch t := it.(type) {
+		case *ast.FuncType:
+			return funcReturnType(t, index), true
+		default:
+			return t, true
 		}
 	case *ast.ParenExpr:
 		it, isType := inferType(t.X, -1, topLevel)
