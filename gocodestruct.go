@@ -346,7 +346,17 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 			e := new(ast.StarExpr)
 			e.X = it
 			return e, false
-		// TODO: channel ops
+		case token.ARROW:
+			it, _ := inferType(t.X, -1, topLevel)
+			if it == nil {
+				break
+			}
+			switch index {
+			case -1, 0:
+				return it.(*ast.ChanType).Value, true
+			case 1:
+				return ast.NewIdent("bool"), true
+			}
 		}
 	case *ast.IndexExpr:
 		it, isType := inferType(t.X, -1, topLevel)
@@ -422,8 +432,7 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 		case 1:
 			return ast.NewIdent("bool"), true
 		}
-	// TODO: channels here
-	case *ast.ArrayType, *ast.MapType:
+	case *ast.ArrayType, *ast.MapType, *ast.ChanType:
 		return t, true
 	default:
 		_ = reflect.Typeof(v)

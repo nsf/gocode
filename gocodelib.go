@@ -758,7 +758,9 @@ func (self *AutoCompleteContext) processRangeStmt(a *ast.RangeStmt) {
 			case *ast.MapType:
 				t1 = t.Key
 				t2 = t.Value
-			// TODO: add channels
+			case *ast.ChanType:
+				t1 = t.Value
+				t2 = nil
 			default:
 				t1, t2 = nil, nil
 			}
