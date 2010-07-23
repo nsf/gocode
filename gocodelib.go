@@ -58,7 +58,7 @@ func (self *TokCollection) next(s *scanner.Scanner) bool {
 	return true
 }
 
-func (self *TokCollection) findExpBeg(pos int) int {
+func (self *TokCollection) findDeclBeg(pos int) int {
 	lowest := 0
 	lowpos := -1
 	lowi := -1
@@ -88,7 +88,7 @@ func (self *TokCollection) findExpBeg(pos int) int {
 	return lowpos
 }
 
-func (self *TokCollection) findExpEnd(pos int) int {
+func (self *TokCollection) findDeclEnd(pos int) int {
 	highest := 0
 	highpos := -1
 	cur := 0
@@ -124,7 +124,7 @@ func (self *TokCollection) findOutermostScope(cursor int) (int, int) {
 		pos = i
 	}
 
-	return self.findExpBeg(pos), self.findExpEnd(pos)
+	return self.findDeclBeg(pos), self.findDeclEnd(pos)
 }
 
 // return new cursor position, file without ripped part and the ripped part itself
@@ -411,7 +411,6 @@ func declValues(d ast.Decl) []ast.Expr {
 			if v.Values != nil {
 				return v.Values
 			}
-
 		}
 	}
 	return nil
@@ -1165,7 +1164,7 @@ func (self *AutoCompleteContext) appendDecl(names, types, classes *bytes.Buffer,
 // 1. apropos names
 // 2. apropos types (pretty-printed)
 // 3. apropos classes
-func (self *AutoCompleteContext) Apropos(file []byte, apropos string, cursor int) ([]string, []string, []string) {
+func (self *AutoCompleteContext) Apropos(file []byte, cursor int) ([]string, []string, []string, int) {
 	self.cursor = cursor
 	self.processData(file)
 
@@ -1173,45 +1172,31 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string, cursor int
 	out_types := bytes.NewBuffer(make([]byte, 0, 4096))
 	out_classes := bytes.NewBuffer(make([]byte, 0, 4096))
 
-	parts := strings.Split(apropos, ".", 2)
-	switch len(parts) {
-	case 1:
-		// propose modules
-		for _, value := range self.cfns {
-			if decl, ok := self.m[value]; ok {
-				self.appendDecl(out_names, out_types, out_classes, parts[0], decl)
-			}
-		}
-		// and locals
-		for _, value := range self.l {
-			value.InferType(self)
-			self.appendDecl(out_names, out_types, out_classes, parts[0], value)
-		}
-	case 2:
-		if topdecl := self.findDecl(parts[0]); topdecl != nil {
-			switch topdecl.Class {
-			case DECL_MODULE:
-				for _, decl := range topdecl.Children {
-					self.appendDecl(out_names, out_types, out_classes, parts[1], decl)
-				}
-			case DECL_VAR:
-				it := topdecl.InferType(self)
-				name := typePath(it)
-				if typdecl := self.findDeclByPath(name); typdecl != nil {
-					for _, decl := range typdecl.Children {
-						self.appendDecl(out_names, out_types, out_classes, parts[1], decl)
-					}
-				}
-			case DECL_TYPE:
-				for _, decl := range topdecl.Children {
-					self.appendDecl(out_names, out_types, out_classes, parts[1], decl)
+	partial := 0
+	da := self.deduceDecl(file, cursor)
+	if da != nil {
+		if da.Decl == nil {
+			// propose modules
+			for _, value := range self.cfns {
+				if decl, ok := self.m[value]; ok {
+					self.appendDecl(out_names, out_types, out_classes, da.Partial, decl)
 				}
 			}
+			// and locals
+			for _, value := range self.l {
+				value.InferType(self)
+				self.appendDecl(out_names, out_types, out_classes, da.Partial, value)
+			}
+		} else {
+			for _, decl := range da.Decl.Children {
+				self.appendDecl(out_names, out_types, out_classes, da.Partial, decl)
+			}
 		}
+		partial = len(da.Partial)
 	}
 
 	if out_names.Len() == 0 || out_types.Len() == 0 || out_classes.Len() == 0 {
-		return nil, nil, nil
+		return nil, nil, nil, 0
 	}
 
 	var tri TriStringArrays
@@ -1219,7 +1204,7 @@ func (self *AutoCompleteContext) Apropos(file []byte, apropos string, cursor int
 	tri.second = strings.Split(out_types.String()[0:out_types.Len()-1], "\n", -1)
 	tri.third = strings.Split(out_classes.String()[0:out_classes.Len()-1], "\n", -1)
 	sort.Sort(tri)
-	return tri.first, tri.second, tri.third
+	return tri.first, tri.second, tri.third, partial
 }
 
 func (self *AutoCompleteContext) Status() string {

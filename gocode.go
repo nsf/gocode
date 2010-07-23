@@ -3,7 +3,6 @@ package main
 import (
 	"io/ioutil"
 	"strconv"
-	"strings"
 	"exec"
 	"rpc"
 	"flag"
@@ -72,6 +71,7 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 		if i != len(names)-1 {
 			fmt.Printf(", ")
 		}
+
 	}
 	fmt.Printf("]")
 }
@@ -161,18 +161,12 @@ func Cmd_AutoComplete(c *rpc.Client) {
 		panic(err.String())
 	}
 
-	apropos := flag.Arg(1)
-	if apropos == "_" {
-		// XXX: tmp probably
-		apropos = ""
-	}
-
+	// TODO: good args num check
 	cursor := -1
-	if flag.NArg() > 1 {
-		cursor, _ = strconv.Atoi(flag.Arg(2))
-	}
+	cursor, _ = strconv.Atoi(flag.Arg(1))
+
 	formatter := getFormatter()
-	names, types, classes := Client_AutoComplete(c, file, apropos, cursor)
+	names, types, classes, partial := Client_AutoComplete(c, file, cursor)
 	if names == nil {
 		formatter.WriteEmpty()
 		return
@@ -182,14 +176,7 @@ func Cmd_AutoComplete(c *rpc.Client) {
 		panic("Lengths should match!")
 	}
 
-	i := strings.LastIndex(apropos, ".")
-	num := 0
-	if i != -1 {
-		num = len(apropos) - i - 1
-	} else {
-		num = len(apropos)
-	}
-	formatter.WriteCandidates(names, types, classes, num)
+	formatter.WriteCandidates(names, types, classes, partial)
 }
 
 func Cmd_Close(c *rpc.Client) {
@@ -211,6 +198,9 @@ func makeFDs() ([]*os.File, os.Error) {
 	if err != nil {
 		return nil, err
 	}
+	// I know that technically it's possible here that there will be unclosed
+	// file descriptors on exit. But since that kind of error will result in
+	// a process shutdown anyway, I don't care much about that.
 
 	return &fds, nil
 }

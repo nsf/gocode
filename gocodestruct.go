@@ -107,6 +107,10 @@ func astFieldListToDecls(f *ast.FieldList, class int) []*Decl {
 			decls[i].Children = astTypeToChildren(field.Type)
 			i++
 		}
+
+		if field.Names == nil {
+			// this is the case for type embedding!
+		}
 	}
 	return decls
 }
@@ -224,7 +228,9 @@ func (d *Decl) PrettyPrintType(out io.Writer, ac *AutoCompleteContext) {
 		case *ast.InterfaceType:
 			fmt.Fprintf(out, "interface")
 		default:
-			ac.prettyPrintTypeExpr(out, d.Type)
+			if d.Type != nil {
+				ac.prettyPrintTypeExpr(out, d.Type)
+			}
 		}
 	case DECL_VAR:
 		if d.Type != nil {

@@ -26,13 +26,13 @@ fu! s:gocodeCurrentBufferOpt(filename)
 endf
 
 fu! s:gocodeCursor()
-	return printf('%d', line2byte(line('.')))
+	return printf('%d', line2byte(line('.')) + (col('.')-2))
 endf
 
-fu! s:gocodeAutocomplete(apropos)
+fu! s:gocodeAutocomplete()
 	let filename = s:gocodeCurrentBuffer()
 	let result = s:gocodeCommand([s:gocodeCurrentBufferOpt(filename), '-f=vim'],
-				   \ [a:apropos, s:gocodeCursor()])
+				   \ [s:gocodeCursor()])
 	call delete(filename)
 	return result
 endf
@@ -72,7 +72,8 @@ fu! gocomplete#Complete(findstart, base)
                 break
             endif
         endwhile
-	execute "silent let g:gocomplete_completions = " . s:gocodeAutocomplete(cword)
+	" TODO: clean mess here
+	execute "silent let g:gocomplete_completions = " . s:gocodeAutocomplete()
         return g:gocomplete_completions
     endif
 endf

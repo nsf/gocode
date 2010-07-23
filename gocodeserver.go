@@ -39,7 +39,7 @@ func printBacktrace() {
 	}
 }
 
-func Server_AutoComplete(file []byte, apropos string, cursor int) (a, b, c []string) {
+func Server_AutoComplete(file []byte, cursor int) (a, b, c []string, d int) {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Printf("GOT PANIC!!!:\n")
@@ -50,7 +50,7 @@ func Server_AutoComplete(file []byte, apropos string, cursor int) (a, b, c []str
 			c = a
 		}
 	}()
-	a, b, c = daemon.ctx.Apropos(file, apropos, cursor)
+	a, b, c, d = daemon.ctx.Apropos(file, cursor)
 	return
 }
 
