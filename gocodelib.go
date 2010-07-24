@@ -440,12 +440,12 @@ func (self *AutoCompleteContext) processPackage(filename, uniquename, pkgname st
 		self.addAlias(self.m[uniquename].Name, uniquename)
 		return
 	}
-	self.cache[filename] = true
 
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return
 	}
+	self.cache[filename] = true
 	s := string(data)
 
 	i := strings.Index(s, "import\n$$\n")
