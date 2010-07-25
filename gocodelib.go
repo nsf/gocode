@@ -872,6 +872,7 @@ func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 		if tv != nil {
 			if lastCursorAfter.Types != nil && len(lastCursorAfter.Types) == 1 {
 				tv.Type = lastCursorAfter.Types[0]
+				tv.Value = nil
 			}
 			self.addVarDecl(tv)
 		}
