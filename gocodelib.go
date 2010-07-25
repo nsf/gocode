@@ -1304,23 +1304,6 @@ func (self TriStringArrays) Swap(i, j int) {
 
 //-------------------------------------------------------------------------
 
-func (self *AutoCompleteContext) appendDecl(names, types, classes *bytes.Buffer, p string, decl *Decl) {
-	if decl.Matches(p) {
-		fmt.Fprintf(names, "%s\n", decl.Name)
-		decl.PrettyPrintType(types, self)
-		fmt.Fprintf(types, "\n")
-		fmt.Fprintf(classes, "%s\n", decl.ClassName())
-	}
-}
-
-func (self *AutoCompleteContext) appendPackage(names, types, classes *bytes.Buffer, p, pak string) {
-	if startsWith(pak, p) {
-		fmt.Fprintf(names, "%s\n", pak)
-		fmt.Fprintf(types, "\n")
-		fmt.Fprintf(classes, "module\n")
-	}
-}
-
 func (self *AutoCompleteContext) processOtherPackageFiles(packageName, filename string) {
 	dir, file := path.Split(filename)
 	filesInDir, err := ioutil.ReadDir(dir)
@@ -1348,6 +1331,51 @@ func (self *AutoCompleteContext) processOtherPackageFiles(packageName, filename 
 	self.others = newothers
 }
 
+type OutBuffers struct {
+	names, types, classes *bytes.Buffer
+}
+
+func NewOutBuffers() *OutBuffers {
+	b := new(OutBuffers)
+	b.names = bytes.NewBuffer(make([]byte, 0, 4096))
+	b.types = bytes.NewBuffer(make([]byte, 0, 4096))
+	b.classes = bytes.NewBuffer(make([]byte, 0, 4096))
+	return b
+}
+
+func (self *OutBuffers) appendPackage(p, pak string) {
+	if startsWith(pak, p) {
+		fmt.Fprintf(self.names, "%s\n", pak)
+		fmt.Fprintf(self.types, "\n")
+		fmt.Fprintf(self.classes, "module\n")
+	}
+}
+
+func (self *OutBuffers) appendDecl(p string, decl *Decl) {
+	if decl.Matches(p) {
+		fmt.Fprintf(self.names, "%s\n", decl.Name)
+		decl.PrettyPrintType(self.types, decl.File.ctx)
+		fmt.Fprintf(self.types, "\n")
+		fmt.Fprintf(self.classes, "%s\n", decl.ClassName())
+	}
+}
+
+func (self *OutBuffers) appendEmbedded(p string, decl *Decl) {
+	if decl.Embedded != nil {
+		for _, emb := range decl.Embedded {
+			decl.File.foreignifyTypeExpr(emb)
+			name := typePath(emb)
+			typedecl := decl.File.findDeclByPath(name)
+			if typedecl != nil {
+				for _, c := range typedecl.Children {
+					self.appendDecl(p, c)
+				}
+				self.appendEmbedded(p, typedecl)
+			}
+		}
+	}
+}
+
 // return three slices of the same length containing:
 // 1. apropos names
 // 2. apropos types (pretty-printed)
@@ -1359,9 +1387,7 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 		self.processOtherPackageFiles(pkg, filename)
 	}
 
-	out_names := bytes.NewBuffer(make([]byte, 0, 4096))
-	out_types := bytes.NewBuffer(make([]byte, 0, 4096))
-	out_classes := bytes.NewBuffer(make([]byte, 0, 4096))
+	b := NewOutBuffers()
 
 	partial := 0
 	da := self.deduceDecl(file, cursor)
@@ -1370,36 +1396,37 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 			// propose modules
 			for key, value := range self.current.cfns {
 				if _, ok := self.m[value]; ok {
-					self.appendPackage(out_names, out_types, out_classes, da.Partial, key)
+					b.appendPackage(da.Partial, key)
 				}
 			}
 			// and locals
 			for _, value := range self.current.l {
 				value.InferType()
-				self.appendDecl(out_names, out_types, out_classes, da.Partial, value)
+				b.appendDecl(da.Partial, value)
 			}
 			for _, other := range self.others {
 				for _, value := range other.l {
 					value.InferType()
-					self.appendDecl(out_names, out_types, out_classes, da.Partial, value)
+					b.appendDecl(da.Partial, value)
 				}
 			}
 		} else {
 			for _, decl := range da.Decl.Children {
-				self.appendDecl(out_names, out_types, out_classes, da.Partial, decl)
+				b.appendDecl(da.Partial, decl)
 			}
+			b.appendEmbedded(da.Partial, da.Decl)
 		}
 		partial = len(da.Partial)
 	}
 
-	if out_names.Len() == 0 || out_types.Len() == 0 || out_classes.Len() == 0 {
+	if b.names.Len() == 0 || b.types.Len() == 0 || b.classes.Len() == 0 {
 		return nil, nil, nil, 0
 	}
 
 	var tri TriStringArrays
-	tri.first = strings.Split(out_names.String()[0:out_names.Len()-1], "\n", -1)
-	tri.second = strings.Split(out_types.String()[0:out_types.Len()-1], "\n", -1)
-	tri.third = strings.Split(out_classes.String()[0:out_classes.Len()-1], "\n", -1)
+	tri.first = strings.Split(b.names.String()[0:b.names.Len()-1], "\n", -1)
+	tri.second = strings.Split(b.types.String()[0:b.types.Len()-1], "\n", -1)
+	tri.third = strings.Split(b.classes.String()[0:b.classes.Len()-1], "\n", -1)
 	sort.Sort(tri)
 	return tri.first, tri.second, tri.third, partial
 }

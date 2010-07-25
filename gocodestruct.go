@@ -33,6 +33,9 @@ type Decl struct {
 	// variables with anonymous struct/interface type may have children too
 	Children []*Decl
 
+	// embedded types
+	Embedded []ast.Expr
+
 	// if the type is unknown at AST building time, I'm using these
 	Value ast.Expr
 
@@ -107,19 +110,49 @@ func astFieldListToDecls(f *ast.FieldList, class int, file *PackageFile) []*Decl
 			decls[i].Type = field.Type
 			decls[i].Class = class
 			decls[i].Children = astTypeToChildren(field.Type, file)
+			decls[i].Embedded = astTypeToEmbedded(field.Type)
 			decls[i].File = file
 			i++
-		}
-
-		if field.Names == nil {
-			// this is the case for type embedding!
 		}
 	}
 	return decls
 }
 
+func astFieldListToEmbedded(f *ast.FieldList) []ast.Expr {
+	count := 0
+	for _, field := range f.List {
+		if field.Names == nil {
+			count++
+		}
+	}
+
+	if count == 0 {
+		return nil
+	}
+
+	embedded := make([]ast.Expr, count)
+	i := 0
+	for _, field := range f.List {
+		if field.Names == nil {
+			embedded[i] = field.Type
+			i++
+		}
+	}
+
+	return embedded
+}
+
+func astTypeToEmbedded(ty ast.Expr) []ast.Expr {
+	switch t := ty.(type) {
+	case *ast.StructType:
+		return astFieldListToEmbedded(t.Fields)
+	case *ast.InterfaceType:
+		return astFieldListToEmbedded(t.Methods)
+	}
+	return nil
+}
+
 func astTypeToChildren(ty ast.Expr, file *PackageFile) []*Decl {
-	// TODO: type embedding
 	switch t := ty.(type) {
 	case *ast.StructType:
 		return astFieldListToDecls(t.Fields, DECL_VAR, file)
@@ -138,6 +171,7 @@ func astDeclToDecl(name string, d ast.Decl, value ast.Expr, vindex int, file *Pa
 	decl.Type = astDeclType(d)
 	decl.Class = astDeclClass(d)
 	decl.Children = astTypeToChildren(decl.Type, file)
+	decl.Embedded = astTypeToEmbedded(decl.Type)
 	decl.Value = value
 	decl.ValueIndex = vindex
 	decl.File = file
@@ -192,6 +226,7 @@ func (d *Decl) Copy(other *Decl) {
 	d.Value = other.Value
 	d.ValueIndex = other.ValueIndex
 	d.Children = other.Children
+	d.Embedded = other.Embedded
 	d.File = other.File
 }
 
@@ -204,6 +239,10 @@ func (other *Decl) DeepCopy() *Decl {
 	d.ValueIndex = other.ValueIndex
 	d.Children = make([]*Decl, len(other.Children))
 	copy(d.Children, other.Children)
+	if other.Embedded != nil {
+		d.Embedded = make([]ast.Expr, len(other.Embedded))
+		copy(d.Embedded, other.Embedded)
+	}
 	d.File = other.File
 	return d
 }
@@ -223,12 +262,15 @@ func (d *Decl) Expand(other *Decl) {
 	d.Type = other.Type
 	d.Class = other.Class
 
-	if other.Children == nil {
-		return
+	if other.Children != nil {
+		for _, c := range other.Children {
+			d.AddChild(c)
+		}
 	}
 
-	for _, c := range other.Children {
-		d.AddChild(c)
+	if d.Embedded == nil && other.Embedded != nil {
+		d.Embedded = other.Embedded
+		d.File = other.File
 	}
 }
 

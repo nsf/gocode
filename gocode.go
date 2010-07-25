@@ -242,7 +242,6 @@ func tryRunServer() os.Error {
 
 func clientFunc() int {
 	// client
-
 	client, err := rpc.Dial("unix", getSocketFilename())
 	if err != nil {
 		err = tryRunServer()
