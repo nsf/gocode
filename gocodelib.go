@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"hash/crc32"
 	"reflect"
+	"path"
 	"sort"
 	"io"
 	"os"
@@ -29,8 +30,6 @@ func (self *TokCollection) appendToken(pos token.Position, tok token.Token) {
 	if self.tokens == nil {
 		self.tokens = make([]TokPos, 0, 4)
 	}
-
-	// test {
 
 	if cap(self.tokens) < len(self.tokens)+1 {
 		newcap := cap(self.tokens) * 2
@@ -250,7 +249,7 @@ func extractPackageFromMethod(i int, s string) (string, string) {
 	return "", ""
 }
 
-func (self *AutoCompleteContext) expandPackages(s, curpkg string) string {
+func (self *PackageFile) expandPackages(s, curpkg string) string {
 	i := 0
 	for {
 		pkg := ""
@@ -280,12 +279,14 @@ func (self *AutoCompleteContext) expandPackages(s, curpkg string) string {
 			i = e
 		} else if b+1 != e {
 			// wow, we actually have something here
-			pkg = self.addForeignAlias(identifyPackage(s[b+1:e]), s[b+1:e])
+			pkgalias := identifyPackage(s[b+1:e])
+			pkg = self.ctx.genForeignPackageAlias(pkgalias, s[b+1:e])
 			i++ // skip to a first symbol after second '"'
 			s = s[0:b] + pkg + s[i:] // strip package clause completely
 			i = b
 		} else {
-			pkg = self.addForeignAlias(identifyPackage(curpkg), curpkg)
+			pkgalias := identifyPackage(curpkg)
+			pkg = self.ctx.genForeignPackageAlias(pkgalias, curpkg)
 			i++
 			s = s[0:b] + pkg + s[i:]
 			i = b
@@ -324,7 +325,7 @@ func preprocessConstDecl(s string) string {
 // returns:
 // 1. a go/parser parsable string representing one Go declaration
 // 2. and a package name this declaration belongs to
-func (self *AutoCompleteContext) processExport(s, curpkg string) (string, string) {
+func (self *PackageFile) processExport(s, curpkg string) (string, string) {
 	i := 0
 	pkg := ""
 
@@ -369,6 +370,7 @@ func (self *AutoCompleteContext) processExport(s, curpkg string) (string, string
 
 	return s, pkg
 }
+
 
 func declNames(d ast.Decl) []string {
 	var names []string
@@ -434,10 +436,13 @@ func splitDecls(d ast.Decl) []ast.Decl {
 	return decls
 }
 
-func (self *AutoCompleteContext) processPackage(filename, uniquename, pkgname string) {
+func (self *PackageFile) processPackage(filename, uniquename, pkgname string) {
 	// TODO: deal with packages imported in the current namespace
-	if self.cache[filename] {
-		self.addAlias(self.m[uniquename].Name, uniquename)
+	if self.ctx.cache[filename] {
+		if pkgname == "" {
+			pkgname = self.ctx.defaliases[uniquename]
+		}
+		self.addPackageAlias(pkgname, uniquename)
 		return
 	}
 
@@ -445,7 +450,7 @@ func (self *AutoCompleteContext) processPackage(filename, uniquename, pkgname st
 	if err != nil {
 		return
 	}
-	self.cache[filename] = true
+	self.ctx.cache[filename] = true
 	s := string(data)
 
 	i := strings.Index(s, "import\n$$\n")
@@ -464,13 +469,15 @@ func (self *AutoCompleteContext) processPackage(filename, uniquename, pkgname st
 		panic("Wrong file")
 	}
 
+	defpkgname := s[len("package "):i-1]
+	self.ctx.addPackageDefaultAlias(defpkgname, uniquename)
 	if pkgname == "" {
-		pkgname = s[len("package "):i-1]
+		pkgname = defpkgname
 	}
-	self.addAlias(pkgname, uniquename)
+	self.addPackageAlias(pkgname, uniquename)
 
-	if self.debuglog != nil {
-		fmt.Fprintf(self.debuglog, "parsing package '%s'...\n", pkgname)
+	if self.ctx.debuglog != nil {
+		fmt.Fprintf(self.ctx.debuglog, "parsing package '%s'...\n", pkgname)
 	}
 	s = s[i+1:]
 
@@ -511,17 +518,17 @@ func (self *AutoCompleteContext) processPackage(filename, uniquename, pkgname st
 		if err != nil {
 			panic(fmt.Sprintf("failure in:\n%s\n%s\n", value, err.String()))
 		} else {
-			if self.debuglog != nil {
-				fmt.Fprintf(self.debuglog, "\t%s: OK (ndecls: %d)\n", key, len(decls))
+			if self.ctx.debuglog != nil {
+				fmt.Fprintf(self.ctx.debuglog, "\t%s: OK (ndecls: %d)\n", key, len(decls))
 			}
 			f := new(ast.File) // fake file
 			f.Decls = decls
 			ast.FileExports(f)
 			localname := ""
 			if key == uniquename {
-				localname = pkgname
+				localname = self.ctx.genForeignPackageAlias(pkgname, uniquename)
 			}
-			self.add(key, localname, f.Decls)
+			self.ctx.addToPackage(key, localname, f.Decls)
 		}
 	}
 }
@@ -542,6 +549,44 @@ func getArrayLen(e ast.Expr) string {
 		return "..."
 	}
 	return ""
+}
+
+func (self *PackageFile) foreignifyFuncFieldList(f *ast.FieldList) {
+	if f == nil {
+		return
+	}
+
+	for _, field := range f.List {
+		self.foreignifyTypeExpr(field.Type)
+	}
+}
+
+func (self *PackageFile) foreignifyTypeExpr(e ast.Expr) {
+	switch t := e.(type) {
+	case *ast.StarExpr:
+		self.foreignifyTypeExpr(t.X)
+	case *ast.Ident:
+		realname := self.moduleRealName(t.Name())
+		if realname != "" {
+			t.Obj.Name = self.ctx.genForeignPackageAlias(t.Name(), realname)
+		}
+	case *ast.ArrayType:
+		self.foreignifyTypeExpr(t.Elt)
+	case *ast.SelectorExpr:
+		self.foreignifyTypeExpr(t.X)
+	case *ast.FuncType:
+		self.foreignifyFuncFieldList(t.Params)
+		self.foreignifyFuncFieldList(t.Results)
+	case *ast.MapType:
+		self.foreignifyTypeExpr(t.Key)
+		self.foreignifyTypeExpr(t.Value)
+	case *ast.ChanType:
+		self.foreignifyTypeExpr(t.Value)
+	default:
+		ty := reflect.Typeof(t)
+		s := fmt.Sprintf("unknown type: %s\n", ty.String())
+		panic(s)
+	}
 }
 
 func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
@@ -591,8 +636,6 @@ func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) 
 		self.prettyPrintTypeExpr(out, t.Elt)
 	case *ast.StructType:
 		fmt.Fprintf(out, "struct")
-	case *ast.CallExpr:
-		self.prettyPrintTypeExpr(out, t.Fun)
 	case *ast.ChanType:
 		switch t.Dir {
 		case ast.RECV:
@@ -666,7 +709,7 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 	return path, alias
 }
 
-func (self *AutoCompleteContext) processImportSpec(imp *ast.ImportSpec) {
+func (self *PackageFile) processImportSpec(imp *ast.ImportSpec) {
 	path, alias := pathAndAlias(imp)
 	self.processPackage(findFile(path), path, alias)
 }
@@ -682,16 +725,16 @@ func (self *AutoCompleteContext) cursorIn(block *ast.BlockStmt) bool {
 	return false
 }
 
-func (self *AutoCompleteContext) processFieldList(fieldList *ast.FieldList) {
+func (self *PackageFile) processFieldList(fieldList *ast.FieldList) {
 	if fieldList != nil {
-		decls := astFieldListToDecls(fieldList, DECL_VAR)
+		decls := astFieldListToDecls(fieldList, DECL_VAR, self)
 		for _, d := range decls {
 			self.l[d.Name] = d
 		}
 	}
 }
 
-func (self *AutoCompleteContext) addVarDecl(d *Decl) {
+func (self *PackageFile) addVarDecl(d *Decl) {
 	decl, ok := self.l[d.Name]
 	if ok {
 		decl.Expand(d)
@@ -700,8 +743,8 @@ func (self *AutoCompleteContext) addVarDecl(d *Decl) {
 	}
 }
 
-func (self *AutoCompleteContext) processAssignStmt(a *ast.AssignStmt) {
-	if a.Tok != token.DEFINE || a.TokPos.Offset > self.cursor {
+func (self *PackageFile) processAssignStmt(a *ast.AssignStmt) {
+	if a.Tok != token.DEFINE || a.TokPos.Offset > self.ctx.cursor {
 		return
 	}
 
@@ -725,7 +768,7 @@ func (self *AutoCompleteContext) processAssignStmt(a *ast.AssignStmt) {
 			valueindex = i
 		}
 
-		d := NewDeclVar(name, nil, value, valueindex)
+		d := NewDeclVar(name, nil, value, valueindex, self)
 		if d == nil {
 			continue
 		}
@@ -734,13 +777,13 @@ func (self *AutoCompleteContext) processAssignStmt(a *ast.AssignStmt) {
 	}
 }
 
-func (self *AutoCompleteContext) processRangeStmt(a *ast.RangeStmt) {
-	if !self.cursorIn(a.Body) {
+func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
+	if !self.ctx.cursorIn(a.Body) {
 		return
 	}
 	if a.Tok == token.DEFINE {
 		var t1, t2 ast.Expr
-		t1 = NewDeclVar("tmp", nil, a.X, -1).InferType(self)
+		t1 = NewDeclVar("tmp", nil, a.X, -1, self).InferType()
 		if t1 != nil {
 			// figure out range Key, Value types
 			switch t := t1.(type) {
@@ -766,7 +809,7 @@ func (self *AutoCompleteContext) processRangeStmt(a *ast.RangeStmt) {
 			}
 
 			if t, ok := a.Key.(*ast.Ident); ok {
-				d := NewDeclVar(t.Name(), t1, nil, -1)
+				d := NewDeclVar(t.Name(), t1, nil, -1, self)
 				if d != nil {
 					self.addVarDecl(d)
 				}
@@ -774,7 +817,7 @@ func (self *AutoCompleteContext) processRangeStmt(a *ast.RangeStmt) {
 
 			if a.Value != nil {
 				if t, ok := a.Value.(*ast.Ident); ok {
-					d := NewDeclVar(t.Name(), t2, nil, -1)
+					d := NewDeclVar(t.Name(), t2, nil, -1, self)
 					if d != nil {
 						self.addVarDecl(d)
 					}
@@ -786,14 +829,14 @@ func (self *AutoCompleteContext) processRangeStmt(a *ast.RangeStmt) {
 	self.processBlockStmt(a.Body)
 }
 
-func (self *AutoCompleteContext) processSwitchStmt(a *ast.SwitchStmt) {
-	if !self.cursorIn(a.Body) {
+func (self *PackageFile) processSwitchStmt(a *ast.SwitchStmt) {
+	if !self.ctx.cursorIn(a.Body) {
 		return
 	}
 	self.processStmt(a.Init)
 	var lastCursorAfter *ast.CaseClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.CaseClause); self.cursor > cc.Colon.Offset {
+		if cc := s.(*ast.CaseClause); self.ctx.cursor > cc.Colon.Offset {
 			lastCursorAfter = cc
 		}
 	}
@@ -804,8 +847,8 @@ func (self *AutoCompleteContext) processSwitchStmt(a *ast.SwitchStmt) {
 	}
 }
 
-func (self *AutoCompleteContext) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
-	if !self.cursorIn(a.Body) {
+func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
+	if !self.ctx.cursorIn(a.Body) {
 		return
 	}
 	self.processStmt(a.Init)
@@ -815,12 +858,12 @@ func (self *AutoCompleteContext) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 	rhs := a.Assign.(*ast.AssignStmt).Rhs
 	if lhs != nil && len(lhs) == 1 {
 		tvname := lhs[0].(*ast.Ident).Name()
-		tv = NewDeclVar(tvname, nil, rhs[0], -1)
+		tv = NewDeclVar(tvname, nil, rhs[0], -1, self)
 	}
 
 	var lastCursorAfter *ast.TypeCaseClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.TypeCaseClause); self.cursor > cc.Colon.Offset {
+		if cc := s.(*ast.TypeCaseClause); self.ctx.cursor > cc.Colon.Offset {
 			lastCursorAfter = cc
 		}
 	}
@@ -838,7 +881,7 @@ func (self *AutoCompleteContext) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 	}
 }
 
-func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
+func (self *PackageFile) processStmt(stmt ast.Stmt) {
 	// TODO: we need to process func literals somehow too as locals
 	switch t := stmt.(type) {
 	case *ast.DeclStmt:
@@ -846,7 +889,7 @@ func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
 	case *ast.AssignStmt:
 		self.processAssignStmt(t)
 	case *ast.IfStmt:
-		if self.cursorIn(t.Body) {
+		if self.ctx.cursorIn(t.Body) {
 			self.processStmt(t.Init)
 			self.processBlockStmt(t.Body)
 		}
@@ -856,7 +899,7 @@ func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
 	case *ast.RangeStmt:
 		self.processRangeStmt(t)
 	case *ast.ForStmt:
-		if self.cursorIn(t.Body) {
+		if self.ctx.cursorIn(t.Body) {
 			self.processStmt(t.Init)
 			self.processBlockStmt(t.Body)
 		}
@@ -868,20 +911,20 @@ func (self *AutoCompleteContext) processStmt(stmt ast.Stmt) {
 	}
 }
 
-func (self *AutoCompleteContext) processBlockStmt(block *ast.BlockStmt) {
-	if block != nil && self.cursorIn(block) {
+func (self *PackageFile) processBlockStmt(block *ast.BlockStmt) {
+	if block != nil && self.ctx.cursorIn(block) {
 		for _, stmt := range block.List {
 			self.processStmt(stmt)
 		}
 	}
 }
 
-func (self *AutoCompleteContext) processDecl(decl ast.Decl, parseLocals bool) {
+func (self *PackageFile) processDecl(decl ast.Decl, parseLocals bool) {
 	switch t := decl.(type) {
 	case *ast.GenDecl:
 		if parseLocals {
 			// break if we're too far
-			if t.Offset > self.cursor {
+			if t.Offset > self.ctx.cursor {
 				return
 			}
 		} else {
@@ -897,7 +940,7 @@ func (self *AutoCompleteContext) processDecl(decl ast.Decl, parseLocals bool) {
 			}
 		}
 	case *ast.FuncDecl:
-		if parseLocals && self.cursorIn(t.Body) {
+		if parseLocals && self.ctx.cursorIn(t.Body) {
 			// put into 'locals' (if any):
 			// 1. method var
 			// 2. args vars
@@ -926,7 +969,7 @@ func (self *AutoCompleteContext) processDecl(decl ast.Decl, parseLocals bool) {
 				}
 			}
 
-			d := astDeclToDecl(name, decl, value, valueindex)
+			d := astDeclToDecl(name, decl, value, valueindex, self)
 			if d == nil {
 				continue
 			}
@@ -937,7 +980,7 @@ func (self *AutoCompleteContext) processDecl(decl ast.Decl, parseLocals bool) {
 				if ok {
 					decl.AddChild(d)
 				} else {
-					decl = NewDecl(methodof, DECL_TYPE)
+					decl = NewDecl(methodof, DECL_TYPE, self)
 					self.l[methodof] = decl
 					decl.AddChild(d)
 				}
@@ -953,13 +996,20 @@ func (self *AutoCompleteContext) processDecl(decl ast.Decl, parseLocals bool) {
 	}
 }
 
-func (self *AutoCompleteContext) processData(data []byte) {
+func packageName(file *ast.File) string {
+	if file.Name != nil {
+		return file.Name.Name()
+	}
+	return ""
+}
+
+func (self *PackageFile) processData(data []byte) string {
 	// drop namespace and locals
 	self.l = make(map[string]*Decl)
 	self.cfns = make(map[string]string)
 
 	tc := new(TokCollection)
-	cur, file, block := tc.ripOffDecl(data, self.cursor)
+	cur, file, block := tc.ripOffDecl(data, self.ctx.cursor)
 	if block != nil {
 		// process file without locals first
 		file, _ := parser.ParseFile("", file, nil, 0)
@@ -968,35 +1018,104 @@ func (self *AutoCompleteContext) processData(data []byte) {
 		}
 
 		// parse local function
-		self.cursor = cur
+		self.ctx.cursor = cur
 		decls, _ := parser.ParseDeclList("", block, nil)
 		for _, decl := range decls {
 			self.processDecl(decl, true)
 		}
+		return packageName(file)
 	} else {
 		// probably we don't have locals anyway
 		file, _ := parser.ParseFile("", file, nil, 0)
 		for _, decl := range file.Decls {
 			self.processDecl(decl, false)
 		}
+		return packageName(file)
+	}
+	return ""
+}
+
+func (self *PackageFile) processFile(filename string) {
+	self.l = make(map[string]*Decl)
+	self.cfns = make(map[string]string)
+
+	file, _ := parser.ParseFile(filename, nil, nil, 0)
+	for _, decl := range file.Decls {
+		self.processDecl(decl, false)
+	}
+}
+
+func (self *PackageFile) updateCache() {
+	stat, err := os.Stat(self.name)
+	if err != nil {
+		panic(err.String())
+	}
+
+	if self.mtime != stat.Mtime_ns {
+		self.processFile(self.name)
+		self.mtime = stat.Mtime_ns
 	}
 }
 
 // represents foreign package (e.g. a package in the package, not imported directly)
 type ForeignPackage struct {
-	Abbrev string // nice name, like "ast"
+	Abbrev string // local nice name, like "ast"
 	Unique string // real global unique name, like "go/ast"
+}
+
+type ModuleCache struct {
+	Name string // full name (example: "go/ast")
+	Mtime int64 // modification time
+}
+
+type PackageFile struct {
+	// current file namespace (used for imported modules)
+	// imported name -> full name (as key in m)
+	name string
+	packageName string
+	cfns map[string]string
+	l map[string]*Decl
+	mtime int64
+	ctx *AutoCompleteContext
+
+	destroy bool // used only in cache ops
+}
+
+func filePackageName(filename string) string {
+	file, _ := parser.ParseFile(filename, nil, nil, parser.PackageClauseOnly)
+	return file.Name.Name()
+}
+
+func NewPackageFileFromFile(ctx *AutoCompleteContext, name, packageName string) *PackageFile {
+	p := new(PackageFile)
+	p.name = name
+	p.packageName = packageName
+	p.cfns = make(map[string]string)
+	p.l = make(map[string]*Decl)
+	p.mtime = 0
+	p.ctx = ctx
+	p.updateCache()
+	return p
+}
+
+func NewPackageFile(ctx *AutoCompleteContext) *PackageFile {
+	p := new(PackageFile)
+	p.name = ""
+	p.packageName = ""
+	p.cfns = make(map[string]string)
+	p.l = make(map[string]*Decl)
+	p.mtime = 0
+	p.ctx = ctx
+	return p
 }
 
 type AutoCompleteContext struct {
 	m map[string]*Decl // all modules (lifetime cache)
-	l map[string]*Decl // locals
-
-	// current file namespace (used for modules):
-	// alias name ->
-	//	unique package name
-	cfns map[string]string
 	foreigns map[string]ForeignPackage
+	defaliases map[string]string
+
+	current *PackageFile
+	others map[string]*PackageFile
 
 	cache map[string]bool // stupid, temporary
 
@@ -1010,21 +1129,23 @@ type AutoCompleteContext struct {
 func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
 	self.m = make(map[string]*Decl)
-	self.l = make(map[string]*Decl)
-	self.cfns = make(map[string]string)
 	self.foreigns = make(map[string]ForeignPackage)
+	self.defaliases = make(map[string]string)
+	self.current = NewPackageFile(self)
+	self.others = make(map[string]*PackageFile)
 	self.cache = make(map[string]bool)
 	self.cursor = -1
 	return self
 }
 
-func (self *AutoCompleteContext) add(globalname, localname string, decls []ast.Decl) {
+func (self *AutoCompleteContext) addToPackage(globalname, localname string, decls []ast.Decl) {
 	if self.m[globalname] == nil {
-		self.m[globalname] = NewDecl(localname, DECL_MODULE)
+		self.m[globalname] = NewDecl(localname, DECL_MODULE, self.current)
 	}
+	module := self.m[globalname]
 
-	if self.m[globalname].Name == "" && localname != "" {
-		self.m[globalname].Name = localname
+	if module.Name == "" && localname != "" {
+		module.Name = localname
 	}
 
 	for _, decl := range decls {
@@ -1045,7 +1166,7 @@ func (self *AutoCompleteContext) add(globalname, localname string, decls []ast.D
 					}
 				}
 
-				d := astDeclToDecl(name, decl, value, valueindex)
+				d := astDeclToDecl(name, decl, value, valueindex, self.current)
 				if d == nil {
 					continue
 				}
@@ -1055,20 +1176,20 @@ func (self *AutoCompleteContext) add(globalname, localname string, decls []ast.D
 					if !ast.IsExported(methodof) {
 						continue
 					}
-					decl := self.m[globalname].FindChild(methodof)
+					decl := module.FindChild(methodof)
 					if decl != nil {
 						decl.AddChild(d)
 					} else {
-						decl = NewDecl(methodof, DECL_TYPE)
-						self.m[globalname].AddChild(decl)
+						decl = NewDecl(methodof, DECL_TYPE, self.current)
+						module.AddChild(decl)
 						decl.AddChild(d)
 					}
 				} else {
-					decl := self.m[globalname].FindChild(d.Name)
+					decl := module.FindChild(d.Name)
 					if decl != nil {
 						decl.Expand(d)
 					} else {
-						self.m[globalname].AddChild(d)
+						module.AddChild(d)
 					}
 				}
 			}
@@ -1076,18 +1197,22 @@ func (self *AutoCompleteContext) add(globalname, localname string, decls []ast.D
 	}
 }
 
-func (self *AutoCompleteContext) addAlias(alias string, globalname string) {
+func (self *PackageFile) addPackageAlias(alias string, globalname string) {
 	self.cfns[alias] = globalname
 }
 
-func (self *AutoCompleteContext) addForeignAlias(alias string, globalname string) string {
-	sum := crc32.ChecksumIEEE([]byte(globalname))
+func (self *AutoCompleteContext) addPackageDefaultAlias(alias string, globalname string) {
+	self.defaliases[globalname] = alias
+}
+
+func (self *AutoCompleteContext) genForeignPackageAlias(alias, globalname string) string {
+	sum := crc32.ChecksumIEEE([]byte(alias + globalname))
 	name := fmt.Sprintf("__%X__", sum)
 	self.foreigns[name] = ForeignPackage{alias, globalname}
 	return name
 }
 
-func (self *AutoCompleteContext) findDeclByPath(path string) *Decl {
+func (self *PackageFile) findDeclByPath(path string) *Decl {
 	s := strings.Split(path, ".", -1)
 	switch len(s) {
 	case 1:
@@ -1101,25 +1226,51 @@ func (self *AutoCompleteContext) findDeclByPath(path string) *Decl {
 	return nil
 }
 
-func (self *AutoCompleteContext) findDecl(name string) *Decl {
-	// first, check cfns and locals
+func (self *PackageFile) moduleRealName(name string) string {
 	realname, ok := self.cfns[name]
 	if ok {
-		d, ok := self.m[realname]
+		_, ok := self.ctx.m[realname]
+		if ok {
+			return realname
+		}
+	}
+	return ""
+}
+
+func (self *PackageFile) findDecl(name string) *Decl {
+	// first, check cfns
+	realname, ok := self.cfns[name]
+	if ok {
+		d, ok := self.ctx.m[realname]
 		if ok {
 			return d
 		}
 	}
 
-	d, ok := self.l[name]
+	// check and merge locals in all package files
+	decl, ok := self.ctx.current.l[name]
 	if ok {
-		return d
+		decl = decl.DeepCopy()
+	}
+
+	for _, f := range self.ctx.others {
+		d, ok := f.l[name]
+		if ok {
+			if decl == nil {
+				decl = d.DeepCopy()
+			} else {
+				decl.Expand(d)
+			}
+		}
+	}
+	if decl != nil {
+		return decl
 	}
 
 	// then check foreigns
-	foreign, ok := self.foreigns[name]
+	foreign, ok := self.ctx.foreigns[name]
 	if ok {
-		d, ok := self.m[foreign.Unique]
+		d, ok := self.ctx.m[foreign.Unique]
 		if ok {
 			return d
 		}
@@ -1162,13 +1313,51 @@ func (self *AutoCompleteContext) appendDecl(names, types, classes *bytes.Buffer,
 	}
 }
 
+func (self *AutoCompleteContext) appendPackage(names, types, classes *bytes.Buffer, p, pak string) {
+	if startsWith(pak, p) {
+		fmt.Fprintf(names, "%s\n", pak)
+		fmt.Fprintf(types, "\n")
+		fmt.Fprintf(classes, "module\n")
+	}
+}
+
+func (self *AutoCompleteContext) processOtherPackageFiles(packageName, filename string) {
+	dir, file := path.Split(filename)
+	filesInDir, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(err.String())
+	}
+
+	newothers := make(map[string]*PackageFile)
+	for _, stat := range filesInDir {
+		ok, _ := path.Match("*.go", stat.Name)
+		if ok && stat.Name != file {
+			filepath := path.Join(dir, stat.Name)
+			oldother, ok := self.others[filepath]
+			if ok && oldother.packageName == packageName {
+				newothers[filepath] = oldother
+				oldother.updateCache()
+			} else {
+				pkg := filePackageName(filepath)
+				if pkg == packageName {
+					newothers[filepath] = NewPackageFileFromFile(self, filepath, packageName)
+				}
+			}
+		}
+	}
+	self.others = newothers
+}
+
 // return three slices of the same length containing:
 // 1. apropos names
 // 2. apropos types (pretty-printed)
 // 3. apropos classes
-func (self *AutoCompleteContext) Apropos(file []byte, cursor int) ([]string, []string, []string, int) {
+func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
 	self.cursor = cursor
-	self.processData(file)
+	pkg := self.current.processData(file)
+	if filename != "" {
+		self.processOtherPackageFiles(pkg, filename)
+	}
 
 	out_names := bytes.NewBuffer(make([]byte, 0, 4096))
 	out_types := bytes.NewBuffer(make([]byte, 0, 4096))
@@ -1179,15 +1368,21 @@ func (self *AutoCompleteContext) Apropos(file []byte, cursor int) ([]string, []s
 	if da != nil {
 		if da.Decl == nil {
 			// propose modules
-			for _, value := range self.cfns {
-				if decl, ok := self.m[value]; ok {
-					self.appendDecl(out_names, out_types, out_classes, da.Partial, decl)
+			for key, value := range self.current.cfns {
+				if _, ok := self.m[value]; ok {
+					self.appendPackage(out_names, out_types, out_classes, da.Partial, key)
 				}
 			}
 			// and locals
-			for _, value := range self.l {
-				value.InferType(self)
+			for _, value := range self.current.l {
+				value.InferType()
 				self.appendDecl(out_names, out_types, out_classes, da.Partial, value)
+			}
+			for _, other := range self.others {
+				for _, value := range other.l {
+					value.InferType()
+					self.appendDecl(out_names, out_types, out_classes, da.Partial, value)
+				}
 			}
 		} else {
 			for _, decl := range da.Decl.Children {
@@ -1213,16 +1408,24 @@ func (self *AutoCompleteContext) Status() string {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	fmt.Fprintf(buf, "Number of top level packages: %d\n", len(self.m))
 	if len(self.m) > 0 {
-		fmt.Fprintf(buf, "Listing packages: ")
-		i := 0
-		for key, _ := range self.m {
-			fmt.Fprintf(buf, "'%s'", key)
-			if i != len(self.m)-1 {
-				fmt.Fprintf(buf, ", ")
-			}
-			i++
+		fmt.Fprintf(buf, "\nListing packages:\n")
+		for key, decl := range self.m {
+			fmt.Fprintf(buf, "'%s' : %s\n", key, decl.Name)
 		}
 		fmt.Fprintf(buf, "\n")
+	}
+	if len(self.foreigns) > 0 {
+		fmt.Fprintf(buf, "\nListing foreigns:\n")
+		for key, foreign := range self.foreigns {
+			fmt.Fprintf(buf, "%s:\n", key)
+			fmt.Fprintf(buf, "\t%s\n\t%s\n", foreign.Abbrev, foreign.Unique)
+		}
+	}
+	if len(self.defaliases) > 0 {
+		fmt.Fprintf(buf, "\nListing default aliases:\n")
+		for key, value := range self.defaliases {
+			fmt.Fprintf(buf, "%s = %s\n", key, value)
+		}
 	}
 	return buf.String()
 }

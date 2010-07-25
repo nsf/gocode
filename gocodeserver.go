@@ -39,7 +39,7 @@ func printBacktrace() {
 	}
 }
 
-func Server_AutoComplete(file []byte, cursor int) (a, b, c []string, d int) {
+func Server_AutoComplete(file []byte, filename string, cursor int) (a, b, c []string, d int) {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Printf("GOT PANIC!!!:\n")
@@ -50,7 +50,7 @@ func Server_AutoComplete(file []byte, cursor int) (a, b, c []string, d int) {
 			c = a
 		}
 	}()
-	a, b, c, d = daemon.ctx.Apropos(file, cursor)
+	a, b, c, d = daemon.ctx.Apropos(file, filename, cursor)
 	return
 }
 
@@ -109,6 +109,7 @@ func (self *ACRServer) Loop() {
 		select {
 		case c := <-conn_in:
 			rpc.ServeConn(c)
+			runtime.GC()
 		case cmd := <-self.cmd_in:
 			switch cmd {
 			case ACR_CLOSE:

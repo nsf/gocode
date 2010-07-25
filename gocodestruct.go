@@ -39,6 +39,8 @@ type Decl struct {
 	// if it's a multiassignment and the Value is a CallExpr, it is being set
 	// to an index into the return value tuple, otherwise it's a -1
 	ValueIndex int
+
+	File *PackageFile
 }
 
 func astDeclType(d ast.Decl) ast.Expr {
@@ -90,7 +92,7 @@ func astDeclConvertable(d ast.Decl) bool {
 	return false
 }
 
-func astFieldListToDecls(f *ast.FieldList, class int) []*Decl {
+func astFieldListToDecls(f *ast.FieldList, class int, file *PackageFile) []*Decl {
 	count := 0
 	for _, field := range f.List {
 		count += len(field.Names)
@@ -104,7 +106,8 @@ func astFieldListToDecls(f *ast.FieldList, class int) []*Decl {
 			decls[i].Name = name.Name()
 			decls[i].Type = field.Type
 			decls[i].Class = class
-			decls[i].Children = astTypeToChildren(field.Type)
+			decls[i].Children = astTypeToChildren(field.Type, file)
+			decls[i].File = file
 			i++
 		}
 
@@ -115,18 +118,18 @@ func astFieldListToDecls(f *ast.FieldList, class int) []*Decl {
 	return decls
 }
 
-func astTypeToChildren(ty ast.Expr) []*Decl {
+func astTypeToChildren(ty ast.Expr, file *PackageFile) []*Decl {
 	// TODO: type embedding
 	switch t := ty.(type) {
 	case *ast.StructType:
-		return astFieldListToDecls(t.Fields, DECL_VAR)
+		return astFieldListToDecls(t.Fields, DECL_VAR, file)
 	case *ast.InterfaceType:
-		return astFieldListToDecls(t.Methods, DECL_FUNC)
+		return astFieldListToDecls(t.Methods, DECL_FUNC, file)
 	}
 	return nil
 }
 
-func astDeclToDecl(name string, d ast.Decl, value ast.Expr, vindex int) *Decl {
+func astDeclToDecl(name string, d ast.Decl, value ast.Expr, vindex int, file *PackageFile) *Decl {
 	if !astDeclConvertable(d) || name == "_" {
 		return nil
 	}
@@ -134,22 +137,24 @@ func astDeclToDecl(name string, d ast.Decl, value ast.Expr, vindex int) *Decl {
 	decl.Name = name
 	decl.Type = astDeclType(d)
 	decl.Class = astDeclClass(d)
-	decl.Children = astTypeToChildren(decl.Type)
+	decl.Children = astTypeToChildren(decl.Type, file)
 	decl.Value = value
 	decl.ValueIndex = vindex
+	decl.File = file
 
 	return decl
 }
 
-func NewDecl(name string, class int) *Decl {
+func NewDecl(name string, class int, file *PackageFile) *Decl {
 	decl := new(Decl)
 	decl.Name = name
 	decl.Class = class
 	decl.ValueIndex = -1
+	decl.File = file
 	return decl
 }
 
-func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int) *Decl {
+func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, file *PackageFile) *Decl {
 	if name == "_" {
 		return nil
 	}
@@ -159,6 +164,7 @@ func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int) *Decl {
 	decl.Type = typ
 	decl.Value = value
 	decl.ValueIndex = vindex
+	decl.File = file
 	return decl
 }
 
@@ -178,7 +184,7 @@ func MethodOf(d ast.Decl) string {
 	return ""
 }
 
-// complete deep copy
+// complete copy
 func (d *Decl) Copy(other *Decl) {
 	d.Name = other.Name
 	d.Class = other.Class
@@ -186,6 +192,20 @@ func (d *Decl) Copy(other *Decl) {
 	d.Value = other.Value
 	d.ValueIndex = other.ValueIndex
 	d.Children = other.Children
+	d.File = other.File
+}
+
+func (other *Decl) DeepCopy() *Decl {
+	d := new(Decl)
+	d.Name = other.Name
+	d.Class = other.Class
+	d.Type = other.Type
+	d.Value = other.Value
+	d.ValueIndex = other.ValueIndex
+	d.Children = make([]*Decl, len(other.Children))
+	copy(d.Children, other.Children)
+	d.File = other.File
+	return d
 }
 
 func (d *Decl) ClassName() string {
@@ -324,21 +344,28 @@ func typePath(e ast.Expr) string {
 }
 
 // return expr and true if it's a type or false if it's a value
-func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, bool) {
+
+func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
+	//topLevel := file.ctx
 	//ty := reflect.Typeof(v)
 	//fmt.Println(ty)
 	switch t := v.(type) {
 	case *ast.CompositeLit:
 		return t.Type, true
 	case *ast.Ident:
-		if d := topLevel.findDecl(t.Name()); d != nil {
-			return d.InferType(topLevel), d.Class == DECL_TYPE
+		if d := file.findDecl(t.Name()); d != nil {
+			// we don't check for DECL_MODULE here, because module itself
+			// isn't a type, in a type context it always will be used together
+			// with	SelectorExpr like: os.Error, ast.TypeSpec, etc.
+			// and SelectorExpr ignores type bool.
+			return d.InferType(), d.Class == DECL_TYPE
 		}
 		return t, true // probably a builtin
 	case *ast.UnaryExpr:
 		switch t.Op {
 		case token.AND:
-			it, _ := inferType(t.X, -1, topLevel)
+			// & makes sense only with values, don't even check for type
+			it, _ := inferType(t.X, -1, file)
 			if it == nil {
 				break
 			}
@@ -347,93 +374,106 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 			e.X = it
 			return e, false
 		case token.ARROW:
-			it, _ := inferType(t.X, -1, topLevel)
+			// <- makes sense only with values
+			it, _ := inferType(t.X, -1, file)
 			if it == nil {
 				break
 			}
 			switch index {
 			case -1, 0:
-				return it.(*ast.ChanType).Value, true
+				return it.(*ast.ChanType).Value, false
 			case 1:
-				return ast.NewIdent("bool"), true
+				// technically it's a value, but in case of index == 1
+				// it is always the last infer operation
+				return ast.NewIdent("bool"), false
 			}
 		}
 	case *ast.IndexExpr:
-		it, isType := inferType(t.X, -1, topLevel)
+		// something[another] always returns a value and it works on a value too
+		it, _ := inferType(t.X, -1, file)
 		if it == nil {
 			break
 		}
 		switch t := it.(type) {
 		case *ast.ArrayType:
-			return t.Elt, isType
+			return t.Elt, false
 		case *ast.MapType:
 			switch index {
 			case -1, 0:
-				return t.Value, isType
+				return t.Value, false
 			case 1:
-				return ast.NewIdent("bool"), true
+				return ast.NewIdent("bool"), false
 			}
 		}
 	case *ast.StarExpr:
-		it, isType := inferType(t.X, -1, topLevel)
+		it, isType := inferType(t.X, -1, file)
 		if it == nil {
 			break
 		}
 		if isType {
+			// it it's a type, add * modifier, make it a 'pointer of' type
 			e := new(ast.StarExpr)
 			e.X = it
 			return e, true
 		} else if s, ok := it.(*ast.StarExpr); ok {
+			// if it's a pointer value, dereference pointer
 			return s.X, false
 		}
 	case *ast.CallExpr:
 		ty := checkForBuiltinFuncs(t)
 		if ty != nil {
-			return ty, true
+			// all built-in functions return a value
+			return ty, false
 		}
 
-		it, _ := inferType(t.Fun, -1, topLevel)
+		it, _ := inferType(t.Fun, -1, file)
 		if it == nil {
 			break
 		}
 		switch t := it.(type) {
 		case *ast.FuncType:
-			return funcReturnType(t, index), true
+			// in case if <here>() is a function type variable, we're making a 
+			// func call, resulting expr is always a value
+			return funcReturnType(t, index), false
 		default:
-			return t, true
+			// otherwise it's a type cast, and the result is a value too
+			return t, false
 		}
 	case *ast.ParenExpr:
-		it, isType := inferType(t.X, -1, topLevel)
+		it, isType := inferType(t.X, -1, file)
 		if it == nil {
 			break
 		}
 		return it, isType
 	case *ast.SelectorExpr:
-		it, _ := inferType(t.X, -1, topLevel)
+		it, _ := inferType(t.X, -1, file)
 		if it == nil {
 			break
 		}
 
 		name := typePath(it)
-		if d := topLevel.findDeclByPath(name); d != nil {
+		if d := file.findDeclByPath(name); d != nil {
 			c := d.FindChild(t.Sel.Name())
 			if c != nil {
-				return c.InferType(topLevel), c.Class == DECL_TYPE
+				return c.InferType(), c.Class == DECL_TYPE
 			}
 		}
 	case *ast.FuncLit:
-		return t.Type, true
+		// it's a value, but I think most likely we don't even care, cause we can only
+		// call it, and CallExpr uses the type itself to figure out
+		return t.Type, false
 	case *ast.TypeAssertExpr:
 		if t.Type == nil {
-			return inferType(t.X, -1, topLevel)
+			return inferType(t.X, -1, file)
 		}
 		switch index {
 		case -1, 0:
-			return t.Type, true
+			// converting a value to a different type, but return thing is a value
+			return t.Type, false
 		case 1:
-			return ast.NewIdent("bool"), true
+			return ast.NewIdent("bool"), false
 		}
-	case *ast.ArrayType, *ast.MapType, *ast.ChanType:
+	case *ast.ArrayType, *ast.MapType, *ast.ChanType, *ast.FuncType:
 		return t, true
 	default:
 		_ = reflect.Typeof(v)
@@ -442,18 +482,19 @@ func inferType(v ast.Expr, index int, topLevel *AutoCompleteContext) (ast.Expr, 
 	return nil, false
 }
 
-func (d *Decl) InferType(topLevel *AutoCompleteContext) ast.Expr {
+func (d *Decl) InferType() ast.Expr {
 	if d.Class == DECL_TYPE || d.Class == DECL_MODULE {
 		// we're the type itself
 		return ast.NewIdent(d.Name)
 	}
 
 	// shortcut
-	if d.Type != nil {
+	if d.Type != nil && d.Value == nil {
+		d.File.foreignifyTypeExpr(d.Type)
 		return d.Type
 	}
 
-	d.Type, _ = inferType(d.Value, d.ValueIndex, topLevel)
+	d.Type, _ = inferType(d.Value, d.ValueIndex, d.File)
 	return d.Type
 }
 

@@ -32,7 +32,7 @@ endf
 fu! s:gocodeAutocomplete()
 	let filename = s:gocodeCurrentBuffer()
 	let result = s:gocodeCommand([s:gocodeCurrentBufferOpt(filename), '-f=vim'],
-				   \ [s:gocodeCursor()])
+				   \ [bufname('%'), s:gocodeCursor()])
 	call delete(filename)
 	return result
 endf

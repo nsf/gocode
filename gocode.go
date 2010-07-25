@@ -7,6 +7,7 @@ import (
 	"rpc"
 	"flag"
 	"time"
+	"path"
 	"fmt"
 	"os"
 )
@@ -161,12 +162,24 @@ func Cmd_AutoComplete(c *rpc.Client) {
 		panic(err.String())
 	}
 
-	// TODO: good args num check
+	filename := ""
 	cursor := -1
-	cursor, _ = strconv.Atoi(flag.Arg(1))
+
+	switch flag.NArg() {
+	case 2:
+		cursor, _ = strconv.Atoi(flag.Arg(1))
+	case 3:
+		filename = flag.Arg(1)
+		cursor, _ = strconv.Atoi(flag.Arg(2))
+	}
+
+	if filename != "" && filename[0] != '/' {
+		cwd, _ := os.Getwd()
+		filename = path.Join(cwd, filename)
+	}
 
 	formatter := getFormatter()
-	names, types, classes, partial := Client_AutoComplete(c, file, cursor)
+	names, types, classes, partial := Client_AutoComplete(c, file, filename, cursor)
 	if names == nil {
 		formatter.WriteEmpty()
 		return

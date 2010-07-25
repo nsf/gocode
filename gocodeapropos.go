@@ -95,12 +95,12 @@ func (self *AutoCompleteContext) deduceExpr(file []byte, partial string) *DeclAp
 	if err != nil {
 		return nil
 	}
-	expr = NewDeclVar("tmp", nil, expr, -1).InferType(self)
+	expr = NewDeclVar("tmp", nil, expr, -1, self.current).InferType()
 	if expr == nil {
 		return nil
 	}
 	name := typePath(expr)
-	typedecl := self.findDeclByPath(name)
+	typedecl := self.current.findDeclByPath(name)
 	if typedecl != nil {
 		return &DeclApropos{typedecl, partial}
 	}
