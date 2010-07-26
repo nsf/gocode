@@ -39,7 +39,7 @@ func (*NiceFormatter) WriteCandidates(names, types, classes []string, num int) {
 	for i := 0; i < len(names); i++ {
 		abbr := fmt.Sprintf("%s %s %s", classes[i], names[i], types[i])
 		if classes[i] == "func" {
-			abbr = fmt.Sprintf("%s %s%s", classes[i], names[i], types[i][len("func "):])
+			abbr = fmt.Sprintf("%s %s%s", classes[i], names[i], types[i][len("func"):])
 		}
 		fmt.Printf("  %s\n", abbr)
 	}
@@ -53,13 +53,13 @@ type VimFormatter struct {
 }
 
 func (*VimFormatter) WriteEmpty() {
-	fmt.Print("[]")
+	fmt.Print("[0, []]")
 }
 
 func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
-	fmt.Printf("[")
+	fmt.Printf("[%d, [", num)
 	for i := 0; i < len(names); i++ {
-		word := names[i][num:]
+		word := names[i]
 		if classes[i] == "func" {
 			word += "("
 		}
@@ -74,7 +74,7 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 		}
 
 	}
-	fmt.Printf("]")
+	fmt.Printf("]]")
 }
 
 //-------------------------------------------------------------------------

@@ -278,6 +278,9 @@ func (d *Decl) Matches(p string) bool {
 	if p != "" && !startsWith(d.Name, p) {
 		return false
 	}
+	if d.Class == DECL_TYPE && d.Type == nil {
+		return false
+	}
 	return true
 }
 

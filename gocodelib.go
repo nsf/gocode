@@ -582,10 +582,6 @@ func (self *PackageFile) foreignifyTypeExpr(e ast.Expr) {
 		self.foreignifyTypeExpr(t.Value)
 	case *ast.ChanType:
 		self.foreignifyTypeExpr(t.Value)
-	default:
-		ty := reflect.Typeof(t)
-		s := fmt.Sprintf("unknown type: %s\n", ty.String())
-		panic(s)
 	}
 }
 
@@ -1344,16 +1340,27 @@ func NewOutBuffers() *OutBuffers {
 	return b
 }
 
-func (self *OutBuffers) appendPackage(p, pak string) {
-	if startsWith(pak, p) {
+func matchClass(declclass int, class int) bool {
+	if class == -1 {
+		return false
+	}
+
+	if class == declclass {
+		return true
+	}
+	return false
+}
+
+func (self *OutBuffers) appendPackage(p, pak string, class int) {
+	if startsWith(pak, p) || matchClass(DECL_MODULE, class) {
 		fmt.Fprintf(self.names, "%s\n", pak)
 		fmt.Fprintf(self.types, "\n")
 		fmt.Fprintf(self.classes, "module\n")
 	}
 }
 
-func (self *OutBuffers) appendDecl(p string, decl *Decl) {
-	if decl.Matches(p) {
+func (self *OutBuffers) appendDecl(p string, decl *Decl, class int) {
+	if decl.Matches(p) || matchClass(decl.Class, class) {
 		fmt.Fprintf(self.names, "%s\n", decl.Name)
 		decl.PrettyPrintType(self.types, decl.File.ctx)
 		fmt.Fprintf(self.types, "\n")
@@ -1361,7 +1368,7 @@ func (self *OutBuffers) appendDecl(p string, decl *Decl) {
 	}
 }
 
-func (self *OutBuffers) appendEmbedded(p string, decl *Decl) {
+func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 	if decl.Embedded != nil {
 		for _, emb := range decl.Embedded {
 			decl.File.foreignifyTypeExpr(emb)
@@ -1369,9 +1376,9 @@ func (self *OutBuffers) appendEmbedded(p string, decl *Decl) {
 			typedecl := decl.File.findDeclByPath(name)
 			if typedecl != nil {
 				for _, c := range typedecl.Children {
-					self.appendDecl(p, c)
+					self.appendDecl(p, c, class)
 				}
-				self.appendEmbedded(p, typedecl)
+				self.appendEmbedded(p, typedecl, class)
 			}
 		}
 	}
@@ -1393,29 +1400,42 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	partial := 0
 	da := self.deduceDecl(file, cursor)
 	if da != nil {
+		class := -1
+		switch da.Partial {
+		case "const":
+			class = DECL_CONST
+		case "var":
+			class = DECL_VAR
+		case "type":
+			class = DECL_TYPE
+		case "func":
+			class = DECL_FUNC
+		case "module":
+			class = DECL_MODULE
+		}
 		if da.Decl == nil {
 			// propose modules
 			for key, value := range self.current.cfns {
 				if _, ok := self.m[value]; ok {
-					b.appendPackage(da.Partial, key)
+					b.appendPackage(da.Partial, key, class)
 				}
 			}
 			// and locals
 			for _, value := range self.current.l {
 				value.InferType()
-				b.appendDecl(da.Partial, value)
+				b.appendDecl(da.Partial, value, class)
 			}
 			for _, other := range self.others {
 				for _, value := range other.l {
 					value.InferType()
-					b.appendDecl(da.Partial, value)
+					b.appendDecl(da.Partial, value, class)
 				}
 			}
 		} else {
 			for _, decl := range da.Decl.Children {
-				b.appendDecl(da.Partial, decl)
+				b.appendDecl(da.Partial, decl, class)
 			}
-			b.appendEmbedded(da.Partial, da.Decl)
+			b.appendEmbedded(da.Partial, da.Decl, class)
 		}
 		partial = len(da.Partial)
 	}
