@@ -878,8 +878,30 @@ func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 	}
 }
 
+func (self *PackageFile) processSelectStmt(a *ast.SelectStmt) {
+	if !self.ctx.cursorIn(a.Body) {
+		return
+	}
+	var lastCursorAfter *ast.CommClause
+	for _, s := range a.Body.List {
+		if cc := s.(*ast.CommClause); self.ctx.cursor > cc.Colon.Offset {
+			lastCursorAfter = cc
+		}
+	}
+
+	if lastCursorAfter != nil {
+		if lastCursorAfter.Lhs != nil && lastCursorAfter.Tok == token.DEFINE {
+			vname := lastCursorAfter.Lhs.(*ast.Ident).Name()
+			v := NewDeclVar(vname, nil, lastCursorAfter.Rhs, -1, self)
+			self.addVarDecl(v)
+		}
+		for _, s := range lastCursorAfter.Body {
+			self.processStmt(s)
+		}
+	}
+}
+
 func (self *PackageFile) processStmt(stmt ast.Stmt) {
-	// TODO: we need to process func literals somehow too as locals
 	switch t := stmt.(type) {
 	case *ast.DeclStmt:
 		self.processDecl(t.Decl, true)
@@ -904,7 +926,10 @@ func (self *PackageFile) processStmt(stmt ast.Stmt) {
 		self.processSwitchStmt(t)
 	case *ast.TypeSwitchStmt:
 		self.processTypeSwitchStmt(t)
-	// TODO: *ast.SelectStmt
+	case *ast.SelectStmt:
+		self.processSelectStmt(t)
+	case *ast.LabeledStmt:
+		self.processStmt(t.Stmt)
 	}
 }
 
@@ -913,7 +938,26 @@ func (self *PackageFile) processBlockStmt(block *ast.BlockStmt) {
 		for _, stmt := range block.List {
 			self.processStmt(stmt)
 		}
+
+		// hack to process all func literals
+		v := new(FuncLitVisitor)
+		v.ctx = self
+		ast.Walk(v, block)
 	}
+}
+
+type FuncLitVisitor struct {
+	ctx *PackageFile
+}
+
+func (v *FuncLitVisitor) Visit(node interface{}) ast.Visitor {
+	if t, ok := node.(*ast.FuncLit); ok {
+		v.ctx.processFieldList(t.Type.Params)
+		v.ctx.processFieldList(t.Type.Results)
+		v.ctx.processBlockStmt(t.Body)
+		return nil
+	}
+	return v
 }
 
 func (self *PackageFile) processDecl(decl ast.Decl, parseLocals bool) {
