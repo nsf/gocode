@@ -48,6 +48,9 @@ func Server_AutoComplete(file []byte, filename string, cursor int) (a, b, c []st
 			a = []string{"PANIC"}
 			b = a
 			c = a
+
+			// drop cache
+			daemon.ctx = NewAutoCompleteContext()
 		}
 	}()
 	a, b, c, d = daemon.ctx.Apropos(file, filename, cursor)
@@ -61,6 +64,12 @@ func Server_Close(notused int) int {
 
 func Server_Status(notused int) string {
 	return daemon.ctx.Status()
+}
+
+func Server_DropCache(notused int) int {
+	// drop cache
+	daemon.ctx = NewAutoCompleteContext()
+	return 0
 }
 
 //-------------------------------------------------------------------------

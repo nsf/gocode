@@ -307,7 +307,8 @@ func (d *Decl) PrettyPrintType(out io.Writer, ac *AutoCompleteContext) {
 }
 
 func (d *Decl) AddChild(cd *Decl) {
-	if d.FindChild(cd.Name) != nil {
+	if i := d.FindChildNum(cd.Name); i != -1 {
+		d.Children[i] = cd
 		return
 	}
 
@@ -550,4 +551,13 @@ func (d *Decl) FindChild(name string) *Decl {
 		}
 	}
 	return nil
+}
+
+func (d *Decl) FindChildNum(name string) int {
+	for i, c := range d.Children {
+		if c.Name == name {
+			return i
+		}
+	}
+	return -1
 }

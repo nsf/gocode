@@ -196,6 +196,10 @@ func Cmd_Close(c *rpc.Client) {
 	Client_Close(c, 0)
 }
 
+func Cmd_DropCache(c *rpc.Client) {
+	Client_DropCache(c, 0)
+}
+
 func makeFDs() ([]*os.File, os.Error) {
 	var fds [3]*os.File
 	var err os.Error
@@ -266,6 +270,8 @@ func clientFunc() int {
 			Cmd_Close(client)
 		case "status":
 			Cmd_Status(client)
+		case "drop-cache":
+			Cmd_DropCache(client)
 		}
 	}
 	return 0

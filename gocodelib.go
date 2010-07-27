@@ -438,6 +438,10 @@ func splitDecls(d ast.Decl) []ast.Decl {
 
 func (self *PackageFile) processPackage(filename, uniquename, pkgname string) {
 	// TODO: deal with packages imported in the current namespace
+	if uniquename[0] == '.' {
+		// for local packages use full path as an unique name
+		uniquename = filename
+	}
 	if self.ctx.cache[filename] {
 		if pkgname == "" {
 			pkgname = self.ctx.defaliases[uniquename]
@@ -643,6 +647,7 @@ func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) 
 		}
 		self.prettyPrintTypeExpr(out, t.Value)
 	default:
+		// should never happen
 		ty := reflect.Typeof(t)
 		s := fmt.Sprintf("unknown type: %s\n", ty.String())
 		panic(s)
@@ -687,7 +692,11 @@ func startsWith(s, prefix string) bool {
 	return false
 }
 
-func findFile(imp string) string {
+func (self *PackageFile) findFile(imp string) string {
+	if imp[0] == '.' {
+		dir, _ := path.Split(self.name)
+		return fmt.Sprintf("%s.a", path.Join(dir, imp))
+	}
 	goroot := os.Getenv("GOROOT")
 	goarch := os.Getenv("GOARCH")
 	goos := os.Getenv("GOOS")
@@ -707,7 +716,7 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 
 func (self *PackageFile) processImportSpec(imp *ast.ImportSpec) {
 	path, alias := pathAndAlias(imp)
-	self.processPackage(findFile(path), path, alias)
+	self.processPackage(self.findFile(path), path, alias)
 }
 
 func (self *AutoCompleteContext) cursorIn(block *ast.BlockStmt) bool {
@@ -1345,7 +1354,10 @@ func (self TriStringArrays) Swap(i, j int) {
 
 //-------------------------------------------------------------------------
 
-func (self *AutoCompleteContext) processOtherPackageFiles(packageName, filename string) {
+func (self *AutoCompleteContext) processOtherPackageFiles() {
+	packageName := self.current.packageName
+	filename := self.current.name
+
 	dir, file := path.Split(filename)
 	filesInDir, err := ioutil.ReadDir(dir)
 	if err != nil {
@@ -1434,9 +1446,10 @@ func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 // 3. apropos classes
 func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
 	self.cursor = cursor
-	pkg := self.current.processData(file)
+	self.current.name = filename
+	self.current.packageName = self.current.processData(file)
 	if filename != "" {
-		self.processOtherPackageFiles(pkg, filename)
+		self.processOtherPackageFiles()
 	}
 
 	b := NewOutBuffers()
