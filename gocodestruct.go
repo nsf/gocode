@@ -406,7 +406,6 @@ func exprToDecl(e ast.Expr, file *PackageFile) *Decl {
 	}
 
 	name := typePath(expr)
-	fmt.Printf("%s\n", name)
 	var typedecl *Decl
 	if name == "0" {
 		typedecl = NewDeclVar("tmp", expr, nil, -1, file)
