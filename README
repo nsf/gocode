@@ -13,3 +13,25 @@ Screenshots:
  http://nsf.github.com/images/gocode2.png
  http://nsf.github.com/images/gocode3.png
  http://nsf.github.com/images/gocode4.png
+
+Demo:
+ http://nsf.110mb.com/gocode-demo.swf (3.6mb)
+
+Short usage guide:
+
+Everything is pretty simple. Just 'make install' it and make sure it
+is available on your PATH (vim plugin assumes that).
+
+In order to install vim plugin you need to have vim scripts installed
+from the Go source tree ($GOROOT/misc/vim). After that just run
+'update.sh' script from the 'vim' dir in the gocode source tree. It
+will work on mac and linux (installs vim plugin files in ~/.vim/...).
+Make sure you have 'filetype plugin on' in vim and you're done! Use
+<C-x><C-o> for omnicompletion.
+
+Daemon is started automatically and it is panic-safe. Means if it dies
+with a panic during autocompletion, it will drop its cache and
+continue serving requests. On panic it prints stack trace also. In order
+to see a stack trace you may want to run it manually somewhere in the
+terminal using this command: 'gocode -s'. If the daemon was started
+previously, you can shut it down using this command: 'gocode close'.
