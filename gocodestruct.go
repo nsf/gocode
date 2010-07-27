@@ -196,6 +196,8 @@ func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, file *Pac
 	decl.Name = name
 	decl.Class = DECL_VAR
 	decl.Type = typ
+	decl.Children = astTypeToChildren(decl.Type, file)
+	decl.Embedded = astTypeToEmbedded(decl.Type)
 	decl.Value = value
 	decl.ValueIndex = vindex
 	decl.File = file
@@ -385,12 +387,36 @@ func typePath(e ast.Expr) string {
 			path += ident.Name()
 		}
 		return path + "." + t.Sel.Name()
+	case *ast.StructType, *ast.InterfaceType:
+		// this is an invalid identifier, means use the declaration itself
+		return "0"
 	}
 	return ""
 }
 
-// return expr and true if it's a type or false if it's a value
+func typeToDecl(t ast.Expr, file *PackageFile) *Decl {
+	name := typePath(t)
+	return file.findDeclByPath(name)
+}
 
+func exprToDecl(e ast.Expr, file *PackageFile) *Decl {
+	expr := NewDeclVar("tmp", nil, e, -1, file).InferType()
+	if expr == nil {
+		return nil
+	}
+
+	name := typePath(expr)
+	fmt.Printf("%s\n", name)
+	var typedecl *Decl
+	if name == "0" {
+		typedecl = NewDeclVar("tmp", expr, nil, -1, file)
+	} else {
+		typedecl = file.findDeclByPath(name)
+	}
+	return typedecl
+}
+
+// return expr and true if it's a type or false if it's a value
 func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 	//topLevel := file.ctx
 	//ty := reflect.Typeof(v)
@@ -497,8 +523,7 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 			break
 		}
 
-		name := typePath(it)
-		if d := file.findDeclByPath(name); d != nil {
+		if d := typeToDecl(it, file); d != nil {
 			c := d.FindChild(t.Sel.Name())
 			if c != nil {
 				return c.InferType(), c.Class == DECL_TYPE
@@ -541,6 +566,7 @@ func (d *Decl) InferType() ast.Expr {
 	}
 
 	d.Type, _ = inferType(d.Value, d.ValueIndex, d.File)
+	d.File.foreignifyTypeExpr(d.Type)
 	return d.Type
 }
 

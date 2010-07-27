@@ -1428,8 +1428,7 @@ func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 	if decl.Embedded != nil {
 		for _, emb := range decl.Embedded {
 			decl.File.foreignifyTypeExpr(emb)
-			name := typePath(emb)
-			typedecl := decl.File.findDeclByPath(name)
+			typedecl := typeToDecl(emb, decl.File)
 			if typedecl != nil {
 				for _, c := range typedecl.Children {
 					self.appendDecl(p, c, class)
