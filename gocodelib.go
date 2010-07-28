@@ -249,7 +249,7 @@ func extractPackageFromMethod(i int, s string) (string, string) {
 	return "", ""
 }
 
-func (self *PackageFile) expandPackages(s, curpkg string) string {
+func (self *AutoCompleteContext) expandPackages(s, curpkg string) string {
 	i := 0
 	for {
 		pkg := ""
@@ -280,13 +280,13 @@ func (self *PackageFile) expandPackages(s, curpkg string) string {
 		} else if b+1 != e {
 			// wow, we actually have something here
 			pkgalias := identifyPackage(s[b+1:e])
-			pkg = self.ctx.genForeignPackageAlias(pkgalias, s[b+1:e])
+			pkg = self.genForeignPackageAlias(pkgalias, s[b+1:e])
 			i++ // skip to a first symbol after second '"'
 			s = s[0:b] + pkg + s[i:] // strip package clause completely
 			i = b
 		} else {
 			pkgalias := identifyPackage(curpkg)
-			pkg = self.ctx.genForeignPackageAlias(pkgalias, curpkg)
+			pkg = self.genForeignPackageAlias(pkgalias, curpkg)
 			i++
 			s = s[0:b] + pkg + s[i:]
 			i = b
@@ -325,7 +325,7 @@ func preprocessConstDecl(s string) string {
 // returns:
 // 1. a go/parser parsable string representing one Go declaration
 // 2. and a package name this declaration belongs to
-func (self *PackageFile) processExport(s, curpkg string) (string, string) {
+func (self *AutoCompleteContext) processExport(s, curpkg string) (string, string) {
 	i := 0
 	pkg := ""
 
@@ -436,6 +436,29 @@ func splitDecls(d ast.Decl) []ast.Decl {
 	return decls
 }
 
+const builtinUnsafePackage = `
+import
+$$
+package unsafe 
+	type "".Pointer *any
+	func "".Offsetof (? any) int
+	func "".Sizeof (? any) int
+	func "".Alignof (? any) int
+	func "".Typeof (i interface { }) interface { }
+	func "".Reflect (i interface { }) (typ interface { }, addr "".Pointer)
+	func "".Unreflect (typ interface { }, addr "".Pointer) interface { }
+	func "".New (typ interface { }) "".Pointer
+	func "".NewArray (typ interface { }, n int) "".Pointer
+
+$$
+`
+
+func (self *AutoCompleteContext) addBuiltinUnsafe() {
+	filename := findGlobalFile("unsafe")
+	self.processPackageData(filename, "unsafe", "", builtinUnsafePackage, nil)
+	self.cache[filename] = true
+}
+
 func (self *PackageFile) processPackage(filename, uniquename, pkgname string) {
 	// TODO: deal with packages imported in the current namespace
 	if uniquename[0] == '.' {
@@ -456,7 +479,10 @@ func (self *PackageFile) processPackage(filename, uniquename, pkgname string) {
 	}
 	self.ctx.cache[filename] = true
 	s := string(data)
+	self.ctx.processPackageData(filename, uniquename, pkgname, s, self)
+}
 
+func (self *AutoCompleteContext) processPackageData(filename, uniquename, pkgname, s string, file *PackageFile) {
 	i := strings.Index(s, "import\n$$\n")
 	if i == -1 {
 		panic("Can't find the import section in the archive file")
@@ -474,14 +500,16 @@ func (self *PackageFile) processPackage(filename, uniquename, pkgname string) {
 	}
 
 	defpkgname := s[len("package "):i-1]
-	self.ctx.addPackageDefaultAlias(defpkgname, uniquename)
+	self.addPackageDefaultAlias(defpkgname, uniquename)
 	if pkgname == "" {
 		pkgname = defpkgname
 	}
-	self.addPackageAlias(pkgname, uniquename)
+	if file != nil {
+		file.addPackageAlias(pkgname, uniquename)
+	}
 
-	if self.ctx.debuglog != nil {
-		fmt.Fprintf(self.ctx.debuglog, "parsing package '%s'...\n", pkgname)
+	if self.debuglog != nil {
+		fmt.Fprintf(self.debuglog, "parsing package '%s'...\n", pkgname)
 	}
 	s = s[i+1:]
 
@@ -522,17 +550,17 @@ func (self *PackageFile) processPackage(filename, uniquename, pkgname string) {
 		if err != nil {
 			panic(fmt.Sprintf("failure in:\n%s\n%s\n", value, err.String()))
 		} else {
-			if self.ctx.debuglog != nil {
-				fmt.Fprintf(self.ctx.debuglog, "\t%s: OK (ndecls: %d)\n", key, len(decls))
+			if self.debuglog != nil {
+				fmt.Fprintf(self.debuglog, "\t%s: OK (ndecls: %d)\n", key, len(decls))
 			}
 			f := new(ast.File) // fake file
 			f.Decls = decls
 			ast.FileExports(f)
 			localname := ""
 			if key == uniquename {
-				localname = self.ctx.genForeignPackageAlias(pkgname, uniquename)
+				localname = self.genForeignPackageAlias(pkgname, uniquename)
 			}
-			self.ctx.addToPackage(key, localname, f.Decls)
+			self.addToPackage(key, localname, f.Decls)
 		}
 	}
 }
@@ -692,16 +720,20 @@ func startsWith(s, prefix string) bool {
 	return false
 }
 
-func (self *PackageFile) findFile(imp string) string {
-	if imp[0] == '.' {
-		dir, _ := path.Split(self.name)
-		return fmt.Sprintf("%s.a", path.Join(dir, imp))
-	}
+func findGlobalFile(imp string) string {
 	goroot := os.Getenv("GOROOT")
 	goarch := os.Getenv("GOARCH")
 	goos := os.Getenv("GOOS")
 
 	return fmt.Sprintf("%s/pkg/%s_%s/%s.a", goroot, goos, goarch, imp)
+}
+
+func (self *PackageFile) findFile(imp string) string {
+	if imp[0] == '.' {
+		dir, _ := path.Split(self.name)
+		return fmt.Sprintf("%s.a", path.Join(dir, imp))
+	}
+	return findGlobalFile(imp)
 }
 
 func pathAndAlias(imp *ast.ImportSpec) (string, string) {
@@ -1185,6 +1217,7 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.others = make(map[string]*PackageFile)
 	self.cache = make(map[string]bool)
 	self.cursor = -1
+	self.addBuiltinUnsafe()
 	return self
 }
 
