@@ -525,7 +525,11 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 		if d := typeToDecl(it, file); d != nil {
 			c := d.FindChild(t.Sel.Name())
 			if c != nil {
-				return c.InferType(), c.Class == DECL_TYPE
+				if c.Class == DECL_TYPE {
+					return t, true
+				} else {
+					return c.InferType(), false
+				}
 			}
 		}
 	case *ast.FuncLit:
