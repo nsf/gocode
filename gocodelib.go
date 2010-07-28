@@ -508,9 +508,7 @@ func (self *AutoCompleteContext) processPackageData(filename, uniquename, pkgnam
 		file.addPackageAlias(pkgname, uniquename)
 	}
 
-	if self.debuglog != nil {
-		fmt.Fprintf(self.debuglog, "parsing package '%s'...\n", pkgname)
-	}
+	self.debugLog("parsing package '%s'...\n", pkgname)
 	s = s[i+1:]
 
 	internalPackages := make(map[string]*bytes.Buffer)
@@ -550,15 +548,15 @@ func (self *AutoCompleteContext) processPackageData(filename, uniquename, pkgnam
 		if err != nil {
 			panic(fmt.Sprintf("failure in:\n%s\n%s\n", value, err.String()))
 		} else {
-			if self.debuglog != nil {
-				fmt.Fprintf(self.debuglog, "\t%s: OK (ndecls: %d)\n", key, len(decls))
-			}
 			f := new(ast.File) // fake file
 			f.Decls = decls
 			ast.FileExports(f)
 			localname := ""
 			if key == uniquename {
 				localname = self.genForeignPackageAlias(pkgname, uniquename)
+				self.debugLog("\t!%s: OK (ndecls: %d)\n", key, len(decls))
+			} else {
+				self.debugLog("\t%s: OK (ndecls: %d)\n", key, len(decls))
 			}
 			self.addToPackage(key, localname, f.Decls)
 		}
@@ -1219,6 +1217,12 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.cursor = -1
 	self.addBuiltinUnsafe()
 	return self
+}
+
+func (self *AutoCompleteContext) debugLog(f string, a ...interface{}) {
+	if self.debuglog != nil {
+		fmt.Fprintf(self.debuglog, f, a)
+	}
 }
 
 func (self *AutoCompleteContext) addToPackage(globalname, localname string, decls []ast.Decl) {
