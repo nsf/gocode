@@ -18,7 +18,12 @@ fu! s:gocodeCommand(preargs, args)
 	for i in range(0, len(a:args) - 1)
 		let a:args[i] = shellescape(a:args[i])
 	endfor
-	return s:system(printf('gocode %s autocomplete %s', join(a:preargs), join(a:args)))
+	let result = s:system(printf('gocode %s autocomplete %s', join(a:preargs), join(a:args)))
+	if v:shell_error != 0
+		return "[\"0\", []]"
+	else
+		return result
+	endif
 endf
 
 fu! s:gocodeCurrentBufferOpt(filename)
