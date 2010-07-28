@@ -1434,10 +1434,6 @@ func NewOutBuffers() *OutBuffers {
 }
 
 func matchClass(declclass int, class int) bool {
-	if class == -1 {
-		return false
-	}
-
 	if class == declclass {
 		return true
 	}
