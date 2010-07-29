@@ -459,6 +459,10 @@ func (self *AutoCompleteContext) addBuiltinUnsafe() {
 }
 
 func (self *PackageFile) processPackage(filename, uniquename, pkgname string) {
+	if pkgname == "_" {
+		// ignore packages imported only for side effects
+		return
+	}
 	// TODO: deal with packages imported in the current namespace
 	if uniquename[0] == '.' {
 		// for local packages use full path as an unique name
