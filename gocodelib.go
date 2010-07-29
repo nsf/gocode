@@ -1059,12 +1059,7 @@ func (self *PackageFile) processDecl(decl ast.Decl, parseLocals bool) {
 					decl.AddChild(d)
 				}
 			} else {
-				decl, ok := self.l[d.Name]
-				if ok {
-					decl.Expand(d)
-				} else {
-					self.l[d.Name] = d
-				}
+				self.addVarDecl(d)
 			}
 		}
 	}
@@ -1164,6 +1159,7 @@ func NewModuleCache(filename, uniquename string, ctx *AutoCompleteContext) *Modu
 	return m
 }
 
+// create a package that always resides in cache, useful for built-in packages
 func NewModuleCacheForever(defalias string) *ModuleCache {
 	m := new(ModuleCache)
 	m.mtime = -1
