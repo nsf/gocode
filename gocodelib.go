@@ -609,6 +609,49 @@ func (self *PackageFile) foreignifyTypeExpr(e ast.Expr) {
 	}
 }
 
+func checkFuncFieldList(f *ast.FieldList) bool {
+	if f == nil {
+		return true
+	}
+
+	for _, field := range f.List {
+		if !checkTypeExpr(field.Type) {
+			return false
+		}
+	}
+	return true
+}
+
+// checks for a type expression correctness, it the type expression has
+// ast.BadExpr somewhere, returns false, otherwise true
+func checkTypeExpr(e ast.Expr) bool {
+	switch t := e.(type) {
+	case *ast.StarExpr:
+		return checkTypeExpr(t.X)
+	case *ast.ArrayType:
+		return checkTypeExpr(t.Elt)
+	case *ast.SelectorExpr:
+		return checkTypeExpr(t.X)
+	case *ast.FuncType:
+		a := checkFuncFieldList(t.Params)
+		b := checkFuncFieldList(t.Results)
+		return a && b
+	case *ast.MapType:
+		a := checkTypeExpr(t.Key)
+		b := checkTypeExpr(t.Value)
+		return a && b
+	case *ast.Ellipsis:
+		return checkTypeExpr(t.Elt)
+	case *ast.ChanType:
+		return checkTypeExpr(t.Value)
+	case *ast.BadExpr:
+		return false
+	default:
+		return true
+	}
+	return true
+}
+
 func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 	switch t := e.(type) {
 	case *ast.StarExpr:
@@ -1509,6 +1552,9 @@ func (self *OutBuffers) appendPackage(p, pak string, class int) {
 
 func (self *OutBuffers) appendDecl(p string, decl *Decl, class int) {
 	if decl.Matches(p) || matchClass(decl.Class, class) {
+		if !checkTypeExpr(decl.Type) {
+			return
+		}
 		fmt.Fprintf(self.names, "%s\n", decl.Name)
 		decl.PrettyPrintType(self.types, decl.File.ctx)
 		fmt.Fprintf(self.types, "\n")
