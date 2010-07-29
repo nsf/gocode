@@ -662,6 +662,10 @@ func (self *AutoCompleteContext) prettyPrintTypeExpr(out io.Writer, e ast.Expr) 
 			fmt.Fprintf(out, "chan ")
 		}
 		self.prettyPrintTypeExpr(out, t.Value)
+	case *ast.BadExpr:
+		// TODO: probably I should check that in a separate function
+		// and simply discard declarations with BadExpr as a part of their
+		// type
 	default:
 		// should never happen
 		ty := reflect.Typeof(t)
