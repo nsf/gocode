@@ -1482,7 +1482,10 @@ func (self TriStringArrays) Len() int {
 }
 
 func (self TriStringArrays) Less(i, j int) bool {
-	return self.third[i] + self.first[i] < self.third[j] + self.first[j]
+	if self.third[i][0] == self.third[i][0] {
+		return self.first[i] < self.first[i]
+	}
+	return self.third[i] < self.third[i]
 }
 
 func (self TriStringArrays) Swap(i, j int) {
