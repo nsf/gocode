@@ -248,17 +248,30 @@ func tryRunServer() os.Error {
 	return nil
 }
 
+func waitForAFile(fname string) {
+	t := 0
+	for !fileExists(fname) {
+		time.Sleep(10000000) // 0.01
+		t += 10
+		if t > 1000 {
+			return
+		}
+	}
+}
+
 func clientFunc() int {
+	socketfname := getSocketFilename()
+
 	// client
-	client, err := rpc.Dial("unix", getSocketFilename())
+	client, err := rpc.Dial("unix", socketfname)
 	if err != nil {
 		err = tryRunServer()
 		if err != nil {
 			fmt.Printf("%s\n", err.String())
 			return 1
 		}
-		time.Sleep(100000000) // 0.1
-		client, err = rpc.Dial("unix", getSocketFilename())
+		waitForAFile(socketfname)
+		client, err = rpc.Dial("unix", socketfname)
 		if err != nil {
 			fmt.Printf("%s\n", err.String())
 			return 1
