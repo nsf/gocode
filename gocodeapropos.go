@@ -77,6 +77,9 @@ loop:
 		case '.':
 			cursor = utf8MoveBackwards(file, cursor)
 		case ')', ']':
+			// TODO: handle here this case: map[string]ast.#
+			// should extract: 'ast'
+			// instead of: 'map[string]ast'
 			cursor = utf8MoveBackwards(file, skipToPair(file, cursor))
 		default:
 			if isIdent(letter) {
