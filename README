@@ -35,3 +35,8 @@ continue serving requests. On panic it prints stack trace also. In order
 to see a stack trace you may want to run it manually somewhere in the
 terminal using this command: 'gocode -s'. If the daemon was started
 previously, you can shut it down using this command: 'gocode close'.
+
+Bug reports:
+
+If something doesn't work as expected, post your issues here:
+http://github.com/nsf/gocode/issues
