@@ -1077,11 +1077,15 @@ func packageName(file *ast.File) string {
 	return ""
 }
 
-func (self *PackageFile) processData(data []byte) string {
-	// drop namespace and locals
+func (self *PackageFile) resetLocals() {
 	self.l = make(map[string]*Decl)
 	self.cfns = make(map[string]string)
 	self.cfnsReverse = make(map[string]string)
+}
+
+func (self *PackageFile) processData(data []byte) string {
+	// drop namespace and locals
+	self.resetLocals()
 
 	tc := new(TokCollection)
 	cur, file, block := tc.ripOffDecl(data, self.ctx.cursor)
@@ -1111,8 +1115,7 @@ func (self *PackageFile) processData(data []byte) string {
 }
 
 func (self *PackageFile) processFile(filename string) {
-	self.l = make(map[string]*Decl)
-	self.cfns = make(map[string]string)
+	self.resetLocals()
 
 	file, _ := parser.ParseFile(filename, nil, nil, 0)
 	for _, decl := range file.Decls {
