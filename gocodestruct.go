@@ -112,6 +112,8 @@ func astFieldListToDecls(f *ast.FieldList, class int, file *PackageFile) []*Decl
 			decls[i].Children = astTypeToChildren(field.Type, file)
 			decls[i].Embedded = astTypeToEmbedded(field.Type)
 			decls[i].File = file
+			decls[i].ValueIndex = -1
+			decls[i].init()
 			i++
 		}
 	}
@@ -162,7 +164,13 @@ func astTypeToChildren(ty ast.Expr, file *PackageFile) []*Decl {
 	return nil
 }
 
-func astDeclToDecl(name string, d ast.Decl, value ast.Expr, vindex int, file *PackageFile) *Decl {
+func (self *Decl) init() {
+	if self.Type != nil {
+		self.File.foreignifyTypeExpr(self.Type)
+	}
+}
+
+func NewDeclFromAstDecl(name string, d ast.Decl, value ast.Expr, vindex int, file *PackageFile) *Decl {
 	if !astDeclConvertable(d) || name == "_" {
 		return nil
 	}
@@ -175,7 +183,7 @@ func astDeclToDecl(name string, d ast.Decl, value ast.Expr, vindex int, file *Pa
 	decl.Value = value
 	decl.ValueIndex = vindex
 	decl.File = file
-
+	decl.init()
 	return decl
 }
 
@@ -201,6 +209,7 @@ func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, file *Pac
 	decl.Value = value
 	decl.ValueIndex = vindex
 	decl.File = file
+	decl.init()
 	return decl
 }
 
@@ -523,7 +532,7 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 		}
 
 		if d := typeToDecl(it, file); d != nil {
-			c := d.FindChild(t.Sel.Name())
+			c := d.FindChildAndInEmbedded(t.Sel.Name())
 			if c != nil {
 				if c.Class == DECL_TYPE {
 					return t, true
@@ -557,19 +566,23 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 }
 
 func (d *Decl) InferType() ast.Expr {
-	if d.Class == DECL_TYPE || d.Class == DECL_MODULE {
-		// we're the type itself
+	switch d.Class {
+	case DECL_TYPE:
 		return ast.NewIdent(d.Name)
+	case DECL_MODULE:
+		name := d.File.localModuleName(d.Name)
+		if name == "" {
+			return nil
+		}
+		return ast.NewIdent(name)
 	}
 
 	// shortcut
 	if d.Type != nil && d.Value == nil {
-		d.File.foreignifyTypeExpr(d.Type)
 		return d.Type
 	}
 
 	d.Type, _ = inferType(d.Value, d.ValueIndex, d.File)
-	d.File.foreignifyTypeExpr(d.Type)
 	return d.Type
 }
 
@@ -589,4 +602,18 @@ func (d *Decl) FindChildNum(name string) int {
 		}
 	}
 	return -1
+}
+
+func (d *Decl) FindChildAndInEmbedded(name string) *Decl {
+	c := d.FindChild(name)
+	if c == nil {
+		for _, e := range d.Embedded {
+			typedecl := typeToDecl(e, d.File)
+			c = typedecl.FindChildAndInEmbedded(name)
+			if c != nil {
+				break
+			}
+		}
+	}
+	return c
 }

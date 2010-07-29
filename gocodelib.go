@@ -454,9 +454,8 @@ $$
 `
 
 func (self *AutoCompleteContext) addBuiltinUnsafe() {
-	filename := findGlobalFile("unsafe")
-	self.processPackageData(filename, "unsafe", "", builtinUnsafePackage, nil)
-	self.cache[filename] = true
+	self.processPackageData("unsafe", builtinUnsafePackage)
+	self.cache[findGlobalFile("unsafe")] = NewModuleCacheForever("unsafe")
 }
 
 func (self *PackageFile) processPackage(filename, uniquename, pkgname string) {
@@ -465,24 +464,26 @@ func (self *PackageFile) processPackage(filename, uniquename, pkgname string) {
 		// for local packages use full path as an unique name
 		uniquename = filename
 	}
-	if self.ctx.cache[filename] {
+
+	if m, ok := self.ctx.cache[filename]; ok {
+		m.updateCache()
 		if pkgname == "" {
-			pkgname = self.ctx.defaliases[uniquename]
+			pkgname = m.defalias
 		}
 		self.addPackageAlias(pkgname, uniquename)
 		return
 	}
 
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return
+	self.ctx.cache[filename] = NewModuleCache(filename, uniquename, self.ctx)
+	m := self.ctx.cache[filename]
+
+	if pkgname == "" {
+		pkgname = m.defalias
 	}
-	self.ctx.cache[filename] = true
-	s := string(data)
-	self.ctx.processPackageData(filename, uniquename, pkgname, s, self)
+	self.addPackageAlias(pkgname, uniquename)
 }
 
-func (self *AutoCompleteContext) processPackageData(filename, uniquename, pkgname, s string, file *PackageFile) {
+func (self *AutoCompleteContext) processPackageData(uniquename, s string) string {
 	i := strings.Index(s, "import\n$$\n")
 	if i == -1 {
 		panic("Can't find the import section in the archive file")
@@ -501,14 +502,7 @@ func (self *AutoCompleteContext) processPackageData(filename, uniquename, pkgnam
 
 	defpkgname := s[len("package "):i-1]
 	self.addPackageDefaultAlias(defpkgname, uniquename)
-	if pkgname == "" {
-		pkgname = defpkgname
-	}
-	if file != nil {
-		file.addPackageAlias(pkgname, uniquename)
-	}
-
-	self.debugLog("parsing package '%s'...\n", pkgname)
+	self.debugLog("parsing package '%s'...\n", defpkgname)
 	s = s[i+1:]
 
 	internalPackages := make(map[string]*bytes.Buffer)
@@ -551,16 +545,10 @@ func (self *AutoCompleteContext) processPackageData(filename, uniquename, pkgnam
 			f := new(ast.File) // fake file
 			f.Decls = decls
 			ast.FileExports(f)
-			localname := ""
-			if key == uniquename {
-				localname = self.genForeignPackageAlias(pkgname, uniquename)
-				self.debugLog("\t!%s: OK (ndecls: %d)\n", key, len(decls))
-			} else {
-				self.debugLog("\t%s: OK (ndecls: %d)\n", key, len(decls))
-			}
-			self.addToPackage(key, localname, f.Decls)
+			self.addToPackage(key, f.Decls)
 		}
 	}
+	return defpkgname
 }
 
 func (self *AutoCompleteContext) beautifyIdent(ident string) string {
@@ -591,6 +579,9 @@ func (self *PackageFile) foreignifyFuncFieldList(f *ast.FieldList) {
 	}
 }
 
+// I know that probably such word doesn't even exists, but 'foreignify' is a
+// perfect description for what it does. It unties type expression from its
+// file scope.
 func (self *PackageFile) foreignifyTypeExpr(e ast.Expr) {
 	switch t := e.(type) {
 	case *ast.StarExpr:
@@ -1049,7 +1040,7 @@ func (self *PackageFile) processDecl(decl ast.Decl, parseLocals bool) {
 				}
 			}
 
-			d := astDeclToDecl(name, decl, value, valueindex, self)
+			d := NewDeclFromAstDecl(name, decl, value, valueindex, self)
 			if d == nil {
 				continue
 			}
@@ -1087,6 +1078,7 @@ func (self *PackageFile) processData(data []byte) string {
 	// drop namespace and locals
 	self.l = make(map[string]*Decl)
 	self.cfns = make(map[string]string)
+	self.cfnsReverse = make(map[string]string)
 
 	tc := new(TokCollection)
 	cur, file, block := tc.ripOffDecl(data, self.ctx.cursor)
@@ -1144,16 +1136,67 @@ type ForeignPackage struct {
 }
 
 type ModuleCache struct {
-	Name string // full name (example: "go/ast")
-	Mtime int64 // modification time
+	// full name (example: "go/ast", "/full/path/to/local/localpackage.a")
+	// NOTE: it's not a file name, it is a name in 'm' map
+	name string
+	filename string
+	mtime int64 // modification time
+	checked bool // is checked by current iteration?
+	defalias string // default alias (example: "ast", "localpackage")
+	ctx *AutoCompleteContext
+}
+
+func NewModuleCache(filename, uniquename string, ctx *AutoCompleteContext) *ModuleCache {
+	m := new(ModuleCache)
+	m.name = uniquename
+	m.filename = filename
+	m.mtime = 0
+	m.checked = false
+	m.defalias = ""
+	m.ctx = ctx
+	m.updateCache()
+	return m
+}
+
+func NewModuleCacheForever(defalias string) *ModuleCache {
+	m := new(ModuleCache)
+	m.mtime = -1
+	m.defalias = defalias
+	return m
+}
+
+func (self *ModuleCache) updateCache() {
+	if self.checked || self.mtime == -1 {
+		return
+	}
+	self.checked = true
+	stat, err := os.Stat(self.filename)
+	if err != nil {
+		panic(err.String())
+	}
+
+	if self.mtime != stat.Mtime_ns {
+		// delete old module
+		self.ctx.m[self.name] = nil, false
+		self.mtime = stat.Mtime_ns
+
+		// try load new
+		data, err := ioutil.ReadFile(self.filename)
+		if err != nil {
+			return
+		}
+		self.defalias = self.ctx.processPackageData(self.name, string(data))
+	}
 }
 
 type PackageFile struct {
-	// current file namespace (used for imported modules)
-	// imported name -> full name (as key in m)
 	name string
 	packageName string
+
+	// current file namespace (used for imported modules)
+	// imported name -> full name (as key in m)
 	cfns map[string]string
+	cfnsReverse map[string]string
 	l map[string]*Decl
 	mtime int64
 	ctx *AutoCompleteContext
@@ -1171,6 +1214,7 @@ func NewPackageFileFromFile(ctx *AutoCompleteContext, name, packageName string) 
 	p.name = name
 	p.packageName = packageName
 	p.cfns = make(map[string]string)
+	p.cfnsReverse = make(map[string]string)
 	p.l = make(map[string]*Decl)
 	p.mtime = 0
 	p.ctx = ctx
@@ -1183,6 +1227,7 @@ func NewPackageFile(ctx *AutoCompleteContext) *PackageFile {
 	p.name = ""
 	p.packageName = ""
 	p.cfns = make(map[string]string)
+	p.cfnsReverse = make(map[string]string)
 	p.l = make(map[string]*Decl)
 	p.mtime = 0
 	p.ctx = ctx
@@ -1197,7 +1242,7 @@ type AutoCompleteContext struct {
 	current *PackageFile
 	others map[string]*PackageFile
 
-	cache map[string]bool // stupid, temporary
+	cache map[string]*ModuleCache
 
 	debuglog io.Writer
 
@@ -1213,7 +1258,7 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.defaliases = make(map[string]string)
 	self.current = NewPackageFile(self)
 	self.others = make(map[string]*PackageFile)
-	self.cache = make(map[string]bool)
+	self.cache = make(map[string]*ModuleCache)
 	self.cursor = -1
 	self.addBuiltinUnsafe()
 	return self
@@ -1225,15 +1270,20 @@ func (self *AutoCompleteContext) debugLog(f string, a ...interface{}) {
 	}
 }
 
-func (self *AutoCompleteContext) addToPackage(globalname, localname string, decls []ast.Decl) {
+func (self *AutoCompleteContext) dropModulesCheckedStatus() {
+	for _, m := range self.cache {
+		m.checked = false
+	}
+}
+
+func (self *AutoCompleteContext) addToPackage(globalname string, decls []ast.Decl) {
 	if self.m[globalname] == nil {
-		self.m[globalname] = NewDecl(localname, DECL_MODULE, self.current)
+		// I use self.current here as a file, because global package
+		// cache doesn't tied to a file scope. All its idents are safe
+		// to use in any file scope (they are foreignified)
+		self.m[globalname] = NewDecl(globalname, DECL_MODULE, self.current)
 	}
 	module := self.m[globalname]
-
-	if module.Name == "" && localname != "" {
-		module.Name = localname
-	}
 
 	for _, decl := range decls {
 		decls := splitDecls(decl)
@@ -1253,7 +1303,7 @@ func (self *AutoCompleteContext) addToPackage(globalname, localname string, decl
 					}
 				}
 
-				d := astDeclToDecl(name, decl, value, valueindex, self.current)
+				d := NewDeclFromAstDecl(name, decl, value, valueindex, self.current)
 				if d == nil {
 					continue
 				}
@@ -1286,6 +1336,7 @@ func (self *AutoCompleteContext) addToPackage(globalname, localname string, decl
 
 func (self *PackageFile) addPackageAlias(alias string, globalname string) {
 	self.cfns[alias] = globalname
+	self.cfnsReverse[globalname] = alias
 }
 
 func (self *AutoCompleteContext) addPackageDefaultAlias(alias string, globalname string) {
@@ -1320,6 +1371,14 @@ func (self *PackageFile) moduleRealName(name string) string {
 		if ok {
 			return realname
 		}
+	}
+	return ""
+}
+
+func (self *PackageFile) localModuleName(name string) string {
+	name, ok := self.cfnsReverse[name]
+	if ok {
+		return name
 	}
 	return ""
 }
@@ -1460,7 +1519,6 @@ func (self *OutBuffers) appendDecl(p string, decl *Decl, class int) {
 func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 	if decl.Embedded != nil {
 		for _, emb := range decl.Embedded {
-			decl.File.foreignifyTypeExpr(emb)
 			typedecl := typeToDecl(emb, decl.File)
 			if typedecl != nil {
 				for _, c := range typedecl.Children {
@@ -1477,6 +1535,7 @@ func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 // 2. apropos types (pretty-printed)
 // 3. apropos classes
 func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
+	self.dropModulesCheckedStatus()
 	self.cursor = cursor
 	self.current.name = filename
 	self.current.packageName = self.current.processData(file)
@@ -1503,7 +1562,9 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 			class = DECL_MODULE
 		}
 		if da.Decl == nil {
-			// propose modules
+			// In case if no declaraion is a subject of completion, propose all:
+
+			// modules
 			for key, value := range self.current.cfns {
 				if _, ok := self.m[value]; ok {
 					b.appendPackage(da.Partial, key, class)
@@ -1521,6 +1582,8 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 				}
 			}
 		} else {
+			// propose all children of a subject declaration and
+			// propose all children of its embedded types
 			for _, decl := range da.Decl.Children {
 				b.appendDecl(da.Partial, decl, class)
 			}
