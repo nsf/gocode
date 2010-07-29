@@ -36,6 +36,10 @@ to see a stack trace you may want to run it manually somewhere in the
 terminal using this command: 'gocode -s'. If the daemon was started
 previously, you can shut it down using this command: 'gocode close'.
 
+NOTE: I'm trying to keep git master branch always in a working state.
+Therefore it's safe and a good idea to keep your app in sync with git
+repo.
+
 Bug reports:
 
 If something doesn't work as expected, post your issues here:
