@@ -318,6 +318,9 @@ func (d *Decl) PrettyPrintType(out io.Writer, ac *AutoCompleteContext) {
 }
 
 func (d *Decl) AddChild(cd *Decl) {
+	// XXX: FindChildNum has linear complexity,
+	// maybe it's worth trying to replace Children to a map type.
+	// Currently it's not a big concern, because performance is acceptable.
 	if i := d.FindChildNum(cd.Name); i != -1 {
 		d.Children[i] = cd
 		return
