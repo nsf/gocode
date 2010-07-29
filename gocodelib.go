@@ -501,7 +501,6 @@ func (self *AutoCompleteContext) processPackageData(uniquename, s string) string
 	}
 
 	defpkgname := s[len("package "):i-1]
-	self.addPackageDefaultAlias(defpkgname, uniquename)
 	self.debugLog("parsing package '%s'...\n", defpkgname)
 	s = s[i+1:]
 
@@ -1237,7 +1236,6 @@ func NewPackageFile(ctx *AutoCompleteContext) *PackageFile {
 type AutoCompleteContext struct {
 	m map[string]*Decl // all modules (lifetime cache)
 	foreigns map[string]ForeignPackage
-	defaliases map[string]string
 
 	current *PackageFile
 	others map[string]*PackageFile
@@ -1255,7 +1253,6 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
 	self.m = make(map[string]*Decl)
 	self.foreigns = make(map[string]ForeignPackage)
-	self.defaliases = make(map[string]string)
 	self.current = NewPackageFile(self)
 	self.others = make(map[string]*PackageFile)
 	self.cache = make(map[string]*ModuleCache)
@@ -1337,10 +1334,6 @@ func (self *AutoCompleteContext) addToPackage(globalname string, decls []ast.Dec
 func (self *PackageFile) addPackageAlias(alias string, globalname string) {
 	self.cfns[alias] = globalname
 	self.cfnsReverse[globalname] = alias
-}
-
-func (self *AutoCompleteContext) addPackageDefaultAlias(alias string, globalname string) {
-	self.defaliases[globalname] = alias
 }
 
 func (self *AutoCompleteContext) genForeignPackageAlias(alias, globalname string) string {
@@ -1619,12 +1612,6 @@ func (self *AutoCompleteContext) Status() string {
 		for key, foreign := range self.foreigns {
 			fmt.Fprintf(buf, "%s:\n", key)
 			fmt.Fprintf(buf, "\t%s\n\t%s\n", foreign.Abbrev, foreign.Unique)
-		}
-	}
-	if len(self.defaliases) > 0 {
-		fmt.Fprintf(buf, "\nListing default aliases:\n")
-		for key, value := range self.defaliases {
-			fmt.Fprintf(buf, "%s = %s\n", key, value)
 		}
 	}
 	return buf.String()
