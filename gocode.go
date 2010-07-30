@@ -189,10 +189,6 @@ func Cmd_AutoComplete(c *rpc.Client) {
 		return
 	}
 
-	if len(names) != len(types) || len(names) != len(classes) {
-		panic("Lengths should match!")
-	}
-
 	formatter.WriteCandidates(names, types, classes, partial)
 }
 

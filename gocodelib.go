@@ -1644,6 +1644,9 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	if b.names.Len() == 0 || b.types.Len() == 0 || b.classes.Len() == 0 {
 		return nil, nil, nil, 0
 	}
+	if b.names.Len() != b.types.Len() || b.names.Len() != b.classes.Len() {
+		panic("Lengths should match")
+	}
 
 	var tri TriStringArrays
 	tri.first = strings.Split(b.names.String()[0:b.names.Len()-1], "\n", -1)
