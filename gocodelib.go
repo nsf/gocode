@@ -1644,14 +1644,14 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	if b.names.Len() == 0 || b.types.Len() == 0 || b.classes.Len() == 0 {
 		return nil, nil, nil, 0
 	}
-	if b.names.Len() != b.types.Len() || b.names.Len() != b.classes.Len() {
-		panic("Lengths should match")
-	}
 
 	var tri TriStringArrays
 	tri.first = strings.Split(b.names.String()[0:b.names.Len()-1], "\n", -1)
 	tri.second = strings.Split(b.types.String()[0:b.types.Len()-1], "\n", -1)
 	tri.third = strings.Split(b.classes.String()[0:b.classes.Len()-1], "\n", -1)
+	if len(tri.first) != len(tri.second) || len(tri.first) != len(tri.third) {
+		panic("Lengths should match")
+	}
 	sort.Sort(tri)
 	return tri.first, tri.second, tri.third, partial
 }

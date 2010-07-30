@@ -67,6 +67,13 @@ func skipToPair(file []byte, cursor int) int {
 }
 
 func findExpr(file []byte) []byte {
+	const (
+		LAST_NONE = iota
+		LAST_DOT
+		LAST_PAREN
+		LAST_IDENT
+	)
+	last := LAST_NONE
 	cursor := len(file)
 	cursor = utf8MoveBackwards(file, cursor)
 loop:
@@ -76,14 +83,17 @@ loop:
 		switch c {
 		case '.':
 			cursor = utf8MoveBackwards(file, cursor)
+			last = LAST_DOT
 		case ')', ']':
-			// TODO: handle here this case: map[string]ast.#
-			// should extract: 'ast'
-			// instead of: 'map[string]ast'
+			if last == LAST_IDENT {
+				break loop
+			}
 			cursor = utf8MoveBackwards(file, skipToPair(file, cursor))
+			last = LAST_PAREN
 		default:
 			if isIdent(letter) {
 				cursor = skipIdent(file, cursor)
+				last = LAST_IDENT
 			} else {
 				break loop
 			}
