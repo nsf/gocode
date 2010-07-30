@@ -813,7 +813,7 @@ func (self *PackageFile) processFieldList(fieldList *ast.FieldList) {
 func (self *PackageFile) addVarDecl(d *Decl) {
 	decl, ok := self.l[d.Name]
 	if ok {
-		decl.Expand(d)
+		decl.ExpandOrReplace(d)
 	} else {
 		self.l[d.Name] = d
 	}
@@ -1101,7 +1101,7 @@ func (self *PackageFile) processDecl(decl ast.Decl, parseLocals bool) {
 				if ok {
 					decl.AddChild(d)
 				} else {
-					decl = NewDecl(methodof, DECL_TYPE, self)
+					decl = NewDecl(methodof, DECL_METHODS_STUB, self)
 					self.l[methodof] = decl
 					decl.AddChild(d)
 				}
@@ -1364,14 +1364,14 @@ func (self *AutoCompleteContext) addToPackage(globalname string, decls []ast.Dec
 					if decl != nil {
 						decl.AddChild(d)
 					} else {
-						decl = NewDecl(methodof, DECL_TYPE, self.current)
-						module.AddChild(decl)
+						decl = NewDecl(methodof, DECL_METHODS_STUB, self.current)
 						decl.AddChild(d)
+						module.AddChild(decl)
 					}
 				} else {
 					decl := module.FindChild(d.Name)
 					if decl != nil {
-						decl.Expand(d)
+						decl.ExpandOrReplace(d)
 					} else {
 						module.AddChild(d)
 					}
@@ -1448,7 +1448,7 @@ func (self *PackageFile) findDecl(name string) *Decl {
 			if decl == nil {
 				decl = d.DeepCopy()
 			} else {
-				decl.Expand(d)
+				decl.ExpandOrReplace(d)
 			}
 		}
 	}

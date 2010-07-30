@@ -14,6 +14,10 @@ const (
 	DECL_TYPE
 	DECL_FUNC
 	DECL_MODULE
+
+	// this one serves as a temporary type for those methods that were
+	// declared before their actual owner
+	DECL_METHODS_STUB
 )
 
 var declClassToString = map[int]string{
@@ -269,16 +273,17 @@ func (d *Decl) ClassName() string {
 	return declClassToString[d.Class]
 }
 
-func (d *Decl) Expand(other *Decl) {
-	// in case if it's a variable, just replace an old one with a new one
-	if d.Class == DECL_VAR {
+func (d *Decl) ExpandOrReplace(other *Decl) {
+	// expand only if it's a methods stub, otherwise simply copy
+	if d.Class != DECL_METHODS_STUB && other.Class != DECL_METHODS_STUB {
 		d.Copy(other)
 		return
 	}
 
-	// otherwise apply Type and Class and append Children
-	d.Type = other.Type
-	d.Class = other.Class
+	if d.Class == DECL_METHODS_STUB {
+		d.Type = other.Type
+		d.Class = other.Class
+	}
 
 	if other.Children != nil {
 		for _, c := range other.Children {
@@ -286,7 +291,7 @@ func (d *Decl) Expand(other *Decl) {
 		}
 	}
 
-	if d.Embedded == nil && other.Embedded != nil {
+	if other.Embedded != nil {
 		d.Embedded = other.Embedded
 		d.File = other.File
 	}
@@ -296,7 +301,7 @@ func (d *Decl) Matches(p string) bool {
 	if p != "" && !startsWith(d.Name, p) {
 		return false
 	}
-	if d.Class == DECL_TYPE && d.Type == nil {
+	if d.Class == DECL_METHODS_STUB {
 		return false
 	}
 	return true
