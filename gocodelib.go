@@ -1221,7 +1221,7 @@ func (self *ModuleCache) updateCache() {
 	self.checked = true
 	stat, err := os.Stat(self.filename)
 	if err != nil {
-		panic(err.String())
+		return
 	}
 
 	if self.mtime != stat.Mtime_ns {
