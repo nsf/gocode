@@ -31,7 +31,7 @@ type Decl struct {
 
 	// functions for interface type, fields+methods for struct type
 	// variables with anonymous struct/interface type may have children too
-	Children []*Decl
+	Children map[string]*Decl
 
 	// embedded types
 	Embedded []ast.Expr
@@ -95,25 +95,30 @@ func astDeclConvertable(d ast.Decl) bool {
 	return false
 }
 
-func astFieldListToDecls(f *ast.FieldList, class int, file *PackageFile) []*Decl {
+func astFieldListToDecls(f *ast.FieldList, class int, file *PackageFile) map[string]*Decl {
 	count := 0
 	for _, field := range f.List {
 		count += len(field.Names)
 	}
 
-	decls := make([]*Decl, count)
+	if count == 0 {
+		return nil
+	}
+
+	decls := make(map[string]*Decl, count)
 	i := 0
 	for _, field := range f.List {
 		for _, name := range field.Names {
-			decls[i] = new(Decl)
-			decls[i].Name = name.Name()
-			decls[i].Type = field.Type
-			decls[i].Class = class
-			decls[i].Children = astTypeToChildren(field.Type, file)
-			decls[i].Embedded = astTypeToEmbedded(field.Type)
-			decls[i].File = file
-			decls[i].ValueIndex = -1
-			decls[i].init()
+			d := new(Decl)
+			d.Name = name.Name()
+			d.Type = field.Type
+			d.Class = class
+			d.Children = astTypeToChildren(field.Type, file)
+			d.Embedded = astTypeToEmbedded(field.Type)
+			d.File = file
+			d.ValueIndex = -1
+			d.init()
+			decls[d.Name] = d
 			i++
 		}
 	}
@@ -154,7 +159,7 @@ func astTypeToEmbedded(ty ast.Expr) []ast.Expr {
 	return nil
 }
 
-func astTypeToChildren(ty ast.Expr, file *PackageFile) []*Decl {
+func astTypeToChildren(ty ast.Expr, file *PackageFile) map[string]*Decl {
 	switch t := ty.(type) {
 	case *ast.StructType:
 		return astFieldListToDecls(t.Fields, DECL_VAR, file)
@@ -248,8 +253,10 @@ func (other *Decl) DeepCopy() *Decl {
 	d.Type = other.Type
 	d.Value = other.Value
 	d.ValueIndex = other.ValueIndex
-	d.Children = make([]*Decl, len(other.Children))
-	copy(d.Children, other.Children)
+	d.Children = make(map[string]*Decl, len(other.Children))
+	for key, value := range other.Children {
+		d.Children[key] = value
+	}
 	if other.Embedded != nil {
 		d.Embedded = make([]ast.Expr, len(other.Embedded))
 		copy(d.Embedded, other.Embedded)
@@ -318,32 +325,10 @@ func (d *Decl) PrettyPrintType(out io.Writer, ac *AutoCompleteContext) {
 }
 
 func (d *Decl) AddChild(cd *Decl) {
-	// XXX: FindChildNum has linear complexity,
-	// maybe it's worth trying to replace Children to a map type.
-	// Currently it's not a big concern, because performance is acceptable.
-	if i := d.FindChildNum(cd.Name); i != -1 {
-		d.Children[i] = cd
-		return
-	}
-
 	if d.Children == nil {
-		d.Children = make([]*Decl, 0, 4)
+		d.Children = make(map[string]*Decl)
 	}
-
-	if cap(d.Children) < len(d.Children)+1 {
-		newcap := cap(d.Children) * 2
-		if newcap == 0 {
-			newcap = 4
-		}
-
-		s := make([]*Decl, len(d.Children), newcap)
-		copy(s, d.Children)
-		d.Children = s
-	}
-
-	i := len(d.Children)
-	d.Children = d.Children[0:i+1]
-	d.Children[i] = cd
+	d.Children[cd.Name] = cd
 }
 
 func checkForBuiltinFuncs(c *ast.CallExpr) ast.Expr {
@@ -590,21 +575,13 @@ func (d *Decl) InferType() ast.Expr {
 }
 
 func (d *Decl) FindChild(name string) *Decl {
-	for _, c := range d.Children {
-		if c.Name == name {
-			return c
-		}
+	if d.Children == nil {
+		return nil
+	}
+	if c, ok := d.Children[name]; ok {
+		return c
 	}
 	return nil
-}
-
-func (d *Decl) FindChildNum(name string) int {
-	for i, c := range d.Children {
-		if c.Name == name {
-			return i
-		}
-	}
-	return -1
 }
 
 func (d *Decl) FindChildAndInEmbedded(name string) *Decl {
