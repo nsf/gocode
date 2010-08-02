@@ -484,7 +484,7 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 			break
 		}
 		if isType {
-			// it it's a type, add * modifier, make it a 'pointer of' type
+			// if it's a type, add * modifier, make it a 'pointer of' type
 			e := new(ast.StarExpr)
 			e.X = it
 			return e, true
