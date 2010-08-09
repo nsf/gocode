@@ -34,10 +34,9 @@ $$
 `
 
 func (self *AutoCompleteContext) addBuiltinUnsafe() {
-	fname := findGlobalFile("unsafe")
 	module := NewModuleCacheForever("unsafe", "unsafe")
 	module.processPackageData(builtinUnsafePackage)
-	self.mcache[fname] = module
+	self.mcache["unsafe"] = module
 }
 
 func checkFuncFieldList(f *ast.FieldList) bool {
