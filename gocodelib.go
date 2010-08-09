@@ -5,10 +5,10 @@ import (
 	"bytes"
 	"go/parser"
 	"go/ast"
-	"strings"
 	"io/ioutil"
 	"path"
 	"sort"
+	"container/vector"
 )
 
 //-------------------------------------------------------------------------------
@@ -107,35 +107,6 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	return self
 }
 
-//-------------------------------------------------------------------------
-// Sort interface for TriStringArrays
-//-------------------------------------------------------------------------
-
-type TriStringArrays struct {
-	first []string
-	second []string
-	third []string
-}
-
-func (self TriStringArrays) Len() int {
-	return len(self.first)
-}
-
-func (self TriStringArrays) Less(i, j int) bool {
-	if self.third[i][0] == self.third[j][0] {
-		return self.first[i] < self.first[j]
-	}
-	return self.third[i] < self.third[j]
-}
-
-func (self TriStringArrays) Swap(i, j int) {
-	self.first[i], self.first[j] = self.first[j], self.first[i]
-	self.second[i], self.second[j] = self.second[j], self.second[i]
-	self.third[i], self.third[j] = self.third[j], self.third[i]
-}
-
-//-------------------------------------------------------------------------
-
 func (self *AutoCompleteContext) updateOtherPackageFiles() {
 	packageName := self.current.packageName
 	filename := self.current.name
@@ -168,15 +139,17 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 //-------------------------------------------------------------------------
 
 type OutBuffers struct {
-	names, types, classes *bytes.Buffer
+	tmpbuf *bytes.Buffer
+	names, types, classes vector.StringVector
 	ctx *AutoCompleteContext
 }
 
 func NewOutBuffers(ctx *AutoCompleteContext) *OutBuffers {
 	b := new(OutBuffers)
-	b.names = bytes.NewBuffer(make([]byte, 0, 4096))
-	b.types = bytes.NewBuffer(make([]byte, 0, 4096))
-	b.classes = bytes.NewBuffer(make([]byte, 0, 4096))
+	b.tmpbuf = bytes.NewBuffer(make([]byte, 0, 1024))
+	b.names = vector.StringVector(make([]string, 0, 1024))
+	b.types = vector.StringVector(make([]string, 0, 1024))
+	b.classes = vector.StringVector(make([]string, 0, 1024))
 	b.ctx = ctx
 	return b
 }
@@ -188,12 +161,21 @@ func matchClass(declclass int, class int) bool {
 	return false
 }
 
-func (self *OutBuffers) appendPackage(p, pak string, class int) {
-	if startsWith(pak, p) || matchClass(DECL_MODULE, class) {
-		fmt.Fprintf(self.names, "%s\n", pak)
-		fmt.Fprintf(self.types, "\n")
-		fmt.Fprintf(self.classes, "module\n")
+func (self *OutBuffers) Len() int {
+	return self.names.Len()
+}
+
+func (self *OutBuffers) Less(i, j int) bool {
+	if self.classes[i][0] == self.classes[j][0] {
+		return self.names[i] < self.names[j]
 	}
+	return self.classes[i] < self.classes[j]
+}
+
+func (self *OutBuffers) Swap(i, j int) {
+	self.names[i], self.names[j] = self.names[j], self.names[i]
+	self.types[i], self.types[j] = self.types[j], self.types[i]
+	self.classes[i], self.classes[j] = self.classes[j], self.classes[i]
 }
 
 func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
@@ -201,10 +183,13 @@ func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
 		if !checkTypeExpr(decl.Type) {
 			return
 		}
-		fmt.Fprintf(self.names, "%s\n", name)
-		decl.PrettyPrintType(self.types)
-		fmt.Fprintf(self.types, "\n")
-		fmt.Fprintf(self.classes, "%s\n", decl.ClassName())
+		self.names.Push(name)
+
+		decl.PrettyPrintType(self.tmpbuf)
+		self.types.Push(self.tmpbuf.String())
+		self.tmpbuf.Reset()
+
+		self.classes.Push(decl.ClassName())
 	}
 }
 
@@ -446,15 +431,8 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 		return nil, nil, nil, 0
 	}
 
-	var tri TriStringArrays
-	tri.first = strings.Split(b.names.String()[0:b.names.Len()-1], "\n", -1)
-	tri.second = strings.Split(b.types.String()[0:b.types.Len()-1], "\n", -1)
-	tri.third = strings.Split(b.classes.String()[0:b.classes.Len()-1], "\n", -1)
-	if len(tri.first) != len(tri.second) || len(tri.first) != len(tri.third) {
-		panic("Lengths should match")
-	}
-	sort.Sort(tri)
-	return tri.first, tri.second, tri.third, partial
+	sort.Sort(b)
+	return b.names, b.types, b.classes, partial
 }
 
 func (self *AutoCompleteContext) Status() string {
