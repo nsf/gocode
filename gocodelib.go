@@ -469,7 +469,9 @@ func (self *AutoCompleteContext) Status() string {
 	}
 	if self.current.name != "" {
 		fmt.Fprintf(buf, "Last editted file: %s (package: %s)\n", self.current.name, self.current.packageName)
-		fmt.Fprintf(buf, "\nOther files from the current package:\n")
+		if len(self.others) > 0 {
+			fmt.Fprintf(buf, "\nOther files from the current package:\n")
+		}
 		for _, f := range self.others {
 			fmt.Fprintf(buf, "\t%s\n", f.name)
 		}
