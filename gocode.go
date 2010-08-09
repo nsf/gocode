@@ -16,7 +16,6 @@ var (
 	server = flag.Bool("s", false, "run a server instead of a client")
 	format = flag.String("f", "nice", "output format (vim | emacs | nice)")
 	input = flag.String("in", "", "use this file instead of stdin input")
-	debug = flag.Bool("debug", false, "turn on additional debug messages")
 )
 
 type Formatter interface {
@@ -141,9 +140,6 @@ func serverFunc() int {
 	rpcremote := new(RPCRemote)
 	rpc.Register(rpcremote)
 
-	if *debug {
-		daemon.ctx.debuglog = os.Stdout
-	}
 	daemon.acr.Loop()
 	return 0
 }

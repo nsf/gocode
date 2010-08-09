@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 	"io"
+	"bytes"
+	"strings"
 )
 
 const (
@@ -47,7 +49,9 @@ type Decl struct {
 	// to an index into the return value tuple, otherwise it's a -1
 	ValueIndex int
 
-	File *PackageFile
+	// scope where this Decl was declared in (not its visibilty scope!)
+	// Decl uses it for type inference
+	Scope *Scope
 }
 
 func astDeclType(d ast.Decl) ast.Expr {
@@ -99,7 +103,7 @@ func astDeclConvertable(d ast.Decl) bool {
 	return false
 }
 
-func astFieldListToDecls(f *ast.FieldList, class int, file *PackageFile) map[string]*Decl {
+func astFieldListToDecls(f *ast.FieldList, class int, scope *Scope) map[string]*Decl {
 	count := 0
 	for _, field := range f.List {
 		count += len(field.Names)
@@ -117,9 +121,9 @@ func astFieldListToDecls(f *ast.FieldList, class int, file *PackageFile) map[str
 			d.Name = name.Name()
 			d.Type = field.Type
 			d.Class = class
-			d.Children = astTypeToChildren(field.Type, file)
+			d.Children = astTypeToChildren(field.Type, scope)
 			d.Embedded = astTypeToEmbedded(field.Type)
-			d.File = file
+			d.Scope = scope
 			d.ValueIndex = -1
 			d.init()
 			decls[d.Name] = d
@@ -163,23 +167,26 @@ func astTypeToEmbedded(ty ast.Expr) []ast.Expr {
 	return nil
 }
 
-func astTypeToChildren(ty ast.Expr, file *PackageFile) map[string]*Decl {
+func astTypeToChildren(ty ast.Expr, scope *Scope) map[string]*Decl {
 	switch t := ty.(type) {
 	case *ast.StructType:
-		return astFieldListToDecls(t.Fields, DECL_VAR, file)
+		return astFieldListToDecls(t.Fields, DECL_VAR, scope)
 	case *ast.InterfaceType:
-		return astFieldListToDecls(t.Methods, DECL_FUNC, file)
+		return astFieldListToDecls(t.Methods, DECL_FUNC, scope)
 	}
 	return nil
 }
 
-func (self *Decl) init() {
-	if self.Type != nil {
-		self.File.foreignifyTypeExpr(self.Type)
+func (d *Decl) init() {
+	if d.Type != nil {
+		foreignifyTypeExpr(d.Type, d.Scope)
+	}
+	for _, typ := range d.Embedded {
+		foreignifyTypeExpr(typ, d.Scope)
 	}
 }
 
-func NewDeclFromAstDecl(name string, d ast.Decl, value ast.Expr, vindex int, file *PackageFile) *Decl {
+func NewDeclFromAstDecl(name string, d ast.Decl, value ast.Expr, vindex int, scope *Scope) *Decl {
 	if !astDeclConvertable(d) || name == "_" {
 		return nil
 	}
@@ -187,25 +194,37 @@ func NewDeclFromAstDecl(name string, d ast.Decl, value ast.Expr, vindex int, fil
 	decl.Name = name
 	decl.Type = astDeclType(d)
 	decl.Class = astDeclClass(d)
-	decl.Children = astTypeToChildren(decl.Type, file)
+	decl.Children = astTypeToChildren(decl.Type, scope)
 	decl.Embedded = astTypeToEmbedded(decl.Type)
 	decl.Value = value
 	decl.ValueIndex = vindex
-	decl.File = file
+	decl.Scope = scope
 	decl.init()
 	return decl
 }
 
-func NewDecl(name string, class int, file *PackageFile) *Decl {
+func NewDeclTyped(name string, class int, typ ast.Expr, scope *Scope) *Decl {
+	d := NewDecl(name, class, scope)
+	d.Type = typ
+	return d
+}
+
+func NewDeclTypedNamed(name string, class int, typ string, scope *Scope) *Decl {
+	d := NewDecl(name, class, scope)
+	d.Type = ast.NewIdent(typ)
+	return d
+}
+
+func NewDecl(name string, class int, scope *Scope) *Decl {
 	decl := new(Decl)
 	decl.Name = name
 	decl.Class = class
 	decl.ValueIndex = -1
-	decl.File = file
+	decl.Scope = scope
 	return decl
 }
 
-func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, file *PackageFile) *Decl {
+func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, scope *Scope) *Decl {
 	if name == "_" {
 		return nil
 	}
@@ -213,11 +232,11 @@ func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, file *Pac
 	decl.Name = name
 	decl.Class = DECL_VAR
 	decl.Type = typ
-	decl.Children = astTypeToChildren(decl.Type, file)
+	decl.Children = astTypeToChildren(decl.Type, scope)
 	decl.Embedded = astTypeToEmbedded(decl.Type)
 	decl.Value = value
 	decl.ValueIndex = vindex
-	decl.File = file
+	decl.Scope = scope
 	decl.init()
 	return decl
 }
@@ -238,6 +257,13 @@ func MethodOf(d ast.Decl) string {
 	return ""
 }
 
+func (d *Decl) MoveToScope(scope *Scope) {
+	d.Scope = scope
+	for _, c := range d.Children {
+		c.MoveToScope(scope)
+	}
+}
+
 // complete copy
 func (d *Decl) Copy(other *Decl) {
 	d.Name = other.Name
@@ -247,7 +273,7 @@ func (d *Decl) Copy(other *Decl) {
 	d.ValueIndex = other.ValueIndex
 	d.Children = other.Children
 	d.Embedded = other.Embedded
-	d.File = other.File
+	d.Scope = other.Scope
 }
 
 func (other *Decl) DeepCopy() *Decl {
@@ -265,7 +291,7 @@ func (other *Decl) DeepCopy() *Decl {
 		d.Embedded = make([]ast.Expr, len(other.Embedded))
 		copy(d.Embedded, other.Embedded)
 	}
-	d.File = other.File
+	d.Scope = other.Scope
 	return d
 }
 
@@ -293,8 +319,15 @@ func (d *Decl) ExpandOrReplace(other *Decl) {
 
 	if other.Embedded != nil {
 		d.Embedded = other.Embedded
-		d.File = other.File
+		d.Scope = other.Scope
 	}
+}
+
+func startsWith(s, prefix string) bool {
+	if len(s) >= len(prefix) && s[0:len(prefix)] == prefix {
+		return true
+	}
+	return false
 }
 
 func (d *Decl) Matches(p string) bool {
@@ -307,7 +340,7 @@ func (d *Decl) Matches(p string) bool {
 	return true
 }
 
-func (d *Decl) PrettyPrintType(out io.Writer, ac *AutoCompleteContext) {
+func (d *Decl) PrettyPrintType(out io.Writer) {
 	switch d.Class {
 	case DECL_TYPE:
 		switch t := d.Type.(type) {
@@ -317,15 +350,15 @@ func (d *Decl) PrettyPrintType(out io.Writer, ac *AutoCompleteContext) {
 			fmt.Fprintf(out, "interface")
 		default:
 			if d.Type != nil {
-				ac.prettyPrintTypeExpr(out, d.Type)
+				prettyPrintTypeExpr(out, d.Type)
 			}
 		}
 	case DECL_VAR:
 		if d.Type != nil {
-			ac.prettyPrintTypeExpr(out, d.Type)
+			prettyPrintTypeExpr(out, d.Type)
 		}
 	case DECL_FUNC:
-		ac.prettyPrintTypeExpr(out, d.Type)
+		prettyPrintTypeExpr(out, d.Type)
 	}
 }
 
@@ -336,19 +369,21 @@ func (d *Decl) AddChild(cd *Decl) {
 	d.Children[cd.Name] = cd
 }
 
-func checkForBuiltinFuncs(c *ast.CallExpr) ast.Expr {
-	if t, ok := c.Fun.(*ast.Ident); ok {
-		switch t.Name() {
-		case "new":
-			e := new(ast.StarExpr)
-			e.X = c.Args[0]
-			return e
-		case "make":
-			return c.Args[0]
-		case "cmplx":
-			return ast.NewIdent("complex")
-		case "closed":
-			return ast.NewIdent("bool")
+func checkForBuiltinFuncs(typ *ast.Ident, c *ast.CallExpr) ast.Expr {
+	if startsWith(typ.Name(), "func(") {
+		if t, ok := c.Fun.(*ast.Ident); ok {
+			switch t.Name() {
+			case "new":
+				e := new(ast.StarExpr)
+				e.X = c.Args[0]
+				return e
+			case "make":
+				return c.Args[0]
+			case "cmplx":
+				return ast.NewIdent("complex")
+			case "closed":
+				return ast.NewIdent("bool")
+			}
 		}
 	}
 	return nil
@@ -377,68 +412,112 @@ func funcReturnType(f *ast.FuncType, index int) ast.Expr {
 	return nil
 }
 
-func typePath(e ast.Expr) string {
+type TypePath struct {
+	module string
+	name string
+}
+
+// converts type expressions like:
+// ast.Expr
+// *ast.Expr
+// $ast$go/ast.Expr
+// to a path that can be used to lookup a type related Decl
+func typePath(e ast.Expr) (r TypePath) {
+	if e == nil {
+		return TypePath{"", ""}
+	}
+
 	switch t := e.(type) {
 	case *ast.Ident:
-		return t.Name()
+		r.name = t.Name()
 	case *ast.StarExpr:
-		return typePath(t.X)
+		r = typePath(t.X)
 	case *ast.SelectorExpr:
-		path := ""
 		if ident, ok := t.X.(*ast.Ident); ok {
-			path += ident.Name()
+			r.module = filterForeignName(ident.Name())
 		}
-		return path + "." + t.Sel.Name()
+		r.name = t.Sel.Name()
 	case *ast.StructType, *ast.InterfaceType:
-		// this is an invalid identifier, means use the declaration itself
-		return "0"
+		r.name = "0"
 	}
-	return ""
+	return
 }
 
-func typeToDecl(t ast.Expr, file *PackageFile) *Decl {
-	name := typePath(t)
-	return file.findDeclByPath(name)
-}
-
-func exprToDecl(e ast.Expr, file *PackageFile) *Decl {
-	expr := NewDeclVar("tmp", nil, e, -1, file).InferType()
-	if expr == nil {
+func lookupPath(tp TypePath, scope *Scope, ctx *AutoCompleteContext) *Decl {
+	if tp.name == "" && tp.module == "" {
 		return nil
 	}
+	var decl *Decl
+	if tp.module != "" {
+		decl = ctx.m[tp.module]
+	}
 
-	name := typePath(expr)
+	if decl != nil {
+		if tp.name != "" {
+			return decl.FindChild(tp.name)
+		} else {
+			return decl
+		}
+	}
+
+	decl, ok := ctx.m[tp.name]
+	if ok {
+		return decl
+	}
+
+	return scope.lookup(tp.name)
+}
+
+func typeToDecl(t ast.Expr, scope *Scope, ctx *AutoCompleteContext) *Decl {
+	tp := typePath(t)
+	return lookupPath(tp, scope, ctx)
+}
+
+func exprToDecl(e ast.Expr, scope *Scope, ctx *AutoCompleteContext) *Decl {
+	t := NewDeclVar("tmp", nil, e, -1, scope).InferType(ctx)
+	tp := typePath(t)
+
 	var typedecl *Decl
-	if name == "0" {
-		typedecl = NewDeclVar("tmp", expr, nil, -1, file)
+	if tp.name == "0" {
+		typedecl = NewDeclVar("tmp", t, nil, -1, scope)
 	} else {
-		typedecl = file.findDeclByPath(name)
+		typedecl = lookupPath(tp, scope, ctx)
 	}
 	return typedecl
 }
 
+//-------------------------------------------------------------------------
+// Type inference
+//-------------------------------------------------------------------------
+
+type TypeInferenceContext struct {
+	index int
+	scope *Scope
+	ac *AutoCompleteContext
+}
+
 // return expr and true if it's a type or false if it's a value
-func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
-	//topLevel := file.ctx
-	//ty := reflect.Typeof(v)
-	//fmt.Println(ty)
+func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool) {
+	cc := *ctx
+	cc.index = -1
+
 	switch t := v.(type) {
 	case *ast.CompositeLit:
 		return t.Type, true
 	case *ast.Ident:
-		if d := file.findDecl(t.Name()); d != nil {
+		if d := ctx.scope.lookup(t.Name()); d != nil {
 			// we don't check for DECL_MODULE here, because module itself
 			// isn't a type, in a type context it always will be used together
 			// with	SelectorExpr like: os.Error, ast.TypeSpec, etc.
 			// and SelectorExpr ignores type bool.
-			return d.InferType(), d.Class == DECL_TYPE
+			return d.InferType(ctx.ac), d.Class == DECL_TYPE
 		}
-		return t, true // probably a builtin
+		//return t, true // probably a builtin
 	case *ast.UnaryExpr:
 		switch t.Op {
 		case token.AND:
 			// & makes sense only with values, don't even check for type
-			it, _ := inferType(t.X, -1, file)
+			it, _ := cc.inferType(t.X)
 			if it == nil {
 				break
 			}
@@ -448,11 +527,11 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 			return e, false
 		case token.ARROW:
 			// <- makes sense only with values
-			it, _ := inferType(t.X, -1, file)
+			it, _ := cc.inferType(t.X)
 			if it == nil {
 				break
 			}
-			switch index {
+			switch ctx.index {
 			case -1, 0:
 				return it.(*ast.ChanType).Value, false
 			case 1:
@@ -463,7 +542,7 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 		}
 	case *ast.IndexExpr:
 		// something[another] always returns a value and it works on a value too
-		it, _ := inferType(t.X, -1, file)
+		it, _ := cc.inferType(t.X)
 		if it == nil {
 			break
 		}
@@ -471,7 +550,7 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 		case *ast.ArrayType:
 			return t.Elt, false
 		case *ast.MapType:
-			switch index {
+			switch ctx.index {
 			case -1, 0:
 				return t.Value, false
 			case 1:
@@ -479,7 +558,7 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 			}
 		}
 	case *ast.StarExpr:
-		it, isType := inferType(t.X, -1, file)
+		it, isType := cc.inferType(t.X)
 		if it == nil {
 			break
 		}
@@ -493,44 +572,44 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 			return s.X, false
 		}
 	case *ast.CallExpr:
-		ty := checkForBuiltinFuncs(t)
-		if ty != nil {
-			// all built-in functions return a value
-			return ty, false
-		}
-
-		it, _ := inferType(t.Fun, -1, file)
+		it, _ := cc.inferType(t.Fun)
 		if it == nil {
 			break
 		}
-		switch t := it.(type) {
+		switch ct := it.(type) {
 		case *ast.FuncType:
 			// in case if <here>() is a function type variable, we're making a 
 			// func call, resulting expr is always a value
-			return funcReturnType(t, index), false
+			return funcReturnType(ct, ctx.index), false
+		case *ast.Ident:
+			ty := checkForBuiltinFuncs(ct, t)
+			if ty != nil {
+				return ty, false
+			}
+			return ct, false
 		default:
 			// otherwise it's a type cast, and the result is a value too
-			return t, false
+			return ct, false
 		}
 	case *ast.ParenExpr:
-		it, isType := inferType(t.X, -1, file)
+		it, isType := cc.inferType(t.X)
 		if it == nil {
 			break
 		}
 		return it, isType
 	case *ast.SelectorExpr:
-		it, _ := inferType(t.X, -1, file)
+		it, _ := cc.inferType(t.X)
 		if it == nil {
 			break
 		}
 
-		if d := typeToDecl(it, file); d != nil {
-			c := d.FindChildAndInEmbedded(t.Sel.Name())
+		if d := typeToDecl(it, ctx.scope, ctx.ac); d != nil {
+			c := d.FindChildAndInEmbedded(t.Sel.Name(), ctx.ac)
 			if c != nil {
 				if c.Class == DECL_TYPE {
 					return t, true
 				} else {
-					return c.InferType(), false
+					return c.InferType(ctx.ac), false
 				}
 			}
 		}
@@ -540,9 +619,9 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 		return t.Type, false
 	case *ast.TypeAssertExpr:
 		if t.Type == nil {
-			return inferType(t.X, -1, file)
+			return cc.inferType(t.X)
 		}
-		switch index {
+		switch ctx.index {
 		case -1, 0:
 			// converting a value to a different type, but return thing is a value
 			return t.Type, false
@@ -558,16 +637,10 @@ func inferType(v ast.Expr, index int, file *PackageFile) (ast.Expr, bool) {
 	return nil, false
 }
 
-func (d *Decl) InferType() ast.Expr {
+func (d *Decl) InferType(ac *AutoCompleteContext) ast.Expr {
 	switch d.Class {
-	case DECL_TYPE:
+	case DECL_TYPE, DECL_MODULE:
 		return ast.NewIdent(d.Name)
-	case DECL_MODULE:
-		name := d.File.localModuleName(d.Name)
-		if name == "" {
-			return nil
-		}
-		return ast.NewIdent(name)
 	}
 
 	// shortcut
@@ -575,7 +648,8 @@ func (d *Decl) InferType() ast.Expr {
 		return d.Type
 	}
 
-	d.Type, _ = inferType(d.Value, d.ValueIndex, d.File)
+	ctx := TypeInferenceContext{d.ValueIndex, d.Scope, ac}
+	d.Type, _ = ctx.inferType(d.Value)
 	return d.Type
 }
 
@@ -589,12 +663,12 @@ func (d *Decl) FindChild(name string) *Decl {
 	return nil
 }
 
-func (d *Decl) FindChildAndInEmbedded(name string) *Decl {
+func (d *Decl) FindChildAndInEmbedded(name string, ctx *AutoCompleteContext) *Decl {
 	c := d.FindChild(name)
 	if c == nil {
 		for _, e := range d.Embedded {
-			typedecl := typeToDecl(e, d.File)
-			c = typedecl.FindChildAndInEmbedded(name)
+			typedecl := typeToDecl(e, d.Scope, ctx)
+			c = typedecl.FindChildAndInEmbedded(name, ctx)
 			if c != nil {
 				break
 			}
@@ -602,3 +676,126 @@ func (d *Decl) FindChildAndInEmbedded(name string) *Decl {
 	}
 	return c
 }
+
+//-------------------------------------------------------------------------
+// Pretty printing
+//-------------------------------------------------------------------------
+
+func beautifyIdent(ident string) string {
+	if isNameForeignified(ident) {
+		abbrev, _ := splitForeignName(ident)
+		return abbrev
+	}
+	return ident
+}
+
+func getArrayLen(e ast.Expr) string {
+	switch t := e.(type) {
+	case *ast.BasicLit:
+		return string(t.Value)
+	case *ast.Ellipsis:
+		return "..."
+	}
+	return ""
+}
+
+func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
+	switch t := e.(type) {
+	case *ast.StarExpr:
+		fmt.Fprintf(out, "*")
+		prettyPrintTypeExpr(out, t.X)
+	case *ast.Ident:
+		fmt.Fprintf(out, beautifyIdent(t.Name()))
+	case *ast.ArrayType:
+		al := ""
+		if t.Len != nil {
+			al = getArrayLen(t.Len)
+		}
+		if al != "" {
+			fmt.Fprintf(out, "[%s]", al)
+		} else {
+			fmt.Fprintf(out, "[]")
+		}
+		prettyPrintTypeExpr(out, t.Elt)
+	case *ast.SelectorExpr:
+		prettyPrintTypeExpr(out, t.X)
+		fmt.Fprintf(out, ".%s", t.Sel.Name())
+	case *ast.FuncType:
+		fmt.Fprintf(out, "func(")
+		prettyPrintFuncFieldList(out, t.Params)
+		fmt.Fprintf(out, ")")
+
+		buf := bytes.NewBuffer(make([]byte, 0, 256))
+		nresults := prettyPrintFuncFieldList(buf, t.Results)
+		if nresults > 0 {
+			results := buf.String()
+			if strings.Index(results, ",") != -1 {
+				results = "(" + results + ")"
+			}
+			fmt.Fprintf(out, " %s", results)
+		}
+	case *ast.MapType:
+		fmt.Fprintf(out, "map[")
+		prettyPrintTypeExpr(out, t.Key)
+		fmt.Fprintf(out, "]")
+		prettyPrintTypeExpr(out, t.Value)
+	case *ast.InterfaceType:
+		fmt.Fprintf(out, "interface{}")
+	case *ast.Ellipsis:
+		fmt.Fprintf(out, "...")
+		prettyPrintTypeExpr(out, t.Elt)
+	case *ast.StructType:
+		fmt.Fprintf(out, "struct")
+	case *ast.ChanType:
+		switch t.Dir {
+		case ast.RECV:
+			fmt.Fprintf(out, "<-chan ")
+		case ast.SEND:
+			fmt.Fprintf(out, "chan<- ")
+		case ast.SEND | ast.RECV:
+			fmt.Fprintf(out, "chan ")
+		}
+		prettyPrintTypeExpr(out, t.Value)
+	case *ast.BadExpr:
+		// TODO: probably I should check that in a separate function
+		// and simply discard declarations with BadExpr as a part of their
+		// type
+	default:
+		// should never happen
+		ty := reflect.Typeof(t)
+		s := fmt.Sprintf("unknown type: %s\n", ty.String())
+		panic(s)
+	}
+}
+
+func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
+	count := 0
+	if f == nil {
+		return count
+	}
+	for i, field := range f.List {
+		// names
+		if field.Names != nil {
+			for j, name := range field.Names {
+				fmt.Fprintf(out, "%s", name.Name())
+				if j != len(field.Names)-1 {
+					fmt.Fprintf(out, ", ")
+				}
+				count++
+			}
+			fmt.Fprintf(out, " ")
+		} else {
+			count++
+		}
+
+		// type
+		prettyPrintTypeExpr(out, field.Type)
+
+		// ,
+		if i != len(f.List)-1 {
+			fmt.Fprintf(out, ", ")
+		}
+	}
+	return count
+}
+

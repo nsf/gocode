@@ -108,7 +108,7 @@ func (self *AutoCompleteContext) deduceExpr(file []byte, partial string) *DeclAp
 	if err != nil {
 		return nil
 	}
-	typedecl := exprToDecl(expr, self.current)
+	typedecl := exprToDecl(expr, self.current.topscope, self)
 	if typedecl != nil {
 		return &DeclApropos{typedecl, partial}
 	}
