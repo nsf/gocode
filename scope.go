@@ -30,20 +30,15 @@ func (s *Scope) addChild(c *Scope) {
 		s.children = make([]*Scope, 0, 4)
 	}
 
-	if cap(s.children) < len(s.children)+1 {
-		newcap := cap(s.children) * 2
-		if newcap == 0 {
-			newcap = 4
-		}
-
-		c := make([]*Scope, len(s.children), newcap)
+	n := len(s.children)
+	if cap(s.children) < n+1 {
+		c := make([]*Scope, n, n*2+1)
 		copy(c, s.children)
 		s.children = c
 	}
 
-	i := len(s.children)
-	s.children = s.children[0:i+1]
-	s.children[i] = c
+	s.children = s.children[0:n+1]
+	s.children[n] = c
 
 	c.parent = s
 }
