@@ -6,9 +6,12 @@ import (
 	"go/parser"
 	"go/ast"
 	"io/ioutil"
+	"strings"
 	"path"
 	"sort"
+	"time"
 	"container/vector"
+	"runtime"
 )
 
 //-------------------------------------------------------------------------------
@@ -179,7 +182,7 @@ func (self *OutBuffers) Swap(i, j int) {
 }
 
 func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
-	if startsWith(name, p) || matchClass(decl.Class, class) {
+	if strings.HasPrefix(name, p) || matchClass(decl.Class, class) {
 		if !checkTypeExpr(decl.Type) {
 			return
 		}
@@ -437,13 +440,40 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 
 func (self *AutoCompleteContext) Status() string {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
-	fmt.Fprintf(buf, "Number of top level packages: %d\n", len(self.m))
+	fmt.Fprintf(buf, "Server's GOMAXPROCS == %d\n", runtime.GOMAXPROCS(0))
+	fmt.Fprintf(buf, "\n%d packages were imported directly or indirectly to the current one\n", len(self.m))
 	if len(self.m) > 0 {
-		fmt.Fprintf(buf, "\nListing packages:\n")
-		for key, decl := range self.m {
-			fmt.Fprintf(buf, "'%s' : %s\n", key, decl.Name)
+		fmt.Fprintf(buf, "\nListing these packages:\n")
+		n := len(self.m)
+		i := 0
+		for _, decl := range self.m {
+			fmt.Fprintf(buf, "%s", decl.Name)
+			if i != n-1 {
+				fmt.Fprint(buf, ", ")
+			}
+			i++
 		}
 		fmt.Fprintf(buf, "\n")
+	}
+	fmt.Fprintf(buf, "\nPackage cache contains %d entries\n", len(self.mcache))
+	fmt.Fprintf(buf, "\nListing these entries:\n")
+	for _, mod := range self.mcache {
+		fmt.Fprintf(buf, "\tname: %s (default alias: %s)\n", mod.name, mod.defalias)
+		fmt.Fprintf(buf, "\timports %d declarations and %d modules\n", len(mod.main.Children), len(mod.others))
+		if mod.mtime == -1 {
+			fmt.Fprintf(buf, "\tthis package stays in cache forever (built-in package)\n")
+		} else {
+			mtime := time.SecondsToLocalTime(mod.mtime)
+			fmt.Fprintf(buf, "\tlast modification time: %s\n", mtime.String())
+		}
+		fmt.Fprintf(buf, "\n")
+	}
+	if self.current.name != "" {
+		fmt.Fprintf(buf, "Last editted file: %s (package: %s)\n", self.current.name, self.current.packageName)
+		fmt.Fprintf(buf, "\nOther files from the current package:\n")
+		for _, f := range self.others {
+			fmt.Fprintf(buf, "\t%s\n", f.name)
+		}
 	}
 	return buf.String()
 }

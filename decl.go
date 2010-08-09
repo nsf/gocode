@@ -323,15 +323,8 @@ func (d *Decl) ExpandOrReplace(other *Decl) {
 	}
 }
 
-func startsWith(s, prefix string) bool {
-	if len(s) >= len(prefix) && s[0:len(prefix)] == prefix {
-		return true
-	}
-	return false
-}
-
 func (d *Decl) Matches(p string) bool {
-	if p != "" && !startsWith(d.Name, p) {
+	if p != "" && !strings.HasPrefix(d.Name, p) {
 		return false
 	}
 	if d.Class == DECL_METHODS_STUB {
@@ -370,7 +363,7 @@ func (d *Decl) AddChild(cd *Decl) {
 }
 
 func checkForBuiltinFuncs(typ *ast.Ident, c *ast.CallExpr) ast.Expr {
-	if startsWith(typ.Name(), "func(") {
+	if strings.HasPrefix(typ.Name(), "func(") {
 		if t, ok := c.Fun.(*ast.Ident); ok {
 			switch t.Name() {
 			case "new":
