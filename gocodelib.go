@@ -277,16 +277,6 @@ func (self *AutoCompleteContext) updateCaches() {
 	}
 }
 
-func printScope(scope *Scope) {
-	for name, d := range scope.entities {
-		fmt.Printf("\t%s = %s\n", name, d.Name)
-	}
-	fmt.Printf("------------------------------------------\n")
-	if scope.parent != nil {
-		printScope(scope.parent)
-	}
-}
-
 func makeDeclSetRecursive(set map[string]*Decl, scope *Scope) {
 	for name, ent := range scope.entities {
 		if _, ok := set[name]; !ok {
