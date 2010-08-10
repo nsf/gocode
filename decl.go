@@ -22,12 +22,22 @@ const (
 	DECL_METHODS_STUB
 )
 
-var declClassToString = map[int]string{
-	0: "const",
-	1: "var",
-	2: "type",
-	3: "func",
-	4: "module",
+var declClassToString = [...]string{
+	DECL_CONST: "const",
+	DECL_VAR: "var",
+	DECL_TYPE: "type",
+	DECL_FUNC: "func",
+	DECL_MODULE: "module",
+	DECL_METHODS_STUB: "IF YOU SEE THIS, REPORT A BUG", // :D
+}
+
+var declClassToStringDebug = [...]string {
+	DECL_CONST:        " const",
+	DECL_VAR:          "   var",
+	DECL_TYPE:         "  type",
+	DECL_FUNC:         "  func",
+	DECL_MODULE:       "module",
+	DECL_METHODS_STUB: "  stub",
 }
 
 type Decl struct {
@@ -274,6 +284,24 @@ func (d *Decl) Copy(other *Decl) {
 	d.Children = other.Children
 	d.Embedded = other.Embedded
 	d.Scope = other.Scope
+}
+func (other *Decl) DeepCopy() *Decl {
+	d := new(Decl)
+	d.Name = other.Name
+	d.Class = other.Class
+	d.Type = other.Type
+	d.Value = other.Value
+	d.ValueIndex = other.ValueIndex
+	d.Children = make(map[string]*Decl, len(other.Children))
+	for key, value := range other.Children {
+		d.Children[key] = value
+	}
+	if other.Embedded != nil {
+		d.Embedded = make([]ast.Expr, len(other.Embedded))
+		copy(d.Embedded, other.Embedded)
+	}
+	d.Scope = other.Scope
+	return d
 }
 
 func (d *Decl) ClassName() string {

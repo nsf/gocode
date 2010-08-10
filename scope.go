@@ -62,7 +62,9 @@ func (s *Scope) mergeDecl(d *Decl) {
 	if !ok {
 		s.entities[d.Name] = d
 	} else {
+		decl := decl.DeepCopy()
 		decl.ExpandOrReplace(d)
+		s.entities[d.Name] = decl
 	}
 }
 

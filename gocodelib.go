@@ -437,6 +437,40 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	return b.names, b.types, b.classes, partial
 }
 
+//-------------------------------------------------------------------------
+// Status output
+//-------------------------------------------------------------------------
+
+type DeclSlice []*Decl
+func (s DeclSlice) Less(i, j int) bool {
+	if declClassToString[s[i].Class][0] == declClassToString[s[j].Class][0] {
+		return s[i].Name < s[j].Name
+	}
+	return declClassToString[s[i].Class] < declClassToString[s[j].Class]
+}
+func (s DeclSlice) Len() int { return len(s) }
+func (s DeclSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+const (
+	COLOR_red = "\033[0;31m"
+	COLOR_RED = "\033[1;31m"
+	COLOR_green = "\033[0;32m"
+	COLOR_GREEN = "\033[1;32m"
+	COLOR_yellow = "\033[0;33m"
+	COLOR_YELLOW = "\033[1;33m"
+	COLOR_blue = "\033[0;34m"
+	COLOR_BLUE = "\033[1;34m"
+	COLOR_magenta = "\033[0;35m"
+	COLOR_MAGENTA = "\033[1;35m"
+	COLOR_cyan = "\033[0;36m"
+	COLOR_CYAN = "\033[1;36m"
+	COLOR_white = "\033[0;37m"
+	COLOR_WHITE = "\033[1;37m"
+	NC = "\033[0m"
+)
+
+const STATUS_DECLS = "\t(class: %s, nchildren: %2d)\t"+ COLOR_yellow +"%s"+ NC +"\n"
+
 func (self *AutoCompleteContext) Status() string {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	fmt.Fprintf(buf, "Server's GOMAXPROCS == %d\n", runtime.GOMAXPROCS(0))
@@ -474,6 +508,36 @@ func (self *AutoCompleteContext) Status() string {
 		}
 		for _, f := range self.others {
 			fmt.Fprintf(buf, "\t%s\n", f.name)
+		}
+		fmt.Fprintf(buf, "\nListing declarations from files:\n")
+
+		var ds DeclSlice
+		var i int
+
+		fmt.Fprintf(buf, "\n%s:\n", self.current.name)
+		ds = make(DeclSlice, len(self.current.decls))
+		i = 0
+		for _, d := range self.current.decls {
+			ds[i] = d
+			i++
+		}
+		sort.Sort(ds)
+		for _, d := range ds {
+			fmt.Fprintf(buf, STATUS_DECLS, declClassToStringDebug[d.Class], len(d.Children), d.Name)
+		}
+
+		for _, f := range self.others {
+			fmt.Fprintf(buf, "\n%s:\n", f.name)
+			ds = make(DeclSlice, len(f.decls))
+			i = 0
+			for _, d := range f.decls {
+				ds[i] = d
+				i++
+			}
+			sort.Sort(ds)
+			for _, d := range ds {
+				fmt.Fprintf(buf, STATUS_DECLS, declClassToStringDebug[d.Class], len(d.Children), d.Name)
+			}
 		}
 	}
 	return buf.String()
