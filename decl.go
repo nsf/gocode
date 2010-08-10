@@ -276,25 +276,6 @@ func (d *Decl) Copy(other *Decl) {
 	d.Scope = other.Scope
 }
 
-func (other *Decl) DeepCopy() *Decl {
-	d := new(Decl)
-	d.Name = other.Name
-	d.Class = other.Class
-	d.Type = other.Type
-	d.Value = other.Value
-	d.ValueIndex = other.ValueIndex
-	d.Children = make(map[string]*Decl, len(other.Children))
-	for key, value := range other.Children {
-		d.Children[key] = value
-	}
-	if other.Embedded != nil {
-		d.Embedded = make([]ast.Expr, len(other.Embedded))
-		copy(d.Embedded, other.Embedded)
-	}
-	d.Scope = other.Scope
-	return d
-}
-
 func (d *Decl) ClassName() string {
 	return declClassToString[d.Class]
 }
