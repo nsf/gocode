@@ -469,7 +469,14 @@ const (
 	NC = "\033[0m"
 )
 
-const STATUS_DECLS = "\t(class: %s, nchildren: %2d)\t"+ COLOR_yellow +"%s"+ NC +"\n"
+var declClassToColor = [...]string{
+	DECL_CONST: COLOR_WHITE,
+	DECL_VAR: COLOR_magenta,
+	DECL_TYPE: COLOR_cyan,
+	DECL_FUNC: COLOR_green,
+	DECL_MODULE: COLOR_red,
+	DECL_METHODS_STUB: COLOR_red,
+}
 
 func (self *AutoCompleteContext) Status() string {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
@@ -511,6 +518,8 @@ func (self *AutoCompleteContext) Status() string {
 		}
 		fmt.Fprintf(buf, "\nListing declarations from files:\n")
 
+		const STATUS_DECLS = "\t%s%s"+ NC +" "+ COLOR_yellow +"%s"+ NC +"\n"
+		const STATUS_DECLS_CHILDREN = "\t%s%s"+ NC +" "+ COLOR_yellow +"%s"+ NC +" (%d)\n"
 		var ds DeclSlice
 		var i int
 
@@ -523,7 +532,17 @@ func (self *AutoCompleteContext) Status() string {
 		}
 		sort.Sort(ds)
 		for _, d := range ds {
-			fmt.Fprintf(buf, STATUS_DECLS, declClassToStringDebug[d.Class], len(d.Children), d.Name)
+			if len(d.Children) > 0 {
+				fmt.Fprintf(buf, STATUS_DECLS_CHILDREN,
+					    declClassToColor[d.Class],
+					    declClassToStringDebug[d.Class],
+					    d.Name, len(d.Children))
+			} else {
+				fmt.Fprintf(buf, STATUS_DECLS,
+					    declClassToColor[d.Class],
+					    declClassToStringDebug[d.Class],
+					    d.Name)
+			}
 		}
 
 		for _, f := range self.others {
@@ -536,7 +555,17 @@ func (self *AutoCompleteContext) Status() string {
 			}
 			sort.Sort(ds)
 			for _, d := range ds {
-				fmt.Fprintf(buf, STATUS_DECLS, declClassToStringDebug[d.Class], len(d.Children), d.Name)
+				if len(d.Children) > 0 {
+					fmt.Fprintf(buf, STATUS_DECLS_CHILDREN,
+						    declClassToColor[d.Class],
+						    declClassToStringDebug[d.Class],
+						    d.Name, len(d.Children))
+				} else {
+					fmt.Fprintf(buf, STATUS_DECLS,
+						    declClassToColor[d.Class],
+						    declClassToStringDebug[d.Class],
+						    d.Name)
+				}
 			}
 		}
 	}
