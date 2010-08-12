@@ -229,10 +229,9 @@ func (self *ModuleCache) expandPackages(s string) string {
 			s = s[0:b] + pkgalias + s[i:] // strip package clause completely
 			i = b
 		} else {
-			pkgalias := identifyPackage(self.name)
-			self.addFakeModuleToScope(pkgalias, self.name)
+			self.addFakeModuleToScope(self.defalias, self.name)
 			i++
-			s = s[0:b] + pkgalias + s[i:]
+			s = s[0:b] + self.defalias + s[i:]
 			i = b
 		}
 
