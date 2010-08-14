@@ -18,6 +18,10 @@ var (
 	input = flag.String("in", "", "use this file instead of stdin input")
 )
 
+//-------------------------------------------------------------------------
+// Formatter interface
+//-------------------------------------------------------------------------
+
 type Formatter interface {
 	WriteEmpty()
 	WriteCandidates(names, types, classes []string, num int)

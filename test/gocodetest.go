@@ -5,6 +5,12 @@ import (
 	"fmt"
 )
 
+var Config = struct {
+	ProposeBuiltins bool "propose-builtins"
+}{
+	false,
+}
+
 func parseAsync(file string, done chan *ModuleCache) {
 	go func() {
 		m := NewModuleCache("__this__", file)
