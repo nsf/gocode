@@ -18,6 +18,13 @@ func NewScope(outer *Scope) *Scope {
 	return s
 }
 
+func AdvanceScope(s *Scope) *Scope {
+	if len(s.entities) == 0 {
+		return s
+	}
+	return NewScope(s)
+}
+
 // adds declaration or returns an existing one
 func (s *Scope) addNamedDecl(d *Decl) *Decl {
 	return s.addDecl(d.Name, d)

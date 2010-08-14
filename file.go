@@ -201,13 +201,16 @@ func (self *PackageFile) processDeclLocals(decl ast.Decl) {
 			// 1. method var
 			// 2. args vars
 			// 3. results vars
-			self.scope = NewScope(self.scope)
+			savescope := self.scope
+			self.scope = AdvanceScope(self.scope)
 			self.topscope = self.scope
+
 			self.processFieldList(t.Recv)
 			self.processFieldList(t.Type.Params)
 			self.processFieldList(t.Type.Results)
 			self.processBlockStmt(t.Body)
-			self.scope = self.scope.parent
+
+			self.scope = savescope
 		}
 	}
 }
@@ -252,6 +255,12 @@ func (self *PackageFile) processDecl(decl ast.Decl) {
 				}
 			} else {
 				if self.scope != self.filescope {
+					// the declaration itself has a scope which follows it's definition
+					// and it's false for type declarations
+					if d.Class != DECL_TYPE {
+						self.scope = NewScope(self.scope)
+						self.topscope = self.scope
+					}
 					self.scope.addNamedDecl(d)
 				} else {
 					self.addVarDecl(d)
@@ -263,8 +272,10 @@ func (self *PackageFile) processDecl(decl ast.Decl) {
 
 func (self *PackageFile) processBlockStmt(block *ast.BlockStmt) {
 	if block != nil && self.cursorIn(block) {
-		self.scope = NewScope(self.scope)
+		savescope := self.scope
+		self.scope = AdvanceScope(self.scope)
 		self.topscope = self.scope
+
 		for _, stmt := range block.List {
 			self.processStmt(stmt)
 		}
@@ -273,7 +284,8 @@ func (self *PackageFile) processBlockStmt(block *ast.BlockStmt) {
 		v := new(funcLitVisitor)
 		v.ctx = self
 		ast.Walk(v, block)
-		self.scope = self.scope.parent
+
+		self.scope = savescope
 	}
 }
 
@@ -283,12 +295,15 @@ type funcLitVisitor struct {
 
 func (v *funcLitVisitor) Visit(node interface{}) ast.Visitor {
 	if t, ok := node.(*ast.FuncLit); ok && v.ctx.cursorIn(t.Body) {
-		v.ctx.scope = NewScope(v.ctx.scope)
+		savescope := v.ctx.scope
+		v.ctx.scope = AdvanceScope(v.ctx.scope)
 		v.ctx.topscope = v.ctx.scope
+
 		v.ctx.processFieldList(t.Type.Params)
 		v.ctx.processFieldList(t.Type.Results)
 		v.ctx.processBlockStmt(t.Body)
-		v.ctx.scope = v.ctx.scope.parent
+
+		v.ctx.scope = savescope
 		return nil
 	}
 	return v
@@ -302,11 +317,14 @@ func (self *PackageFile) processStmt(stmt ast.Stmt) {
 		self.processAssignStmt(t)
 	case *ast.IfStmt:
 		if self.cursorIn(t.Body) {
-			self.scope = NewScope(self.scope)
+			savescope := self.scope
+			self.scope = AdvanceScope(self.scope)
 			self.topscope = self.scope
+
 			self.processStmt(t.Init)
 			self.processBlockStmt(t.Body)
-			self.scope = self.scope.parent
+
+			self.scope = savescope
 		}
 		self.processStmt(t.Else)
 	case *ast.BlockStmt:
@@ -315,11 +333,14 @@ func (self *PackageFile) processStmt(stmt ast.Stmt) {
 		self.processRangeStmt(t)
 	case *ast.ForStmt:
 		if self.cursorIn(t.Body) {
-			self.scope = NewScope(self.scope)
+			savescope := self.scope
+			self.scope = AdvanceScope(self.scope)
 			self.topscope = self.scope
+
 			self.processStmt(t.Init)
 			self.processBlockStmt(t.Body)
-			self.scope = self.scope.parent
+
+			self.scope = savescope
 		}
 	case *ast.SwitchStmt:
 		self.processSwitchStmt(t)
@@ -336,8 +357,10 @@ func (self *PackageFile) processSelectStmt(a *ast.SelectStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
-	self.scope = NewScope(self.scope)
+	savescope := self.scope
+	self.scope = AdvanceScope(self.scope)
 	self.topscope = self.scope
+
 	var lastCursorAfter *ast.CommClause
 	for _, s := range a.Body.List {
 		if cc := s.(*ast.CommClause); self.cursor > cc.Colon.Offset {
@@ -355,15 +378,18 @@ func (self *PackageFile) processSelectStmt(a *ast.SelectStmt) {
 			self.processStmt(s)
 		}
 	}
-	self.scope = self.scope.parent
+
+	self.scope = savescope
 }
 
 func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
-	self.scope = NewScope(self.scope)
+	savescope := self.scope
+	self.scope = AdvanceScope(self.scope)
 	self.topscope = self.scope
+
 	self.processStmt(a.Init)
 	// type var
 	var tv *Decl
@@ -394,15 +420,18 @@ func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 			self.processStmt(s)
 		}
 	}
-	self.scope = self.scope.parent
+
+	self.scope = savescope
 }
 
 func (self *PackageFile) processSwitchStmt(a *ast.SwitchStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
-	self.scope = NewScope(self.scope)
+	savescope := self.scope
+	self.scope = AdvanceScope(self.scope)
 	self.topscope = self.scope
+
 	self.processStmt(a.Init)
 	var lastCursorAfter *ast.CaseClause
 	for _, s := range a.Body.List {
@@ -415,15 +444,18 @@ func (self *PackageFile) processSwitchStmt(a *ast.SwitchStmt) {
 			self.processStmt(s)
 		}
 	}
-	self.scope = self.scope.parent
+
+	self.scope = savescope
 }
 
 func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
-	self.scope = NewScope(self.scope)
+	savescope := self.scope
+	self.scope = AdvanceScope(self.scope)
 	self.topscope = self.scope
+
 	if a.Tok == token.DEFINE {
 		var t1, t2 ast.Expr
 		// TODO: deal with typedefed slices/maps here
@@ -471,7 +503,8 @@ func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
 	}
 
 	self.processBlockStmt(a.Body)
-	self.scope = self.scope.parent
+
+	self.scope = savescope
 }
 
 func (self *PackageFile) processAssignStmt(a *ast.AssignStmt) {
