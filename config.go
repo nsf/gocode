@@ -15,15 +15,10 @@ var Config = struct {
 }
 
 func WriteValue(v reflect.Value, name string, c *cfg.ConfigFile) {
-	switch t := v.(type) {
-	case *reflect.BoolValue:
-		c.AddOption(cfg.DefaultSection, name, fmt.Sprint(t.Get()))
-	case *reflect.StringValue:
-		c.AddOption(cfg.DefaultSection, name, fmt.Sprint(t.Get()))
-	case *reflect.IntValue:
-		c.AddOption(cfg.DefaultSection, name, fmt.Sprint(t.Get()))
-	case *reflect.FloatValue:
-		c.AddOption(cfg.DefaultSection, name, fmt.Sprint(t.Get()))
+	switch v.(type) {
+	case *reflect.BoolValue, *reflect.StringValue,
+	     *reflect.IntValue, *reflect.FloatValue:
+		c.AddOption(cfg.DefaultSection, name, fmt.Sprint(v.Interface()))
 	default:
 		panic("Unknown value type")
 	}
