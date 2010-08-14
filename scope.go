@@ -8,39 +8,14 @@ import (
 
 type Scope struct {
 	parent *Scope // nil for universe scope
-	children []*Scope
-
-	begin, end int // boundaries
 	entities map[string]*Decl
 }
 
 func NewScope(outer *Scope) *Scope {
 	s := new(Scope)
-	if outer != nil {
-		outer.addChild(s)
-	}
-	s.begin = -1
-	s.end = -1
+	s.parent = outer
 	s.entities = make(map[string]*Decl)
 	return s
-}
-
-func (s *Scope) addChild(c *Scope) {
-	if s.children == nil {
-		s.children = make([]*Scope, 0, 4)
-	}
-
-	n := len(s.children)
-	if cap(s.children) < n+1 {
-		c := make([]*Scope, n, n*2+1)
-		copy(c, s.children)
-		s.children = c
-	}
-
-	s.children = s.children[0:n+1]
-	s.children[n] = c
-
-	c.parent = s
 }
 
 // adds declaration or returns an existing one

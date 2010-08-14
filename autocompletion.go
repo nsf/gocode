@@ -321,7 +321,7 @@ func (self *AutoCompleteContext) mergeDeclsFromFile(file *PackageFile) {
 	for _, d := range file.decls {
 		self.pkg.mergeDecl(d)
 	}
-	self.pkg.addChild(file.filescope)
+	file.filescope.parent = self.pkg
 }
 
 func (self *AutoCompleteContext) createUniverseScope() {
@@ -370,7 +370,6 @@ func (self *AutoCompleteContext) createUniverseScope() {
 }
 
 func (self *AutoCompleteContext) mergeDecls() {
-	self.uni.children = nil
 	self.pkg = NewScope(self.uni)
 	self.mergeDeclsFromFile(self.current)
 	for _, file := range self.others {
