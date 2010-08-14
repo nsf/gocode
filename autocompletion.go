@@ -181,6 +181,9 @@ func (self *OutBuffers) Swap(i, j int) {
 }
 
 func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
+	if !Config.ProposeBuiltins && decl.Scope == self.ctx.uni {
+		return
+	}
 	if strings.HasPrefix(name, p) || matchClass(decl.Class, class) {
 		if !checkTypeExpr(decl.Type) {
 			return
