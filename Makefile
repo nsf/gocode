@@ -1,7 +1,7 @@
 include $(GOROOT)/src/Make.$(GOARCH)
 
 TARG=gocode
-GOFILES=gocode.go file.go module.go gocodelib.go gocodeserver.go gorpc.go decl.go gocodeapropos.go scope.go ripper.go config.go
+GOFILES=gocode.go file.go module.go autocompletion.go gocodeserver.go gorpc.go decl.go gocodeapropos.go scope.go ripper.go config.go
 
 include $(GOROOT)/src/Make.cmd
 
