@@ -19,8 +19,6 @@ func WriteValue(v reflect.Value, name string, c *cfg.ConfigFile) {
 	case *reflect.BoolValue, *reflect.StringValue,
 	     *reflect.IntValue, *reflect.FloatValue:
 		c.AddOption(cfg.DefaultSection, name, fmt.Sprint(v.Interface()))
-	default:
-		panic("Unknown value type")
 	}
 }
 
@@ -49,8 +47,6 @@ func ReadValue(v reflect.Value, name string, c *cfg.ConfigFile) {
 		if err == nil {
 			t.Set(float64(v))
 		}
-	default:
-		panic("Unknown value type")
 	}
 }
 
