@@ -9,10 +9,10 @@ rpc.go: server.go goremote/goremote
 	./goremote/goremote server.go > rpc.go
 
 goremote/goremote: goremote/goremote.go
-	cd goremote && make
+	make -C goremote
 
 _go_.$(O): configfile.a
 
 configfile.a: goconfig/configfile.go
-	cd goconfig && make
+	make -C goconfig
 	cp goconfig/_obj/configfile.a .
