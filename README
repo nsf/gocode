@@ -5,8 +5,8 @@ Work in progress..
 Currently available things:
  - .a (archive aka package) type info parser
  - type inference (more or less complete)
- - vim plugin (basics)
- - basic autocompletion (really really basic)
+ - vim plugin (omnifunc autocompletion)
+ - autocompletion
 
 Screenshots:
  http://nsf.github.com/images/gocode1.png
