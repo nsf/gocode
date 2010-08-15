@@ -499,8 +499,8 @@ type TypeInferenceContext struct {
 }
 
 // RETURNS:
-// 	- type expressions which represents a full name of a type
-//	- bool whether a type expression is a type (used internally)
+// 	- type expression which represents a full name of a type
+//	- bool whether a type expression is actually a type (used internally)
 //	- scope in which type makes sense
 func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) {
 	cc := *ctx
