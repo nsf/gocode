@@ -82,7 +82,7 @@ const (
 
 type ACRServer struct {
 	listener *net.UnixListener
-	cmd_in chan int
+	cmd_in   chan int
 }
 
 func NewACRServer(path string) *ACRServer {

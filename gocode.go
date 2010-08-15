@@ -15,7 +15,7 @@ import (
 var (
 	server = flag.Bool("s", false, "run a server instead of a client")
 	format = flag.String("f", "nice", "output format (vim | emacs | nice)")
-	input = flag.String("in", "", "use this file instead of stdin input")
+	input  = flag.String("in", "", "use this file instead of stdin input")
 )
 
 //-------------------------------------------------------------------------
@@ -31,8 +31,7 @@ type Formatter interface {
 // NiceFormatter (just for testing, simple textual output)
 //-------------------------------------------------------------------------
 
-type NiceFormatter struct {
-}
+type NiceFormatter struct{}
 
 func (*NiceFormatter) WriteEmpty() {
 	fmt.Printf("Nothing to complete.\n")
@@ -53,8 +52,7 @@ func (*NiceFormatter) WriteCandidates(names, types, classes []string, num int) {
 // VimFormatter
 //-------------------------------------------------------------------------
 
-type VimFormatter struct {
-}
+type VimFormatter struct{}
 
 func (*VimFormatter) WriteEmpty() {
 	fmt.Print("[0, []]")
@@ -85,8 +83,7 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 // EmacsFormatter
 //-------------------------------------------------------------------------
 
-type EmacsFormatter struct {
-}
+type EmacsFormatter struct{}
 
 func (*EmacsFormatter) WriteEmpty() {
 }

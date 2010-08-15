@@ -10,25 +10,25 @@ import (
 )
 
 type moduleImport struct {
-	alias string
-	name string
-	path string
+	alias  string
+	name   string
+	path   string
 	module *Decl
 }
 
 type PackageFile struct {
-	name string // file name
+	name        string // file name
 	packageName string // package name that is in the file
-	mtime int64
-	ctx *AutoCompleteContext
+	mtime       int64
+	ctx         *AutoCompleteContext
 
-	modules []moduleImport // import section cache (abbrev -> full name)
-	decls map[string]*Decl // cached
-	filescope *Scope // cached
+	modules   []moduleImport   // import section cache (abbrev -> full name)
+	decls     map[string]*Decl // cached
+	filescope *Scope           // cached
 
 	topscope *Scope
-	scope *Scope // scope, used for parsing
-	cursor int // for current file buffer
+	scope    *Scope // scope, used for parsing
+	cursor   int    // for current file buffer
 
 	stage2go chan bool
 }
@@ -81,9 +81,9 @@ func (self *PackageFile) processFile(filename string, stage1 chan *PackageFile) 
 }
 
 type ProcessDataContext struct {
-	cur int
+	cur   int
 	block []byte
-	file *ast.File
+	file  *ast.File
 	decls []ast.Decl
 }
 
@@ -154,7 +154,7 @@ func (self *PackageFile) addModuleImport(alias, path string) {
 		self.modules = s
 	}
 
-	self.modules = self.modules[0:n+1]
+	self.modules = self.modules[0 : n+1]
 	self.modules[n] = moduleImport{alias, name, path, nil}
 }
 
@@ -592,7 +592,7 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 	if imp.Name != nil {
 		alias = imp.Name.Name()
 	}
-	path = path[1:len(path)-1]
+	path = path[1 : len(path)-1]
 	return path, alias
 }
 
@@ -603,4 +603,3 @@ func findGlobalFile(imp string) string {
 
 	return fmt.Sprintf("%s/pkg/%s_%s/%s.a", goroot, goos, goarch, imp)
 }
-

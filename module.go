@@ -12,14 +12,14 @@ import (
 )
 
 type ModuleCache struct {
-	name string
+	name     string
 	filename string
-	mtime int64
+	mtime    int64
 	defalias string
 
 	// used as a temporary for foreignifying package contents
-	scope *Scope
-	main *Decl // module declaration
+	scope  *Scope
+	main   *Decl // module declaration
 	others map[string]*Decl
 }
 
@@ -87,7 +87,7 @@ func (self *ModuleCache) processPackageData(s string) {
 		panic("Wrong file")
 	}
 
-	self.defalias = s[len("package "):i-1]
+	self.defalias = s[len("package ") : i-1]
 	s = s[i+1:]
 
 	internalPackages := make(map[string]*bytes.Buffer)
@@ -223,9 +223,9 @@ func (self *ModuleCache) expandPackages(s string) string {
 			i = e
 		} else if b+1 != e {
 			// wow, we actually have something here
-			pkgalias := identifyPackage(s[b+1:e])
+			pkgalias := identifyPackage(s[b+1 : e])
 			self.addFakeModuleToScope(pkgalias, s[b+1:e])
-			i++ // skip to a first symbol after second '"'
+			i++                           // skip to a first symbol after second '"'
 			s = s[0:b] + pkgalias + s[i:] // strip package clause completely
 			i = b
 		} else {
@@ -314,7 +314,7 @@ func skipToSpace(i int, s string) int {
 
 // convert package name to a nice ident, e.g.: "go/ast" -> "ast"
 func identifyPackage(s string) string {
-	i := len(s)-1
+	i := len(s) - 1
 
 	// 'i > 0' is correct here, because we should never see '/' at the
 	// beginning of the name anyway
@@ -346,10 +346,10 @@ func extractPackage(i int, s string) (string, string) {
 	e := i // second '"'
 	if b+1 != e {
 		// wow, we actually have something here
-		pkg = s[b+1:e]
+		pkg = s[b+1 : e]
 	}
 
-	i += 2 // skip to a first symbol after dot
+	i += 2             // skip to a first symbol after dot
 	s = s[0:b] + s[i:] // strip package clause completely
 
 	return s, pkg
@@ -381,10 +381,10 @@ func extractPackageFromMethod(i int, s string) (string, string) {
 		e := i // second '"'
 		if b+1 != e {
 			// wow, we actually have something here
-			pkg = s[b+1:e]
+			pkg = s[b+1 : e]
 		}
 
-		i += 2 // skip to a first symbol after dot
+		i += 2             // skip to a first symbol after dot
 		s = s[0:b] + s[i:] // strip package clause completely
 
 		i = b

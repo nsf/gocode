@@ -7,7 +7,7 @@ import (
 )
 
 type Scope struct {
-	parent *Scope // nil for universe scope
+	parent   *Scope // nil for universe scope
 	entities map[string]*Decl
 }
 
@@ -80,7 +80,7 @@ func splitForeignName(name string) (string, string) {
 	if i == -1 {
 		panic("trying to split unforeignified name")
 	}
-	return name[1:i+1], name[i+2:]
+	return name[1 : i+1], name[i+2:]
 }
 
 func filterForeignName(name string) string {

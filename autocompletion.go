@@ -90,12 +90,12 @@ func filePackageName(filename string) string {
 type AutoCompleteContext struct {
 	m map[string]*Decl // all visible modules
 
-	current *PackageFile // currently editted file
-	others map[string]*PackageFile // other files
+	current *PackageFile            // currently editted file
+	others  map[string]*PackageFile // other files
 
 	mcache map[string]*ModuleCache // modules cache
-	pkg *Scope
-	uni *Scope
+	pkg    *Scope
+	uni    *Scope
 }
 
 func NewAutoCompleteContext() *AutoCompleteContext {
@@ -141,9 +141,9 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 //-------------------------------------------------------------------------
 
 type OutBuffers struct {
-	tmpbuf *bytes.Buffer
+	tmpbuf                *bytes.Buffer
 	names, types, classes vector.StringVector
-	ctx *AutoCompleteContext
+	ctx                   *AutoCompleteContext
 }
 
 func NewOutBuffers(ctx *AutoCompleteContext) *OutBuffers {
@@ -444,39 +444,40 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 //-------------------------------------------------------------------------
 
 type DeclSlice []*Decl
+
 func (s DeclSlice) Less(i, j int) bool {
 	if declClassToString[s[i].Class][0] == declClassToString[s[j].Class][0] {
 		return s[i].Name < s[j].Name
 	}
 	return declClassToString[s[i].Class] < declClassToString[s[j].Class]
 }
-func (s DeclSlice) Len() int { return len(s) }
+func (s DeclSlice) Len() int      { return len(s) }
 func (s DeclSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 const (
-	COLOR_red = "\033[0;31m"
-	COLOR_RED = "\033[1;31m"
-	COLOR_green = "\033[0;32m"
-	COLOR_GREEN = "\033[1;32m"
-	COLOR_yellow = "\033[0;33m"
-	COLOR_YELLOW = "\033[1;33m"
-	COLOR_blue = "\033[0;34m"
-	COLOR_BLUE = "\033[1;34m"
+	COLOR_red     = "\033[0;31m"
+	COLOR_RED     = "\033[1;31m"
+	COLOR_green   = "\033[0;32m"
+	COLOR_GREEN   = "\033[1;32m"
+	COLOR_yellow  = "\033[0;33m"
+	COLOR_YELLOW  = "\033[1;33m"
+	COLOR_blue    = "\033[0;34m"
+	COLOR_BLUE    = "\033[1;34m"
 	COLOR_magenta = "\033[0;35m"
 	COLOR_MAGENTA = "\033[1;35m"
-	COLOR_cyan = "\033[0;36m"
-	COLOR_CYAN = "\033[1;36m"
-	COLOR_white = "\033[0;37m"
-	COLOR_WHITE = "\033[1;37m"
-	NC = "\033[0m"
+	COLOR_cyan    = "\033[0;36m"
+	COLOR_CYAN    = "\033[1;36m"
+	COLOR_white   = "\033[0;37m"
+	COLOR_WHITE   = "\033[1;37m"
+	NC            = "\033[0m"
 )
 
 var declClassToColor = [...]string{
-	DECL_CONST: COLOR_WHITE,
-	DECL_VAR: COLOR_magenta,
-	DECL_TYPE: COLOR_cyan,
-	DECL_FUNC: COLOR_green,
-	DECL_MODULE: COLOR_red,
+	DECL_CONST:        COLOR_WHITE,
+	DECL_VAR:          COLOR_magenta,
+	DECL_TYPE:         COLOR_cyan,
+	DECL_FUNC:         COLOR_green,
+	DECL_MODULE:       COLOR_red,
 	DECL_METHODS_STUB: COLOR_red,
 }
 
@@ -520,8 +521,8 @@ func (self *AutoCompleteContext) Status() string {
 		}
 		fmt.Fprintf(buf, "\nListing declarations from files:\n")
 
-		const STATUS_DECLS = "\t%s%s"+ NC +" "+ COLOR_yellow +"%s"+ NC +"\n"
-		const STATUS_DECLS_CHILDREN = "\t%s%s"+ NC +" "+ COLOR_yellow +"%s"+ NC +" (%d)\n"
+		const STATUS_DECLS = "\t%s%s" + NC + " " + COLOR_yellow + "%s" + NC + "\n"
+		const STATUS_DECLS_CHILDREN = "\t%s%s" + NC + " " + COLOR_yellow + "%s" + NC + " (%d)\n"
 		var ds DeclSlice
 		var i int
 
@@ -536,14 +537,14 @@ func (self *AutoCompleteContext) Status() string {
 		for _, d := range ds {
 			if len(d.Children) > 0 {
 				fmt.Fprintf(buf, STATUS_DECLS_CHILDREN,
-					    declClassToColor[d.Class],
-					    declClassToStringDebug[d.Class],
-					    d.Name, len(d.Children))
+					declClassToColor[d.Class],
+					declClassToStringDebug[d.Class],
+					d.Name, len(d.Children))
 			} else {
 				fmt.Fprintf(buf, STATUS_DECLS,
-					    declClassToColor[d.Class],
-					    declClassToStringDebug[d.Class],
-					    d.Name)
+					declClassToColor[d.Class],
+					declClassToStringDebug[d.Class],
+					d.Name)
 			}
 		}
 
@@ -559,14 +560,14 @@ func (self *AutoCompleteContext) Status() string {
 			for _, d := range ds {
 				if len(d.Children) > 0 {
 					fmt.Fprintf(buf, STATUS_DECLS_CHILDREN,
-						    declClassToColor[d.Class],
-						    declClassToStringDebug[d.Class],
-						    d.Name, len(d.Children))
+						declClassToColor[d.Class],
+						declClassToStringDebug[d.Class],
+						d.Name, len(d.Children))
 				} else {
 					fmt.Fprintf(buf, STATUS_DECLS,
-						    declClassToColor[d.Class],
-						    declClassToStringDebug[d.Class],
-						    d.Name)
+						declClassToColor[d.Class],
+						declClassToStringDebug[d.Class],
+						d.Name)
 				}
 			}
 		}

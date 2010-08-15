@@ -7,7 +7,7 @@ import (
 )
 
 type DeclApropos struct {
-	Decl *Decl
+	Decl    *Decl
 	Partial string
 }
 
@@ -137,7 +137,7 @@ func (self *AutoCompleteContext) deduceDecl(file []byte, cursor int) *DeclApropo
 			// we're '<whatever>.<ident>'
 			// parse <ident> as Partial and figure out decl
 			cursor = skipIdent(file, cursor)
-			partial := string(file[cursor+1:orig])
+			partial := string(file[cursor+1 : orig])
 			if file[cursor] == '.' {
 				return self.deduceExpr(file[0:cursor], partial)
 			} else {
@@ -148,4 +148,3 @@ func (self *AutoCompleteContext) deduceDecl(file []byte, cursor int) *DeclApropo
 
 	return &DeclApropos{nil, ""}
 }
-

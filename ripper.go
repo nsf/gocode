@@ -26,7 +26,7 @@ func (self *TokCollection) appendToken(pos token.Position, tok token.Token) {
 		self.tokens = s
 	}
 
-	self.tokens = self.tokens[0:n+1]
+	self.tokens = self.tokens[0 : n+1]
 	self.tokens[n] = TokPos{tok, pos}
 }
 
@@ -115,7 +115,7 @@ func (self *TokCollection) findOutermostScope(cursor int) (int, int) {
 //   old-cursor, file, nil
 func (self *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []byte) {
 	s := new(scanner.Scanner)
-	s.Init("", file, nil, scanner.ScanComments | scanner.InsertSemis)
+	s.Init("", file, nil, scanner.ScanComments|scanner.InsertSemis)
 	for self.next(s) {
 	}
 
@@ -124,10 +124,10 @@ func (self *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []b
 		return cursor, file, nil
 	}
 
-	ripped := make([]byte, end + 1 - beg)
+	ripped := make([]byte, end+1-beg)
 	copy(ripped, file[beg:end+1])
 
-	newfile := make([]byte, len(file) - len(ripped))
+	newfile := make([]byte, len(file)-len(ripped))
 	copy(newfile, file[0:beg])
 	copy(newfile[beg:], file[end+1:])
 

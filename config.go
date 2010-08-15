@@ -17,7 +17,7 @@ var Config = struct {
 func WriteValue(v reflect.Value, name string, c *cfg.ConfigFile) {
 	switch v.(type) {
 	case *reflect.BoolValue, *reflect.StringValue,
-	     *reflect.IntValue, *reflect.FloatValue:
+		*reflect.IntValue, *reflect.FloatValue:
 		c.AddOption(cfg.DefaultSection, name, fmt.Sprint(v.Interface()))
 	}
 }

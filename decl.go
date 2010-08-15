@@ -23,15 +23,15 @@ const (
 )
 
 var declClassToString = [...]string{
-	DECL_CONST: "const",
-	DECL_VAR: "var",
-	DECL_TYPE: "type",
-	DECL_FUNC: "func",
-	DECL_MODULE: "module",
+	DECL_CONST:        "const",
+	DECL_VAR:          "var",
+	DECL_TYPE:         "type",
+	DECL_FUNC:         "func",
+	DECL_MODULE:       "module",
 	DECL_METHODS_STUB: "IF YOU SEE THIS, REPORT A BUG", // :D
 }
 
-var declClassToStringDebug = [...]string {
+var declClassToStringDebug = [...]string{
 	DECL_CONST:        " const",
 	DECL_VAR:          "   var",
 	DECL_TYPE:         "  type",
@@ -41,8 +41,8 @@ var declClassToStringDebug = [...]string {
 }
 
 type Decl struct {
-	Name string
-	Type ast.Expr
+	Name  string
+	Type  ast.Expr
 	Class int
 
 	// functions for interface type, fields+methods for struct type
@@ -416,7 +416,7 @@ func funcReturnType(f *ast.FuncType, index int) ast.Expr {
 
 type TypePath struct {
 	module string
-	name string
+	name   string
 }
 
 // converts type expressions like:
@@ -495,7 +495,7 @@ func exprToDecl(e ast.Expr, scope *Scope, ctx *AutoCompleteContext) *Decl {
 type TypeInferenceContext struct {
 	index int
 	scope *Scope
-	ac *AutoCompleteContext
+	ac    *AutoCompleteContext
 }
 
 // RETURNS:
@@ -584,7 +584,7 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 		}
 		switch ct := it.(type) {
 		case *ast.FuncType:
-			// in case if <here>() is a function type variable, we're making a 
+			// in case if <here>() is a function type variable, we're making a
 			// func call, resulting expr is always a value
 			return funcReturnType(ct, ctx.index), false, scope
 		case *ast.Ident:
@@ -806,4 +806,3 @@ func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 	}
 	return count
 }
-
