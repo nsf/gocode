@@ -446,6 +446,10 @@ type TypePath struct {
 	name   string
 }
 
+func (tp *TypePath) IsNil() bool {
+	return tp.module == "" && tp.name == ""
+}
+
 // converts type expressions like:
 // ast.Expr
 // *ast.Expr
@@ -471,7 +475,7 @@ func typePath(e ast.Expr) (r TypePath) {
 }
 
 func lookupPath(tp TypePath, scope *Scope, ctx *AutoCompleteContext) *Decl {
-	if tp.name == "" && tp.module == "" {
+	if tp.IsNil() {
 		return nil
 	}
 	var decl *Decl
@@ -523,6 +527,67 @@ type TypeInferenceContext struct {
 	ac    *AutoCompleteContext
 }
 
+type TypePredicate func(ast.Expr) bool
+
+func advanceToType(pred TypePredicate, v ast.Expr, scope *Scope, ac *AutoCompleteContext) (ast.Expr, *Scope) {
+	if pred(v) {
+		return v, scope
+	}
+
+	for {
+		tp := typePath(v)
+		if tp.IsNil() {
+			return nil, nil
+		}
+		decl := lookupPath(tp, scope, ac)
+		if decl == nil {
+			return nil, nil
+		}
+
+		v = decl.Type
+		scope = decl.Scope
+		if pred(v) {
+			break
+		}
+	}
+	return v, scope
+}
+
+func chanPredicate(v ast.Expr) bool {
+	_, ok := v.(*ast.ChanType)
+	return ok
+}
+
+func indexPredicate(v ast.Expr) bool {
+	switch v.(type) {
+	case *ast.ArrayType, *ast.MapType:
+		return true
+	}
+	return false
+}
+
+func starPredicate(v ast.Expr) bool {
+	_, ok := v.(*ast.StarExpr)
+	return ok
+}
+
+func funcPredicate(v ast.Expr) bool {
+	_, ok := v.(*ast.FuncType)
+	return ok
+}
+
+func rangePredicate(v ast.Expr) bool {
+	switch t := v.(type) {
+	case *ast.Ident:
+		if t.Name() == "string" {
+			return true
+		}
+	case *ast.ArrayType, *ast.MapType, *ast.ChanType:
+		return true
+	}
+	return false
+}
+
 // RETURNS:
 // 	- type expression which represents a full name of a type
 //	- bool whether a type expression is actually a type (used internally)
@@ -564,6 +629,7 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			}
 			switch ctx.index {
 			case -1, 0:
+				it, scope = advanceToType(chanPredicate, it, scope, ctx.ac)
 				return it.(*ast.ChanType).Value, false, scope
 			case 1:
 				// technically it's a value, but in case of index == 1
@@ -577,6 +643,7 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 		if it == nil {
 			break
 		}
+		it, scope = advanceToType(indexPredicate, it, scope, ctx.ac)
 		switch t := it.(type) {
 		case *ast.ArrayType:
 			return t.Elt, false, scope
@@ -598,29 +665,38 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			e := new(ast.StarExpr)
 			e.X = it
 			return e, true, scope
-		} else if s, ok := it.(*ast.StarExpr); ok {
-			// if it's a pointer value, dereference pointer
-			return s.X, false, scope
+		} else {
+			it, scope := advanceToType(starPredicate, it, scope, ctx.ac)
+			if s, ok := it.(*ast.StarExpr); ok {
+				return s.X, false, scope
+			}
 		}
 	case *ast.CallExpr:
-		it, _, scope := cc.inferType(t.Fun)
+		// this is a function call or a type cast:
+		// myFunc(1,2,3) or int16(myvar)
+		it, isType, scope := cc.inferType(t.Fun)
 		if it == nil {
 			break
 		}
-		switch ct := it.(type) {
-		case *ast.FuncType:
-			// in case if <here>() is a function type variable, we're making a
-			// func call, resulting expr is always a value
-			return funcReturnType(ct, ctx.index), false, scope
-		case *ast.Ident:
-			ty := checkForBuiltinFuncs(ct, t)
-			if ty != nil {
-				return ty, false, ctx.scope
+
+		if isType {
+			// a type cast
+			return it, false, ctx.scope
+		} else {
+			// it must be a function call or a built-in function
+			// first check for built-in
+			if ct, ok := it.(*ast.Ident); ok {
+				ty := checkForBuiltinFuncs(ct, t)
+				if ty != nil {
+					return ty, false, ctx.scope
+				}
 			}
-			return ct, false, ctx.scope
-		default:
-			// otherwise it's a type cast, and the result is a value too
-			return ct, false, ctx.scope
+
+			// then check for an ordinary function call
+			it, scope = advanceToType(funcPredicate, it, scope, ctx.ac)
+			if ct, ok := it.(*ast.FuncType); ok {
+				return funcReturnType(ct, ctx.index), false, scope
+			}
 		}
 	case *ast.ParenExpr:
 		it, isType, scope := cc.inferType(t.X)

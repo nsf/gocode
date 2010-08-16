@@ -460,8 +460,9 @@ func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
 
 	if a.Tok == token.DEFINE {
 		var t1, t2 ast.Expr
-		// TODO: deal with typedefed slices/maps here
-		t1, _ = NewDeclVar("tmp", nil, a.X, -1, self.scope).InferType(self.ctx)
+		var scope *Scope
+		t1, scope = NewDeclVar("tmp", nil, a.X, -1, self.scope).InferType(self.ctx)
+		t1, scope = advanceToType(rangePredicate, t1, scope, self.ctx)
 		if t1 != nil {
 			// figure out range Key, Value types
 			switch t := t1.(type) {
