@@ -131,7 +131,6 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 	}
 
 	decls := make(map[string]*Decl, count)
-	i := 0
 	for _, field := range f.List {
 		for _, name := range field.Names {
 			if flags&DECL_FOREIGN != 0 && !ast.IsExported(name.Name()) {
@@ -148,7 +147,23 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 			d.ValueIndex = -1
 			d.init()
 			decls[d.Name] = d
-			i++
+		}
+
+		// add anonymous field as a child (type embedding)
+		if class == DECL_VAR && field.Names == nil {
+			tp := typePath(field.Type)
+			if flags&DECL_FOREIGN != 0 && !ast.IsExported(tp.name) {
+				continue
+			}
+			d := new(Decl)
+			d.Name = tp.name
+			d.Type = field.Type
+			d.Class = int16(class)
+			d.Flags = int16(flags)
+			d.Scope = scope
+			d.ValueIndex = -1
+			d.init()
+			decls[d.Name] = d
 		}
 	}
 	return decls
@@ -451,8 +466,6 @@ func typePath(e ast.Expr) (r TypePath) {
 			r.module = filterForeignName(ident.Name())
 		}
 		r.name = t.Sel.Name()
-	case *ast.StructType, *ast.InterfaceType:
-		r.name = "0"
 	}
 	return
 }
@@ -489,13 +502,13 @@ func typeToDecl(t ast.Expr, scope *Scope, ctx *AutoCompleteContext) *Decl {
 
 func exprToDecl(e ast.Expr, scope *Scope, ctx *AutoCompleteContext) *Decl {
 	t, scope := NewDeclVar("tmp", nil, e, -1, scope).InferType(ctx)
-	tp := typePath(t)
 
 	var typedecl *Decl
-	if tp.name == "0" {
+	switch t.(type) {
+	case *ast.StructType, *ast.InterfaceType:
 		typedecl = NewDeclVar("tmp", t, nil, -1, scope)
-	} else {
-		typedecl = lookupPath(tp, scope, ctx)
+	default:
+		typedecl = typeToDecl(t, scope, ctx)
 	}
 	return typedecl
 }
@@ -621,11 +634,21 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			break
 		}
 
-		if d := typeToDecl(it, scope, ctx.ac); d != nil {
+		var d *Decl
+		switch it.(type) {
+		case *ast.StructType, *ast.InterfaceType:
+			d = NewDeclVar("tmp", it, nil, -1, scope)
+		default:
+			d = typeToDecl(it, scope, ctx.ac)
+		}
+
+		if d != nil {
 			c := d.FindChildAndInEmbedded(t.Sel.Name(), ctx.ac)
 			if c != nil {
 				if c.Class == DECL_TYPE {
-					return t, true, c.Scope
+					// use foregnified module name
+					t.X = ast.NewIdent(d.Name)
+					return t, true, ctx.scope
 				} else {
 					typ, scope := c.InferType(ctx.ac)
 					return typ, false, scope
