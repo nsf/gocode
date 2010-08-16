@@ -123,17 +123,14 @@ func (self *ModuleCache) processPackageData(s string) {
 		if err != nil {
 			panic(fmt.Sprintf("failure in:\n%s\n%s\n", value, err.String()))
 		} else {
-			f := new(ast.File) // fake file
-			f.Decls = decls
-			ast.FileExports(f)
 			if key == self.name {
 				// main package
 				self.main = NewDecl(self.name, DECL_MODULE, nil)
-				addAstDeclsToModule(self.main, f.Decls, self.scope)
+				addAstDeclsToModule(self.main, decls, self.scope)
 			} else {
 				// others
 				self.others[key] = NewDecl(key, DECL_MODULE, nil)
-				addAstDeclsToModule(self.others[key], f.Decls, self.scope)
+				addAstDeclsToModule(self.others[key], decls, self.scope)
 			}
 		}
 	}
@@ -264,16 +261,22 @@ func addAstDeclsToModule(module *Decl, decls []ast.Decl, scope *Scope) {
 					}
 				}
 
-				d := NewDeclFromAstDecl(name, decl, value, valueindex, scope)
+				d := NewDeclFromAstDecl(name, DECL_FOREIGN, decl, value, valueindex, scope)
 				if d == nil {
 					continue
 				}
 
-				methodof := MethodOf(decl)
-				if methodof != "" {
-					if !ast.IsExported(methodof) {
+				if !ast.IsExported(name) {
+					// We need types here, because embeddeing may
+					// refer to unexported types which contain
+					// exported methods, like in reflect package.
+					if d.Class != DECL_TYPE {
 						continue
 					}
+				}
+
+				methodof := MethodOf(decl)
+				if methodof != "" {
 					decl := module.FindChild(methodof)
 					if decl != nil {
 						decl.AddChild(d)

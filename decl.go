@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// Decl.Class
 const (
 	DECL_CONST = iota
 	DECL_VAR
@@ -20,6 +21,11 @@ const (
 	// this one serves as a temporary type for those methods that were
 	// declared before their actual owner
 	DECL_METHODS_STUB
+)
+
+// Decl.Flags
+const (
+	DECL_FOREIGN = 1 << iota // imported from another module
 )
 
 var declClassToString = [...]string{
@@ -43,7 +49,8 @@ var declClassToStringDebug = [...]string{
 type Decl struct {
 	Name  string
 	Type  ast.Expr
-	Class int
+	Class int16
+	Flags int16
 
 	// functions for interface type, fields+methods for struct type
 	// variables with anonymous struct/interface type may have children too
@@ -113,7 +120,7 @@ func astDeclConvertable(d ast.Decl) bool {
 	return false
 }
 
-func astFieldListToDecls(f *ast.FieldList, class int, scope *Scope) map[string]*Decl {
+func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) map[string]*Decl {
 	count := 0
 	for _, field := range f.List {
 		count += len(field.Names)
@@ -127,11 +134,14 @@ func astFieldListToDecls(f *ast.FieldList, class int, scope *Scope) map[string]*
 	i := 0
 	for _, field := range f.List {
 		for _, name := range field.Names {
+			if flags&DECL_FOREIGN != 0 && !ast.IsExported(name.Name()) {
+				continue
+			}
 			d := new(Decl)
 			d.Name = name.Name()
 			d.Type = field.Type
-			d.Class = class
-			d.Children = astTypeToChildren(field.Type, scope)
+			d.Class = int16(class)
+			d.Children = astTypeToChildren(field.Type, flags, scope)
 			d.Embedded = astTypeToEmbedded(field.Type)
 			d.Scope = scope
 			d.ValueIndex = -1
@@ -177,12 +187,12 @@ func astTypeToEmbedded(ty ast.Expr) []ast.Expr {
 	return nil
 }
 
-func astTypeToChildren(ty ast.Expr, scope *Scope) map[string]*Decl {
+func astTypeToChildren(ty ast.Expr, flags int, scope *Scope) map[string]*Decl {
 	switch t := ty.(type) {
 	case *ast.StructType:
-		return astFieldListToDecls(t.Fields, DECL_VAR, scope)
+		return astFieldListToDecls(t.Fields, DECL_VAR, flags, scope)
 	case *ast.InterfaceType:
-		return astFieldListToDecls(t.Methods, DECL_FUNC, scope)
+		return astFieldListToDecls(t.Methods, DECL_FUNC, flags, scope)
 	}
 	return nil
 }
@@ -196,15 +206,16 @@ func (d *Decl) init() {
 	}
 }
 
-func NewDeclFromAstDecl(name string, d ast.Decl, value ast.Expr, vindex int, scope *Scope) *Decl {
+func NewDeclFromAstDecl(name string, flags int, d ast.Decl, value ast.Expr, vindex int, scope *Scope) *Decl {
 	if !astDeclConvertable(d) || name == "_" {
 		return nil
 	}
 	decl := new(Decl)
 	decl.Name = name
 	decl.Type = astDeclType(d)
-	decl.Class = astDeclClass(d)
-	decl.Children = astTypeToChildren(decl.Type, scope)
+	decl.Class = int16(astDeclClass(d))
+	decl.Flags = int16(flags)
+	decl.Children = astTypeToChildren(decl.Type, flags, scope)
 	decl.Embedded = astTypeToEmbedded(decl.Type)
 	decl.Value = value
 	decl.ValueIndex = vindex
@@ -228,7 +239,7 @@ func NewDeclTypedNamed(name string, class int, typ string, scope *Scope) *Decl {
 func NewDecl(name string, class int, scope *Scope) *Decl {
 	decl := new(Decl)
 	decl.Name = name
-	decl.Class = class
+	decl.Class = int16(class)
 	decl.ValueIndex = -1
 	decl.Scope = scope
 	return decl
@@ -242,7 +253,7 @@ func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, scope *Sc
 	decl.Name = name
 	decl.Class = DECL_VAR
 	decl.Type = typ
-	decl.Children = astTypeToChildren(decl.Type, scope)
+	decl.Children = astTypeToChildren(decl.Type, 0, scope)
 	decl.Embedded = astTypeToEmbedded(decl.Type)
 	decl.Value = value
 	decl.ValueIndex = vindex

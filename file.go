@@ -238,7 +238,7 @@ func (self *PackageFile) processDecl(decl ast.Decl) {
 				}
 			}
 
-			d := NewDeclFromAstDecl(name, decl, value, valueindex, self.scope)
+			d := NewDeclFromAstDecl(name, 0, decl, value, valueindex, self.scope)
 			if d == nil {
 				continue
 			}
@@ -543,7 +543,7 @@ func (self *PackageFile) processAssignStmt(a *ast.AssignStmt) {
 
 func (self *PackageFile) processFieldList(fieldList *ast.FieldList) {
 	if fieldList != nil {
-		decls := astFieldListToDecls(fieldList, DECL_VAR, self.scope)
+		decls := astFieldListToDecls(fieldList, DECL_VAR, 0, self.scope)
 		for _, d := range decls {
 			self.scope.addNamedDecl(d)
 		}

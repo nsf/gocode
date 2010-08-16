@@ -184,7 +184,7 @@ func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
 	if !Config.ProposeBuiltins && decl.Scope == self.ctx.uni {
 		return
 	}
-	if strings.HasPrefix(name, p) || matchClass(decl.Class, class) {
+	if strings.HasPrefix(name, p) || matchClass(int(decl.Class), class) {
 		if !checkTypeExpr(decl.Type) {
 			return
 		}
@@ -424,6 +424,9 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 			// propose all children of a subject declaration and
 			// propose all children of its embedded types
 			for _, decl := range da.Decl.Children {
+				if da.Decl.Class == DECL_MODULE && !ast.IsExported(decl.Name) {
+					continue
+				}
 				b.appendDecl(da.Partial, decl.Name, decl, class)
 			}
 			b.appendEmbedded(da.Partial, da.Decl, class)
