@@ -185,10 +185,6 @@ func (self *PackageFile) applyImports() {
 func (self *PackageFile) processImportSpec(imp *ast.ImportSpec) {
 	path, alias := pathAndAlias(imp)
 
-	// add fake module to a scope for foreignifying purposes
-	//d := NewDecl(path, DECL_MODULE, nil)
-	//self.filescope.addDecl(alias, d)
-
 	// add module to a cache
 	self.addModuleImport(alias, path)
 }
