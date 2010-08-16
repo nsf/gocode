@@ -141,6 +141,7 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 			d.Name = name.Name()
 			d.Type = field.Type
 			d.Class = int16(class)
+			d.Flags = int16(flags)
 			d.Children = astTypeToChildren(field.Type, flags, scope)
 			d.Embedded = astTypeToEmbedded(field.Type)
 			d.Scope = scope
