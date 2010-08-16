@@ -600,5 +600,8 @@ func findGlobalFile(imp string) string {
 	goarch := os.Getenv("GOARCH")
 	goos := os.Getenv("GOOS")
 
-	return fmt.Sprintf("%s/pkg/%s_%s/%s.a", goroot, goos, goarch, imp)
+	pkgdir := fmt.Sprintf("%s_%s", goos, goarch)
+	pkgfile := fmt.Sprintf("%s.a", imp)
+
+	return path.Join(goroot, "pkg", pkgdir, pkgfile)
 }
