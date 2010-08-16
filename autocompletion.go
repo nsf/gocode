@@ -184,18 +184,23 @@ func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
 	if !Config.ProposeBuiltins && decl.Scope == self.ctx.uni {
 		return
 	}
-	if strings.HasPrefix(name, p) || matchClass(int(decl.Class), class) {
-		if !checkTypeExpr(decl.Type) {
-			return
-		}
-		self.names.Push(name)
-
-		decl.PrettyPrintType(self.tmpbuf)
-		self.types.Push(self.tmpbuf.String())
-		self.tmpbuf.Reset()
-
-		self.classes.Push(decl.ClassName())
+	if class != -1 && !matchClass(int(decl.Class), class) {
+		return
 	}
+	if class == -1 && !strings.HasPrefix(name, p) {
+		return
+	}
+
+	if !checkTypeExpr(decl.Type) {
+		return
+	}
+	self.names.Push(name)
+
+	decl.PrettyPrintType(self.tmpbuf)
+	self.types.Push(self.tmpbuf.String())
+	self.tmpbuf.Reset()
+
+	self.classes.Push(decl.ClassName())
 }
 
 func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
