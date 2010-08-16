@@ -393,11 +393,13 @@ func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 	self.processStmt(a.Init)
 	// type var
 	var tv *Decl
-	lhs := a.Assign.(*ast.AssignStmt).Lhs
-	rhs := a.Assign.(*ast.AssignStmt).Rhs
-	if lhs != nil && len(lhs) == 1 {
-		tvname := lhs[0].(*ast.Ident).Name()
-		tv = NewDeclVar(tvname, nil, rhs[0], -1, self.scope)
+	if a, ok := a.Assign.(*ast.AssignStmt); ok {
+		lhs := a.Lhs
+		rhs := a.Rhs
+		if lhs != nil && len(lhs) == 1 {
+			tvname := lhs[0].(*ast.Ident).Name()
+			tv = NewDeclVar(tvname, nil, rhs[0], -1, self.scope)
+		}
 	}
 
 	var lastCursorAfter *ast.TypeCaseClause
