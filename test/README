@@ -1,0 +1,2 @@
+This test simply tries to parse all packages in GOROOT. So, mostly this is a
+test for .a (archive) files parser.
