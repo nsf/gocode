@@ -741,7 +741,8 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 		switch ctx.index {
 		case -1, 0:
 			// converting a value to a different type, but return thing is a value
-			return t.Type, false, ctx.scope
+			it, _, _ := cc.inferType(t.Type)
+			return it, false, ctx.scope
 		case 1:
 			return ast.NewIdent("bool"), false, ctx.scope // TODO: return real built-in bool here
 		}
