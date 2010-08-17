@@ -18,7 +18,7 @@ for t in sorted(glob.glob("test.*")):
 	total += 1
 	c = glob.glob(t + "/cursor.*")[0]
 	cursorpos = os.path.splitext(c)[1][1:]
-	with open(t + "/out.expected") as f:
+	with open(t + "/out.expected", "r") as f:
 		outexpected = f.read()
 	filename = t + "/test.go"
 	gocode = subprocess.Popen("gocode -in %s autocomplete %s %s" % (filename, filename, cursorpos),
