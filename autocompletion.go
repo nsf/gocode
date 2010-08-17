@@ -252,7 +252,10 @@ func (self *AutoCompleteContext) updateCaches() {
 	// start module cache update
 	done := make(chan bool)
 	for _, m := range ms {
-		m.asyncUpdateCache(done)
+		go func(m *ModuleCache) {
+			m.updateCache()
+			done <- true
+		}(m)
 	}
 
 	// wait for completion

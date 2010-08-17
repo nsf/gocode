@@ -40,13 +40,6 @@ func NewModuleCacheForever(name, defalias string) *ModuleCache {
 	return m
 }
 
-func (self *ModuleCache) asyncUpdateCache(done chan bool) {
-	go func() {
-		self.updateCache()
-		done <- true
-	}()
-}
-
 func (self *ModuleCache) updateCache() {
 	if self.mtime == -1 {
 		return
