@@ -130,6 +130,7 @@ func fileExists(filename string) bool {
 }
 
 func serverFunc() int {
+	readConfig(&Config)
 	socketfname := getSocketFilename()
 	if fileExists(socketfname) {
 		fmt.Printf("unix socket: '%s' already exists\n", socketfname)
@@ -195,6 +196,17 @@ func Cmd_Close(c *rpc.Client) {
 
 func Cmd_DropCache(c *rpc.Client) {
 	Client_DropCache(c, 0)
+}
+
+func Cmd_Set(c *rpc.Client) {
+	switch flag.NArg() {
+	case 1:
+		fmt.Print(Client_Set(c, "", ""))
+	case 2:
+		fmt.Print(Client_Set(c, flag.Arg(1), ""))
+	case 3:
+		fmt.Print(Client_Set(c, flag.Arg(1), flag.Arg(2)))
+	}
 }
 
 func makeFDs() ([]*os.File, os.Error) {
@@ -282,6 +294,8 @@ func clientFunc() int {
 			Cmd_Status(client)
 		case "drop-cache":
 			Cmd_DropCache(client)
+		case "set":
+			Cmd_Set(client)
 		}
 	}
 	return 0

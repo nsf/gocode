@@ -72,6 +72,15 @@ func Server_DropCache(notused int) int {
 	return 0
 }
 
+func Server_Set(key, value string) string {
+	if key == "" {
+		return listConfig(&Config)
+	} else if value == "" {
+		return listOption(&Config, key)
+	}
+	return setOption(&Config, key, value)
+}
+
 //-------------------------------------------------------------------------
 // Autocompletion Refactoring Server
 //-------------------------------------------------------------------------
