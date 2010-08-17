@@ -608,11 +608,10 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			typ, scope := d.InferType(ctx.ac)
 			return typ, d.Class == DECL_TYPE, scope
 		}
-		//return t, true // probably a builtin
 	case *ast.UnaryExpr:
 		switch t.Op {
 		case token.AND:
-			// & makes sense only with values, don't even check for type
+			// &a makes sense only with values, don't even check for type
 			it, _, scope := cc.inferType(t.X)
 			if it == nil {
 				break
@@ -622,7 +621,7 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			e.X = it
 			return e, false, scope
 		case token.ARROW:
-			// <- makes sense only with values
+			// <-a makes sense only with values
 			it, _, scope := cc.inferType(t.X)
 			if it == nil {
 				break
