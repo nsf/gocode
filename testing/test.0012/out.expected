@@ -1,4 +1,4 @@
-Found 7 candidates:
+Found 6 candidates:
   func main()
   type MyMap map[string]int
   var key string

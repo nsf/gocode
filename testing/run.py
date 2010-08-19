@@ -19,6 +19,7 @@ def run_test(t):
 	total += 1
 	c = glob.glob(t + "/cursor.*")[0]
 	cursorpos = os.path.splitext(c)[1][1:]
+	outexpected = ""
 	with open(t + "/out.expected", "r") as f:
 		outexpected = f.read()
 	filename = t + "/test.go"

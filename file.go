@@ -159,10 +159,8 @@ func (self *PackageFile) addModuleImport(alias, path string) {
 }
 
 func (self *PackageFile) processImports(decls []ast.Decl) {
-	seenimport := false
 	for _, decl := range decls {
 		if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.IMPORT {
-			seenimport = true
 			for _, spec := range gd.Specs {
 				imp, ok := spec.(*ast.ImportSpec)
 				if !ok {
@@ -170,7 +168,7 @@ func (self *PackageFile) processImports(decls []ast.Decl) {
 				}
 				self.processImportSpec(imp)
 			}
-		} else if seenimport == true {
+		} else {
 			return
 		}
 	}
@@ -198,7 +196,7 @@ func (self *PackageFile) processDeclLocals(decl ast.Decl) {
 			// 2. args vars
 			// 3. results vars
 			savescope := self.scope
-			self.scope = AdvanceScope(self.scope)
+			self.scope = NewScope(self.scope)
 			self.topscope = self.scope
 
 			self.processFieldList(t.Recv)
