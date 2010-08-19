@@ -10,3 +10,6 @@ test.0009 - same as test.0008, but more deeply
 test.0010 - type assertion (to *ast.ValueSpec)
 test.0011 - *reflect.StructValue, unexported type embedding
 test.0012 - type advancing, file with no import statements
+test.0013 - binary operators
+test.0014 - address of and pointer dereferences
+test.0015 - unary operators

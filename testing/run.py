@@ -6,16 +6,25 @@ import os, glob, subprocess, sys
 total = 0
 ok = 0
 fail = 0
+expected_fail = 0
 
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
+YELLOW = "\033[0;33m"
 NC = "\033[0m"
 
 OK = GREEN + "PASS!" + NC
 FAIL = RED + "FAIL!" + NC
+EXPECTED = YELLOW + "EXPECTED: " + NC
+
+# name of the test + commentary (why it is expected to fail)
+expected_to_fail = {
+	"test.0013" : "Not implemented (binary ops)",
+	"test.0015" : "Not implemented (unary ops)"
+}
 
 def run_test(t):
-	global total, ok, fail
+	global total, ok, fail, expected_fail
 	total += 1
 	c = glob.glob(t + "/cursor.*")[0]
 	cursorpos = os.path.splitext(c)[1][1:]
@@ -29,13 +38,17 @@ def run_test(t):
 			shell=True, stdout=subprocess.PIPE)
 	out = gocode.communicate()[0]
 	if out != outexpected:
-		print t + ": " + FAIL
-		print "--------------------------------------------------------"
-		print "Got:\n" + out
-		print "--------------------------------------------------------"
-		print "Expected:\n" + outexpected
-		print "--------------------------------------------------------"
-		fail += 1
+		if t in expected_to_fail:
+			print t + ": " + FAIL + " " + EXPECTED + expected_to_fail[t]
+			expected_fail += 1
+		else:
+			print t + ": " + FAIL
+			print "--------------------------------------------------------"
+			print "Got:\n" + out
+			print "--------------------------------------------------------"
+			print "Expected:\n" + outexpected
+			print "--------------------------------------------------------"
+			fail += 1
 	else:
 		print t + ": " + OK
 		ok += 1
@@ -48,7 +61,7 @@ else:
 
 print "\nSummary (total: %d):" % total
 print GREEN + "  PASS" + NC + ": %d" % ok
-print RED +"  FAIL" + NC + ": %d" % fail
+print RED +"  FAIL" + NC + ": %d" % (fail + expected_fail)
 
 if fail == 0:
 	print GREEN + "████████████████████████████████████████████████████████████████████" + NC
