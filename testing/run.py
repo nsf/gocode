@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-import os, glob, subprocess
+import os, glob, subprocess, sys
 
 total = 0
 ok = 0
@@ -14,7 +14,8 @@ NC = "\033[0m"
 OK = GREEN + "PASS!" + NC
 FAIL = RED + "FAIL!" + NC
 
-for t in sorted(glob.glob("test.*")):
+def run_test(t):
+	global total, ok, fail
 	total += 1
 	c = glob.glob(t + "/cursor.*")[0]
 	cursorpos = os.path.splitext(c)[1][1:]
@@ -35,6 +36,12 @@ for t in sorted(glob.glob("test.*")):
 	else:
 		print t + ": " + OK
 		ok += 1
+
+if len(sys.argv) == 2:
+	run_test(sys.argv[1])
+else:
+	for t in sorted(glob.glob("test.*")):
+		run_test(t)
 
 print "\nSummary (total: %d):" % total
 print GREEN + "  PASS" + NC + ": %d" % ok
