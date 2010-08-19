@@ -19,9 +19,11 @@ def run_test(t):
 	total += 1
 	c = glob.glob(t + "/cursor.*")[0]
 	cursorpos = os.path.splitext(c)[1][1:]
-	outexpected = ""
-	with open(t + "/out.expected", "r") as f:
-		outexpected = f.read()
+	try:
+		with open(t + "/out.expected", "r") as f:
+			outexpected = f.read()
+	except:
+		outexpected = "To be determined"
 	filename = t + "/test.go"
 	gocode = subprocess.Popen("gocode -in %s autocomplete %s %s" % (filename, filename, cursorpos),
 			shell=True, stdout=subprocess.PIPE)
