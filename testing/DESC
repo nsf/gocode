@@ -1,0 +1,12 @@
+test.0001 - basic module import (fmt)
+test.0002 - range statement over map variable
+test.0003 - type switch statement valid type case
+test.0004 - type switch statement default type case
+test.0005 - multifile package test, type inference
+test.0006 - multifile package test, methods
+test.0007 - class selector on packages (var)
+test.0008 - variable with anonymous type + type embedding
+test.0009 - same as test.0008, but more deeply
+test.0010 - type assertion (to *ast.ValueSpec)
+test.0011 - *reflect.StructValue, unexported type embedding
+test.0012 - type advancing, file with no import statements
