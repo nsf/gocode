@@ -64,7 +64,7 @@ func (self *PackageFile) processFile(filename string, stage1 chan *PackageFile) 
 	// drop cached modules and file scope
 	self.resetCache()
 
-	file, _ := parser.ParseFile(filename, nil, nil, 0)
+	file, _ := parser.ParseFile(filename, nil, 0)
 	// STAGE 1
 	// update import statements
 	self.processImports(file.Decls)
@@ -95,7 +95,7 @@ func (self *PackageFile) processDataStage1(data []byte, ctx *ProcessDataContext)
 	ctx.cur, filedata, ctx.block = RipOffDecl(data, self.cursor)
 
 	// process file without locals first
-	ctx.file, _ = parser.ParseFile("", filedata, nil, 0)
+	ctx.file, _ = parser.ParseFile("", filedata, 0)
 	// STAGE 1
 	self.packageName = packageName(ctx.file)
 	self.processImports(ctx.file.Decls)
@@ -109,7 +109,7 @@ func (self *PackageFile) processDataStage2(ctx *ProcessDataContext) {
 	}
 	if ctx.block != nil {
 		// parse local function as global
-		ctx.decls, _ = parser.ParseDeclList("", ctx.block, nil)
+		ctx.decls, _ = parser.ParseDeclList("", ctx.block)
 		for _, decl := range ctx.decls {
 			self.processDecl(decl)
 		}
@@ -364,7 +364,7 @@ func (self *PackageFile) processSelectStmt(a *ast.SelectStmt) {
 
 	if lastCursorAfter != nil {
 		if lastCursorAfter.Lhs != nil && lastCursorAfter.Tok == token.DEFINE {
-			vname := lastCursorAfter.Lhs.(*ast.Ident).Name()
+			vname := lastCursorAfter.Lhs.(*ast.Ident).Name
 			v := NewDeclVar(vname, nil, lastCursorAfter.Rhs, -1, self.scope)
 			self.scope.addNamedDecl(v)
 		}
@@ -391,7 +391,7 @@ func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 		lhs := a.Lhs
 		rhs := a.Rhs
 		if lhs != nil && len(lhs) == 1 {
-			tvname := lhs[0].(*ast.Ident).Name()
+			tvname := lhs[0].(*ast.Ident).Name
 			tv = NewDeclVar(tvname, nil, rhs[0], -1, self.scope)
 		}
 	}
@@ -462,7 +462,7 @@ func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
 			switch t := t1.(type) {
 			case *ast.Ident:
 				// string
-				if t.Name() == "string" {
+				if t.Name == "string" {
 					t1 = ast.NewIdent("int")
 					t2 = ast.NewIdent("int")
 				} else {
@@ -482,7 +482,7 @@ func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
 			}
 
 			if t, ok := a.Key.(*ast.Ident); ok {
-				d := NewDeclVar(t.Name(), t1, nil, -1, self.scope)
+				d := NewDeclVar(t.Name, t1, nil, -1, self.scope)
 				if d != nil {
 					self.scope.addNamedDecl(d)
 				}
@@ -490,7 +490,7 @@ func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
 
 			if a.Value != nil {
 				if t, ok := a.Value.(*ast.Ident); ok {
-					d := NewDeclVar(t.Name(), t2, nil, -1, self.scope)
+					d := NewDeclVar(t.Name, t2, nil, -1, self.scope)
 					if d != nil {
 						self.scope.addNamedDecl(d)
 					}
@@ -516,7 +516,7 @@ func (self *PackageFile) processAssignStmt(a *ast.AssignStmt) {
 			// something is wrong, just ignore the whole stmt
 			return
 		}
-		names[i] = id.Name()
+		names[i] = id.Name
 	}
 
 	for i, name := range names {
@@ -578,7 +578,7 @@ func (self *PackageFile) findFile(imp string) string {
 
 func packageName(file *ast.File) string {
 	if file.Name != nil {
-		return file.Name.Name()
+		return file.Name.Name
 	}
 	return ""
 }
@@ -587,7 +587,7 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 	path := string(imp.Path.Value)
 	alias := ""
 	if imp.Name != nil {
-		alias = imp.Name.Name()
+		alias = imp.Name.Name
 	}
 	path = path[1 : len(path)-1]
 	return path, alias

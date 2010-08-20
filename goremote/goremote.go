@@ -21,13 +21,13 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		fmt.Fprintf(out, "*")
 		prettyPrintTypeExpr(out, t.X)
 	case *ast.Ident:
-		fmt.Fprintf(out, t.Name())
+		fmt.Fprintf(out, t.Name)
 	case *ast.ArrayType:
 		fmt.Fprintf(out, "[]")
 		prettyPrintTypeExpr(out, t.Elt)
 	case *ast.SelectorExpr:
 		prettyPrintTypeExpr(out, t.X)
-		fmt.Fprintf(out, ".%s", t.Sel.Name())
+		fmt.Fprintf(out, ".%s", t.Sel.Name)
 	case *ast.FuncType:
 		fmt.Fprintf(out, "func(")
 		prettyPrintFuncFieldList(out, t.Params)
@@ -66,7 +66,7 @@ func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 		// names
 		if field.Names != nil {
 			for j, name := range field.Names {
-				fmt.Fprintf(out, "%s", name.Name())
+				fmt.Fprintf(out, "%s", name.Name)
 				if j != len(field.Names)-1 {
 					fmt.Fprintf(out, ", ")
 				}
@@ -161,7 +161,7 @@ func generateServerRPCWrapper(out io.Writer, fun *ast.FuncDecl, name string, arg
 			fmt.Fprintf(out, ", ")
 		}
 	}
-	fmt.Fprintf(out, " = %s(", fun.Name.Name())
+	fmt.Fprintf(out, " = %s(", fun.Name.Name)
 	for i := 0; i < argcnt; i++ {
 		fmt.Fprintf(out, "args.Arg%d", i)
 		if i != argcnt-1 {
@@ -207,8 +207,8 @@ func generateClientRPCWrapper(out io.Writer, fun *ast.FuncDecl, name string, arg
 }
 
 func wrapFunction(out io.Writer, fun *ast.FuncDecl) {
-	name := fun.Name.Name()[len(prefix):]
-	fmt.Fprintf(out, "// wrapper for: %s\n\n", fun.Name.Name())
+	name := fun.Name.Name[len(prefix):]
+	fmt.Fprintf(out, "// wrapper for: %s\n\n", fun.Name.Name)
 	argcnt := generateStructWrapper(out, fun.Type.Params, "Args", name)
 	replycnt := generateStructWrapper(out, fun.Type.Results, "Reply", name)
 	generateServerRPCWrapper(out, fun, name, argcnt, replycnt)
@@ -217,15 +217,15 @@ func wrapFunction(out io.Writer, fun *ast.FuncDecl) {
 }
 
 func processFile(out io.Writer, filename string) {
-	file, err := parser.ParseFile(filename, nil, nil, 0)
+	file, err := parser.ParseFile(filename, nil, 0)
 	if err != nil {
 		panic(err.String())
 	}
 
 	for _, decl := range file.Decls {
 		if fdecl, ok := decl.(*ast.FuncDecl); ok {
-			namelen := len(fdecl.Name.Name())
-			if namelen >= len(prefix) && fdecl.Name.Name()[0:len(prefix)] == prefix {
+			namelen := len(fdecl.Name.Name)
+			if namelen >= len(prefix) && fdecl.Name.Name[0:len(prefix)] == prefix {
 				wrapFunction(out, fdecl)
 			}
 		}

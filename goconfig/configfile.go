@@ -416,7 +416,7 @@ func (c *ConfigFile) GetString(section string, option string) (value string, err
 	var i int;
 
 	for i = 0; i < DepthValues; i++ {	// keep a sane depth
-		vr := varRegExp.ExecuteString(value);
+		vr := varRegExp.FindStringSubmatchIndex(value);
 		if len(vr) == 0 {
 			break
 		}

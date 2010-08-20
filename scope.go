@@ -106,11 +106,11 @@ func foreignifyTypeExpr(e ast.Expr, file *Scope) {
 	case *ast.StarExpr:
 		foreignifyTypeExpr(t.X, file)
 	case *ast.Ident:
-		if !isNameForeignified(t.Name()) {
-			decl := file.lookup(t.Name())
+		if !isNameForeignified(t.Name) {
+			decl := file.lookup(t.Name)
 			if decl != nil && decl.Class == DECL_MODULE {
 				realname := decl.Name
-				t.Obj.Name = foreignifyName(t.Name(), realname)
+				t.Name = foreignifyName(t.Name, realname)
 			}
 		}
 	case *ast.ArrayType:

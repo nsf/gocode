@@ -83,8 +83,8 @@ func checkTypeExpr(e ast.Expr) bool {
 }
 
 func filePackageName(filename string) string {
-	file, _ := parser.ParseFile(filename, nil, nil, parser.PackageClauseOnly)
-	return file.Name.Name()
+	file, _ := parser.ParseFile(filename, nil, parser.PackageClauseOnly)
+	return file.Name.Name
 }
 
 type AutoCompleteContext struct {
