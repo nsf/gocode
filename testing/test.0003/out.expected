@@ -4,7 +4,6 @@ Found 12 candidates:
   func Name() string
   func Pos() token.Position
   func String() string
-  func String() string
   var Column int
   var Filename string
   var Line int
