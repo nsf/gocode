@@ -1,0 +1,11 @@
+Found 10 candidates:
+  const BestCompression 
+  const BestSpeed 
+  const DefaultCompression 
+  const NoCompression 
+  func NewReader(r io.Reader) (io.ReadCloser, os.Error)
+  func NewWriter(w io.Writer) (io.WriteCloser, os.Error)
+  func NewWriterLevel(w io.Writer, level int) (io.WriteCloser, os.Error)
+  var ChecksumError os.Error
+  var HeaderError os.Error
+  var UnsupportedError os.Error
