@@ -209,7 +209,7 @@ func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 			typedecl := typeToDecl(emb, decl.Scope, self.ctx)
 			if typedecl != nil {
 				for _, c := range typedecl.Children {
-					if _, ok := decl.Children[c.Name]; ok {
+					if fc := decl.FindChild(c.Name); fc != nil {
 						continue
 					}
 					self.appendDecl(p, c.Name, c, class)
