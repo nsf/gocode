@@ -586,7 +586,5 @@ func (self *AutoCompleteContext) Status() string {
 			}
 		}
 	}
-	fmt.Fprintf(buf, "Listing config:\n")
-	fmt.Fprint(buf, listConfig(&Config))
 	return buf.String()
 }
