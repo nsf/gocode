@@ -1,4 +1,4 @@
-Found 12 candidates:
+Found 11 candidates:
   func IsExported() bool
   func IsValid() bool
   func Name() string
