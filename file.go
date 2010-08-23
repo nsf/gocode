@@ -409,7 +409,6 @@ func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 				tv.Type = lastCursorAfter.Types[0]
 				tv.Value = nil
 			}
-			tv.init()
 			self.scope.addNamedDecl(tv)
 		}
 		for _, s := range lastCursorAfter.Body {

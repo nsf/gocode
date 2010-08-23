@@ -127,7 +127,13 @@ func (self *ModuleCache) processPackageData(s string) {
 			}
 		}
 	}
-	self.scope = nil
+	for key, value := range self.scope.entities {
+		m, ok := self.others[value.Name]
+		if !ok && value.Name == self.defalias {
+			m = self.main
+		}
+		self.scope.entities[key] = m
+	}
 }
 
 // feed one definition line from .a file here

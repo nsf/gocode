@@ -1,11 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"strings"
-	"go/ast"
-)
-
 type Scope struct {
 	parent   *Scope // nil for universe scope
 	entities map[string]*Decl
@@ -60,70 +54,4 @@ func (s *Scope) lookup(name string) *Decl {
 		}
 	}
 	return decl
-}
-
-//-------------------------------------------------------------------------
-// Name foreignification
-// Transforms name to a pair: nice name + real name. Used for modules
-//-------------------------------------------------------------------------
-
-func foreignifyName(name, realname string) string {
-	return fmt.Sprint("$", name, "$", realname)
-}
-
-func isNameForeignified(name string) bool {
-	return name[0] == '$'
-}
-
-func splitForeignName(name string) (string, string) {
-	i := strings.Index(name[1:], "$")
-	if i == -1 {
-		panic("trying to split unforeignified name")
-	}
-	return name[1 : i+1], name[i+2:]
-}
-
-func filterForeignName(name string) string {
-	if isNameForeignified(name) {
-		_, b := splitForeignName(name)
-		return b
-	}
-	return name
-}
-
-func foreignifyFuncFieldList(f *ast.FieldList, file *Scope) {
-	if f == nil {
-		return
-	}
-
-	for _, field := range f.List {
-		foreignifyTypeExpr(field.Type, file)
-	}
-}
-
-func foreignifyTypeExpr(e ast.Expr, file *Scope) {
-	switch t := e.(type) {
-	case *ast.StarExpr:
-		foreignifyTypeExpr(t.X, file)
-	case *ast.Ident:
-		if !isNameForeignified(t.Name()) {
-			decl := file.lookup(t.Name())
-			if decl != nil && decl.Class == DECL_MODULE {
-				realname := decl.Name
-				t.Obj.Name = foreignifyName(t.Name(), realname)
-			}
-		}
-	case *ast.ArrayType:
-		foreignifyTypeExpr(t.Elt, file)
-	case *ast.SelectorExpr:
-		foreignifyTypeExpr(t.X, file)
-	case *ast.FuncType:
-		foreignifyFuncFieldList(t.Params, file)
-		foreignifyFuncFieldList(t.Results, file)
-	case *ast.MapType:
-		foreignifyTypeExpr(t.Key, file)
-		foreignifyTypeExpr(t.Value, file)
-	case *ast.ChanType:
-		foreignifyTypeExpr(t.Value, file)
-	}
 }

@@ -145,7 +145,6 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 			d.Embedded = astTypeToEmbedded(field.Type)
 			d.Scope = scope
 			d.ValueIndex = -1
-			d.init()
 			decls[d.Name] = d
 		}
 
@@ -162,7 +161,6 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 			d.Flags = int16(flags)
 			d.Scope = scope
 			d.ValueIndex = -1
-			d.init()
 			decls[d.Name] = d
 		}
 	}
@@ -213,15 +211,6 @@ func astTypeToChildren(ty ast.Expr, flags int, scope *Scope) map[string]*Decl {
 	return nil
 }
 
-func (d *Decl) init() {
-	if d.Type != nil {
-		foreignifyTypeExpr(d.Type, d.Scope)
-	}
-	for _, typ := range d.Embedded {
-		foreignifyTypeExpr(typ, d.Scope)
-	}
-}
-
 func NewDeclFromAstDecl(name string, flags int, d ast.Decl, value ast.Expr, vindex int, scope *Scope) *Decl {
 	if !astDeclConvertable(d) || name == "_" {
 		return nil
@@ -236,7 +225,6 @@ func NewDeclFromAstDecl(name string, flags int, d ast.Decl, value ast.Expr, vind
 	decl.Value = value
 	decl.ValueIndex = vindex
 	decl.Scope = scope
-	decl.init()
 	return decl
 }
 
@@ -274,7 +262,6 @@ func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, scope *Sc
 	decl.Value = value
 	decl.ValueIndex = vindex
 	decl.Scope = scope
-	decl.init()
 	return decl
 }
 
@@ -467,7 +454,7 @@ func typePath(e ast.Expr) (r TypePath) {
 		r = typePath(t.X)
 	case *ast.SelectorExpr:
 		if ident, ok := t.X.(*ast.Ident); ok {
-			r.module = filterForeignName(ident.Name())
+			r.module = ident.Name()
 		}
 		r.name = t.Sel.Name()
 	}
@@ -480,7 +467,8 @@ func lookupPath(tp TypePath, scope *Scope, ctx *AutoCompleteContext) *Decl {
 	}
 	var decl *Decl
 	if tp.module != "" {
-		decl = ctx.m[tp.module]
+		decl = scope.lookup(tp.module)
+		//decl = ctx.m[tp.module]
 	}
 
 	if decl != nil {
@@ -722,7 +710,7 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			if c != nil {
 				if c.Class == DECL_TYPE {
 					// use foregnified module name
-					t.X = ast.NewIdent(d.Name)
+					//t.X = ast.NewIdent(d.Name)
 					return t, true, ctx.scope
 				} else {
 					typ, scope := c.InferType(ctx.ac)
@@ -800,14 +788,6 @@ func (d *Decl) FindChildAndInEmbedded(name string, ctx *AutoCompleteContext) *De
 // Pretty printing
 //-------------------------------------------------------------------------
 
-func beautifyIdent(ident string) string {
-	if isNameForeignified(ident) {
-		abbrev, _ := splitForeignName(ident)
-		return abbrev
-	}
-	return ident
-}
-
 func getArrayLen(e ast.Expr) string {
 	switch t := e.(type) {
 	case *ast.BasicLit:
@@ -824,7 +804,7 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		fmt.Fprintf(out, "*")
 		prettyPrintTypeExpr(out, t.X)
 	case *ast.Ident:
-		fmt.Fprintf(out, beautifyIdent(t.Name()))
+		fmt.Fprintf(out, t.Name())
 	case *ast.ArrayType:
 		al := ""
 		if t.Len != nil {
