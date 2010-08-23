@@ -564,78 +564,70 @@ func rangePredicate(v ast.Expr) bool {
 	return false
 }
 
-type TypeInferenceContext struct {
-	index int
-	scope *Scope
-}
-
 // RETURNS:
 // 	- type expression which represents a full name of a type
 //	- bool whether a type expression is actually a type (used internally)
 //	- scope in which type makes sense
-func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) {
-	cc := *ctx
-	cc.index = -1
-
+func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 	switch t := v.(type) {
 	case *ast.CompositeLit:
-		return t.Type, true, ctx.scope
+		return t.Type, scope, true
 	case *ast.Ident:
-		if d := ctx.scope.lookup(t.Name()); d != nil {
+		if d := scope.lookup(t.Name()); d != nil {
 			if d.Class == DECL_MODULE {
-				return ast.NewIdent(t.Name()), false, ctx.scope
+				return ast.NewIdent(t.Name()), scope, false
 			}
 			typ, scope := d.InferType()
-			return typ, d.Class == DECL_TYPE, scope
+			return typ, scope, d.Class == DECL_TYPE
 		}
 	case *ast.UnaryExpr:
 		switch t.Op {
 		case token.AND:
 			// &a makes sense only with values, don't even check for type
-			it, _, scope := cc.inferType(t.X)
+			it, s, _ := inferType(t.X, scope, -1)
 			if it == nil {
 				break
 			}
 
 			e := new(ast.StarExpr)
 			e.X = it
-			return e, false, scope
+			return e, s, false
 		case token.ARROW:
 			// <-a makes sense only with values
-			it, _, scope := cc.inferType(t.X)
+			it, s, _ := inferType(t.X, scope, -1)
 			if it == nil {
 				break
 			}
-			switch ctx.index {
+			switch index {
 			case -1, 0:
-				it, scope = advanceToType(chanPredicate, it, scope)
-				return it.(*ast.ChanType).Value, false, scope
+				it, s = advanceToType(chanPredicate, it, s)
+				return it.(*ast.ChanType).Value, s, false
 			case 1:
 				// technically it's a value, but in case of index == 1
 				// it is always the last infer operation
-				return ast.NewIdent("bool"), false, scope // TODO: return real built-in bool here
+				return ast.NewIdent("bool"), s, false // TODO: return real built-in bool here
 			}
 		}
 	case *ast.IndexExpr:
 		// something[another] always returns a value and it works on a value too
-		it, _, scope := cc.inferType(t.X)
+		it, s, _ := inferType(t.X, scope, -1)
 		if it == nil {
 			break
 		}
-		it, scope = advanceToType(indexPredicate, it, scope)
+		it, s = advanceToType(indexPredicate, it, s)
 		switch t := it.(type) {
 		case *ast.ArrayType:
-			return t.Elt, false, scope
+			return t.Elt, s, false
 		case *ast.MapType:
-			switch ctx.index {
+			switch index {
 			case -1, 0:
-				return t.Value, false, scope
+				return t.Value, s, false
 			case 1:
-				return ast.NewIdent("bool"), false, scope // TODO: return real built-in bool here
+				return ast.NewIdent("bool"), s, false // TODO: return real built-in bool here
 			}
 		}
 	case *ast.StarExpr:
-		it, isType, scope := cc.inferType(t.X)
+		it, s, isType := inferType(t.X, scope, -1)
 		if it == nil {
 			break
 		}
@@ -643,48 +635,48 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			// if it's a type, add * modifier, make it a 'pointer of' type
 			e := new(ast.StarExpr)
 			e.X = it
-			return e, true, scope
+			return e, s, true
 		} else {
-			it, scope := advanceToType(starPredicate, it, scope)
-			if s, ok := it.(*ast.StarExpr); ok {
-				return s.X, false, scope
+			it, s := advanceToType(starPredicate, it, s)
+			if se, ok := it.(*ast.StarExpr); ok {
+				return se.X, s, false
 			}
 		}
 	case *ast.CallExpr:
 		// this is a function call or a type cast:
 		// myFunc(1,2,3) or int16(myvar)
-		it, isType, scope := cc.inferType(t.Fun)
+		it, s, isType := inferType(t.Fun, scope, -1)
 		if it == nil {
 			break
 		}
 
 		if isType {
 			// a type cast
-			return it, false, ctx.scope
+			return it, scope, false
 		} else {
 			// it must be a function call or a built-in function
 			// first check for built-in
 			if ct, ok := it.(*ast.Ident); ok {
 				ty := checkForBuiltinFuncs(ct, t)
 				if ty != nil {
-					return ty, false, ctx.scope
+					return ty, scope, false
 				}
 			}
 
 			// then check for an ordinary function call
-			it, scope = advanceToType(funcPredicate, it, scope)
+			it, scope = advanceToType(funcPredicate, it, s)
 			if ct, ok := it.(*ast.FuncType); ok {
-				return funcReturnType(ct, ctx.index), false, scope
+				return funcReturnType(ct, index), s, false
 			}
 		}
 	case *ast.ParenExpr:
-		it, isType, scope := cc.inferType(t.X)
+		it, s, isType := inferType(t.X, scope, -1)
 		if it == nil {
 			break
 		}
-		return it, isType, scope
+		return it, s, isType
 	case *ast.SelectorExpr:
-		it, _, scope := cc.inferType(t.X)
+		it, s, _ := inferType(t.X, scope, -1)
 		if it == nil {
 			break
 		}
@@ -692,9 +684,9 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 		var d *Decl
 		switch it.(type) {
 		case *ast.StructType, *ast.InterfaceType:
-			d = NewDeclVar("tmp", it, nil, -1, scope)
+			d = NewDeclVar("tmp", it, nil, -1, s)
 		default:
-			d = typeToDecl(it, scope)
+			d = typeToDecl(it, s)
 		}
 
 		if d != nil {
@@ -703,36 +695,36 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 				if c.Class == DECL_TYPE {
 					// use foregnified module name
 					//t.X = ast.NewIdent(d.Name)
-					return t, true, ctx.scope
+					return t, scope, true
 				} else {
-					typ, scope := c.InferType()
-					return typ, false, scope
+					typ, s := c.InferType()
+					return typ, s, false
 				}
 			}
 		}
 	case *ast.FuncLit:
 		// it's a value, but I think most likely we don't even care, cause we can only
 		// call it, and CallExpr uses the type itself to figure out
-		return t.Type, false, ctx.scope
+		return t.Type, scope, false
 	case *ast.TypeAssertExpr:
 		if t.Type == nil {
-			return cc.inferType(t.X)
+			return inferType(t.X, scope, -1)
 		}
-		switch ctx.index {
+		switch index {
 		case -1, 0:
 			// converting a value to a different type, but return thing is a value
-			it, _, _ := cc.inferType(t.Type)
-			return it, false, ctx.scope
+			it, _, _ := inferType(t.Type, scope, -1)
+			return it, scope, false
 		case 1:
-			return ast.NewIdent("bool"), false, ctx.scope // TODO: return real built-in bool here
+			return ast.NewIdent("bool"), scope, false // TODO: return real built-in bool here
 		}
 	case *ast.ArrayType, *ast.MapType, *ast.ChanType, *ast.FuncType:
-		return t, true, ctx.scope
+		return t, scope, true
 	default:
 		_ = reflect.Typeof(v)
 		//fmt.Println(ty)
 	}
-	return nil, false, nil
+	return nil, nil, false
 }
 
 func (d *Decl) InferType() (ast.Expr, *Scope) {
@@ -750,8 +742,7 @@ func (d *Decl) InferType() (ast.Expr, *Scope) {
 	}
 
 	var scope *Scope
-	ctx := TypeInferenceContext{d.ValueIndex, d.Scope}
-	d.Type, _, scope = ctx.inferType(d.Value)
+	d.Type, scope, _ = inferType(d.Value, d.Scope, d.ValueIndex)
 	return d.Type, scope
 }
 
