@@ -205,6 +205,10 @@ func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
 }
 
 func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
+	if decl.Embedded == nil {
+		return
+	}
+
 	firstLevel := false
 	if self.tmpns == nil {
 		// first level, create tmp namespace
@@ -216,21 +220,21 @@ func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 			self.tmpns[c.Name] = true
 		}
 	}
-	if decl.Embedded != nil {
-		for _, emb := range decl.Embedded {
-			typedecl := typeToDecl(emb, decl.Scope)
-			if typedecl != nil {
-				for _, c := range typedecl.Children {
-					if _, has := self.tmpns[c.Name]; has {
-						continue
-					}
-					self.appendDecl(p, c.Name, c, class)
-					self.tmpns[c.Name] = true
+
+	for _, emb := range decl.Embedded {
+		typedecl := typeToDecl(emb, decl.Scope)
+		if typedecl != nil {
+			for _, c := range typedecl.Children {
+				if _, has := self.tmpns[c.Name]; has {
+					continue
 				}
-				self.appendEmbedded(p, typedecl, class)
+				self.appendDecl(p, c.Name, c, class)
+				self.tmpns[c.Name] = true
 			}
+			self.appendEmbedded(p, typedecl, class)
 		}
 	}
+
 	if firstLevel {
 		// remove tmp namespace
 		self.tmpns = nil
