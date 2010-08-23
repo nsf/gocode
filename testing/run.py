@@ -61,7 +61,7 @@ else:
 
 print "\nSummary (total: %d):" % total
 print GREEN + "  PASS" + NC + ": %d" % ok
-print RED +"  FAIL" + NC + ": %d" % (fail + expected_fail)
+print RED +"  FAIL" + NC + ": %d (unexpected failures)" % fail
 
 if fail == 0:
 	print GREEN + "████████████████████████████████████████████████████████████████████" + NC
