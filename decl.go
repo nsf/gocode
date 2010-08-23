@@ -461,14 +461,13 @@ func typePath(e ast.Expr) (r TypePath) {
 	return
 }
 
-func lookupPath(tp TypePath, scope *Scope, ctx *AutoCompleteContext) *Decl {
+func lookupPath(tp TypePath, scope *Scope) *Decl {
 	if tp.IsNil() {
 		return nil
 	}
 	var decl *Decl
 	if tp.module != "" {
 		decl = scope.lookup(tp.module)
-		//decl = ctx.m[tp.module]
 	}
 
 	if decl != nil {
@@ -479,28 +478,23 @@ func lookupPath(tp TypePath, scope *Scope, ctx *AutoCompleteContext) *Decl {
 		}
 	}
 
-	decl, ok := ctx.m[tp.name]
-	if ok {
-		return decl
-	}
-
 	return scope.lookup(tp.name)
 }
 
-func typeToDecl(t ast.Expr, scope *Scope, ctx *AutoCompleteContext) *Decl {
+func typeToDecl(t ast.Expr, scope *Scope) *Decl {
 	tp := typePath(t)
-	return lookupPath(tp, scope, ctx)
+	return lookupPath(tp, scope)
 }
 
-func exprToDecl(e ast.Expr, scope *Scope, ctx *AutoCompleteContext) *Decl {
-	t, scope := NewDeclVar("tmp", nil, e, -1, scope).InferType(ctx)
+func exprToDecl(e ast.Expr, scope *Scope) *Decl {
+	t, scope := NewDeclVar("tmp", nil, e, -1, scope).InferType()
 
 	var typedecl *Decl
 	switch t.(type) {
 	case *ast.StructType, *ast.InterfaceType:
 		typedecl = NewDeclVar("tmp", t, nil, -1, scope)
 	default:
-		typedecl = typeToDecl(t, scope, ctx)
+		typedecl = typeToDecl(t, scope)
 	}
 	return typedecl
 }
@@ -509,15 +503,9 @@ func exprToDecl(e ast.Expr, scope *Scope, ctx *AutoCompleteContext) *Decl {
 // Type inference
 //-------------------------------------------------------------------------
 
-type TypeInferenceContext struct {
-	index int
-	scope *Scope
-	ac    *AutoCompleteContext
-}
-
 type TypePredicate func(ast.Expr) bool
 
-func advanceToType(pred TypePredicate, v ast.Expr, scope *Scope, ac *AutoCompleteContext) (ast.Expr, *Scope) {
+func advanceToType(pred TypePredicate, v ast.Expr, scope *Scope) (ast.Expr, *Scope) {
 	if pred(v) {
 		return v, scope
 	}
@@ -527,7 +515,7 @@ func advanceToType(pred TypePredicate, v ast.Expr, scope *Scope, ac *AutoComplet
 		if tp.IsNil() {
 			return nil, nil
 		}
-		decl := lookupPath(tp, scope, ac)
+		decl := lookupPath(tp, scope)
 		if decl == nil {
 			return nil, nil
 		}
@@ -576,6 +564,11 @@ func rangePredicate(v ast.Expr) bool {
 	return false
 }
 
+type TypeInferenceContext struct {
+	index int
+	scope *Scope
+}
+
 // RETURNS:
 // 	- type expression which represents a full name of a type
 //	- bool whether a type expression is actually a type (used internally)
@@ -589,11 +582,10 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 		return t.Type, true, ctx.scope
 	case *ast.Ident:
 		if d := ctx.scope.lookup(t.Name()); d != nil {
-			// we don't check for DECL_MODULE here, because module itself
-			// isn't a type, in a type context it always will be used together
-			// with	SelectorExpr like: os.Error, ast.TypeSpec, etc.
-			// and SelectorExpr ignores type bool.
-			typ, scope := d.InferType(ctx.ac)
+			if d.Class == DECL_MODULE {
+				return ast.NewIdent(t.Name()), false, ctx.scope
+			}
+			typ, scope := d.InferType()
 			return typ, d.Class == DECL_TYPE, scope
 		}
 	case *ast.UnaryExpr:
@@ -616,7 +608,7 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			}
 			switch ctx.index {
 			case -1, 0:
-				it, scope = advanceToType(chanPredicate, it, scope, ctx.ac)
+				it, scope = advanceToType(chanPredicate, it, scope)
 				return it.(*ast.ChanType).Value, false, scope
 			case 1:
 				// technically it's a value, but in case of index == 1
@@ -630,7 +622,7 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 		if it == nil {
 			break
 		}
-		it, scope = advanceToType(indexPredicate, it, scope, ctx.ac)
+		it, scope = advanceToType(indexPredicate, it, scope)
 		switch t := it.(type) {
 		case *ast.ArrayType:
 			return t.Elt, false, scope
@@ -653,7 +645,7 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			e.X = it
 			return e, true, scope
 		} else {
-			it, scope := advanceToType(starPredicate, it, scope, ctx.ac)
+			it, scope := advanceToType(starPredicate, it, scope)
 			if s, ok := it.(*ast.StarExpr); ok {
 				return s.X, false, scope
 			}
@@ -680,7 +672,7 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 			}
 
 			// then check for an ordinary function call
-			it, scope = advanceToType(funcPredicate, it, scope, ctx.ac)
+			it, scope = advanceToType(funcPredicate, it, scope)
 			if ct, ok := it.(*ast.FuncType); ok {
 				return funcReturnType(ct, ctx.index), false, scope
 			}
@@ -702,18 +694,18 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 		case *ast.StructType, *ast.InterfaceType:
 			d = NewDeclVar("tmp", it, nil, -1, scope)
 		default:
-			d = typeToDecl(it, scope, ctx.ac)
+			d = typeToDecl(it, scope)
 		}
 
 		if d != nil {
-			c := d.FindChildAndInEmbedded(t.Sel.Name(), ctx.ac)
+			c := d.FindChildAndInEmbedded(t.Sel.Name())
 			if c != nil {
 				if c.Class == DECL_TYPE {
 					// use foregnified module name
 					//t.X = ast.NewIdent(d.Name)
 					return t, true, ctx.scope
 				} else {
-					typ, scope := c.InferType(ctx.ac)
+					typ, scope := c.InferType()
 					return typ, false, scope
 				}
 			}
@@ -743,9 +735,12 @@ func (ctx *TypeInferenceContext) inferType(v ast.Expr) (ast.Expr, bool, *Scope) 
 	return nil, false, nil
 }
 
-func (d *Decl) InferType(ac *AutoCompleteContext) (ast.Expr, *Scope) {
+func (d *Decl) InferType() (ast.Expr, *Scope) {
 	switch d.Class {
-	case DECL_TYPE, DECL_MODULE:
+	case DECL_MODULE:
+		// module is handled specially in inferType
+		return nil, nil
+	case DECL_TYPE:
 		return ast.NewIdent(d.Name), d.Scope
 	}
 
@@ -755,7 +750,7 @@ func (d *Decl) InferType(ac *AutoCompleteContext) (ast.Expr, *Scope) {
 	}
 
 	var scope *Scope
-	ctx := TypeInferenceContext{d.ValueIndex, d.Scope, ac}
+	ctx := TypeInferenceContext{d.ValueIndex, d.Scope}
 	d.Type, _, scope = ctx.inferType(d.Value)
 	return d.Type, scope
 }
@@ -770,12 +765,12 @@ func (d *Decl) FindChild(name string) *Decl {
 	return nil
 }
 
-func (d *Decl) FindChildAndInEmbedded(name string, ctx *AutoCompleteContext) *Decl {
+func (d *Decl) FindChildAndInEmbedded(name string) *Decl {
 	c := d.FindChild(name)
 	if c == nil {
 		for _, e := range d.Embedded {
-			typedecl := typeToDecl(e, d.Scope, ctx)
-			c = typedecl.FindChildAndInEmbedded(name, ctx)
+			typedecl := typeToDecl(e, d.Scope)
+			c = typedecl.FindChildAndInEmbedded(name)
 			if c != nil {
 				break
 			}

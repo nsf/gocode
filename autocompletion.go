@@ -206,7 +206,7 @@ func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
 func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 	if decl.Embedded != nil {
 		for _, emb := range decl.Embedded {
-			typedecl := typeToDecl(emb, decl.Scope, self.ctx)
+			typedecl := typeToDecl(emb, decl.Scope)
 			if typedecl != nil {
 				for _, c := range typedecl.Children {
 					if fc := decl.FindChild(c.Name); fc != nil {
@@ -428,7 +428,7 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 			// In case if no declaraion is a subject of completion, propose all:
 			set := self.makeDeclSet(self.current.topscope)
 			for key, value := range set {
-				value.InferType(self)
+				value.InferType()
 				b.appendDecl(da.Partial, key, value, class)
 			}
 		} else {
