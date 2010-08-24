@@ -14,130 +14,9 @@ import (
 	"runtime"
 )
 
-//-------------------------------------------------------------------------------
-
-const builtinUnsafePackage = `
-import
-$$
-package unsafe 
-	type "".Pointer *any
-	func "".Offsetof (? any) int
-	func "".Sizeof (? any) int
-	func "".Alignof (? any) int
-	func "".Typeof (i interface { }) interface { }
-	func "".Reflect (i interface { }) (typ interface { }, addr "".Pointer)
-	func "".Unreflect (typ interface { }, addr "".Pointer) interface { }
-	func "".New (typ interface { }) "".Pointer
-	func "".NewArray (typ interface { }, n int) "".Pointer
-
-$$
-`
-
-func (self *AutoCompleteContext) addBuiltinUnsafe() {
-	module := NewModuleCacheForever("unsafe", "unsafe")
-	module.processPackageData(builtinUnsafePackage)
-	self.mcache["unsafe"] = module
-}
-
-func checkFuncFieldList(f *ast.FieldList) bool {
-	if f == nil {
-		return true
-	}
-
-	for _, field := range f.List {
-		if !checkTypeExpr(field.Type) {
-			return false
-		}
-	}
-	return true
-}
-
-// checks for a type expression correctness, it the type expression has
-// ast.BadExpr somewhere, returns false, otherwise true
-func checkTypeExpr(e ast.Expr) bool {
-	switch t := e.(type) {
-	case *ast.StarExpr:
-		return checkTypeExpr(t.X)
-	case *ast.ArrayType:
-		return checkTypeExpr(t.Elt)
-	case *ast.SelectorExpr:
-		return checkTypeExpr(t.X)
-	case *ast.FuncType:
-		a := checkFuncFieldList(t.Params)
-		b := checkFuncFieldList(t.Results)
-		return a && b
-	case *ast.MapType:
-		a := checkTypeExpr(t.Key)
-		b := checkTypeExpr(t.Value)
-		return a && b
-	case *ast.Ellipsis:
-		return checkTypeExpr(t.Elt)
-	case *ast.ChanType:
-		return checkTypeExpr(t.Value)
-	case *ast.BadExpr:
-		return false
-	default:
-		return true
-	}
-	return true
-}
-
-func filePackageName(filename string) string {
-	file, _ := parser.ParseFile(filename, nil, nil, parser.PackageClauseOnly)
-	return file.Name.Name()
-}
-
-type AutoCompleteContext struct {
-	m map[string]*Decl // all visible modules
-
-	current *PackageFile            // currently editted file
-	others  map[string]*PackageFile // other files
-
-	mcache map[string]*ModuleCache // modules cache
-	pkg    *Scope
-	uni    *Scope
-}
-
-func NewAutoCompleteContext() *AutoCompleteContext {
-	self := new(AutoCompleteContext)
-	self.current = NewPackageFile("", "")
-	self.others = make(map[string]*PackageFile)
-	self.mcache = make(map[string]*ModuleCache)
-	self.pkg = NewScope(nil)
-	self.addBuiltinUnsafe()
-	self.createUniverseScope()
-	return self
-}
-
-func (self *AutoCompleteContext) updateOtherPackageFiles() {
-	packageName := self.current.packageName
-	filename := self.current.name
-
-	dir, file := path.Split(filename)
-	filesInDir, err := ioutil.ReadDir(dir)
-	if err != nil {
-		panic(err.String())
-	}
-
-	newothers := make(map[string]*PackageFile)
-	for _, stat := range filesInDir {
-		ok, _ := path.Match("*.go", stat.Name)
-		if ok && stat.Name != file {
-			filepath := path.Join(dir, stat.Name)
-			oldother, ok := self.others[filepath]
-			if ok && oldother.packageName == packageName {
-				newothers[filepath] = oldother
-			} else {
-				pkg := filePackageName(filepath)
-				if pkg == packageName {
-					newothers[filepath] = NewPackageFile(filepath, packageName)
-				}
-			}
-		}
-	}
-	self.others = newothers
-}
-
+//-------------------------------------------------------------------------
+// OutBuffers
+// Temporary structure for writing autocomplete response.
 //-------------------------------------------------------------------------
 
 type OutBuffers struct {
@@ -155,13 +34,6 @@ func NewOutBuffers(ctx *AutoCompleteContext) *OutBuffers {
 	b.classes = vector.StringVector(make([]string, 0, 1024))
 	b.ctx = ctx
 	return b
-}
-
-func matchClass(declclass int, class int) bool {
-	if class == declclass {
-		return true
-	}
-	return false
 }
 
 func (self *OutBuffers) Len() int {
@@ -241,6 +113,93 @@ func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 	}
 }
 
+func matchClass(declclass int, class int) bool {
+	if class == declclass {
+		return true
+	}
+	return false
+}
+
+//-------------------------------------------------------------------------
+// AutoCompleteContext
+// Context that holds cache structures for autocompletion needs. It
+// includes cache for modules and for package files.
+//-------------------------------------------------------------------------
+
+const builtinUnsafePackage = `
+import
+$$
+package unsafe 
+	type "".Pointer *any
+	func "".Offsetof (? any) int
+	func "".Sizeof (? any) int
+	func "".Alignof (? any) int
+	func "".Typeof (i interface { }) interface { }
+	func "".Reflect (i interface { }) (typ interface { }, addr "".Pointer)
+	func "".Unreflect (typ interface { }, addr "".Pointer) interface { }
+	func "".New (typ interface { }) "".Pointer
+	func "".NewArray (typ interface { }, n int) "".Pointer
+
+$$
+`
+
+type AutoCompleteContext struct {
+	//m map[string]*Decl // all visible modules
+
+	current *PackageFile            // currently editted file
+	others  map[string]*PackageFile // other files
+
+	mcache map[string]*ModuleCache // modules cache
+	pkg    *Scope
+	uni    *Scope
+}
+
+func NewAutoCompleteContext() *AutoCompleteContext {
+	self := new(AutoCompleteContext)
+	self.current = NewPackageFile("", "")
+	self.others = make(map[string]*PackageFile)
+	self.mcache = make(map[string]*ModuleCache)
+	self.pkg = NewScope(nil)
+	self.addBuiltinUnsafe()
+	self.createUniverseScope()
+	return self
+}
+
+func (self *AutoCompleteContext) addBuiltinUnsafe() {
+	module := NewModuleCacheForever("unsafe", "unsafe")
+	module.processPackageData(builtinUnsafePackage)
+	self.mcache["unsafe"] = module
+}
+
+func (self *AutoCompleteContext) updateOtherPackageFiles() {
+	packageName := self.current.packageName
+	filename := self.current.name
+
+	dir, file := path.Split(filename)
+	filesInDir, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(err.String())
+	}
+
+	newothers := make(map[string]*PackageFile)
+	for _, stat := range filesInDir {
+		ok, _ := path.Match("*.go", stat.Name)
+		if ok && stat.Name != file {
+			filepath := path.Join(dir, stat.Name)
+			oldother, ok := self.others[filepath]
+			if ok && oldother.packageName == packageName {
+				newothers[filepath] = oldother
+			} else {
+				pkg := filePackageName(filepath)
+				if pkg == packageName {
+					newothers[filepath] = NewPackageFile(filepath, packageName)
+				}
+			}
+		}
+	}
+	self.others = newothers
+}
+
 func (self *AutoCompleteContext) appendModulesFromFile(ms map[string]*ModuleCache, f *PackageFile) {
 	for _, m := range f.modules {
 		if _, ok := ms[m.name]; ok {
@@ -257,23 +216,29 @@ func (self *AutoCompleteContext) appendModulesFromFile(ms map[string]*ModuleCach
 }
 
 func (self *AutoCompleteContext) updateCaches() {
+	// temporary map for modules that we need to check for a cache expiration
+	// map is used as a set of unique items to prevent double checks
 	ms := make(map[string]*ModuleCache)
-	self.appendModulesFromFile(ms, self.current)
 
 	stage1 := make(chan *PackageFile)
 	stage2 := make(chan bool)
+
+	// start Stage 1 for the other files
 	for _, other := range self.others {
 		go other.updateCache(stage1, stage2)
 	}
 
-	// stage 1: gather module import info
+	// while Stage 1 of the other files is in the process, collect import
+	// information from the currently editted file
+	self.appendModulesFromFile(ms, self.current)
+
+	// when Stage 1 is done, collect other files import information
 	for _ = range self.others {
 		f := <-stage1
 		self.appendModulesFromFile(ms, f)
 	}
-	self.appendModulesFromFile(ms, self.current)
 
-	// start module cache update
+	// initiate module cache update
 	done := make(chan bool)
 	for _, m := range ms {
 		go func(m *ModuleCache) {
@@ -282,31 +247,21 @@ func (self *AutoCompleteContext) updateCaches() {
 		}(m)
 	}
 
-	// wait for completion
+	// wait for its completion
 	for _ = range ms {
 		<-done
 	}
 
-	// update imports and start stage2
+	// update imports and start Stage 2 for the other files
 	self.fixupModules(self.current)
 	for _, f := range self.others {
 		self.fixupModules(f)
 		f.stage2go <- true
 	}
-	self.buildModulesMap(ms)
+
+	// wait for its completion
 	for _ = range self.others {
 		<-stage2
-	}
-}
-
-func makeDeclSetRecursive(set map[string]*Decl, scope *Scope) {
-	for name, ent := range scope.entities {
-		if _, ok := set[name]; !ok {
-			set[name] = ent
-		}
-	}
-	if scope.parent != nil {
-		makeDeclSetRecursive(set, scope.parent)
 	}
 }
 
@@ -316,6 +271,8 @@ func (self *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
 	return set
 }
 
+// Makes all PackageFile module entries valid (e.g. pointing to a real modules in
+// the cache).
 func (self *AutoCompleteContext) fixupModules(f *PackageFile) {
 	for i := range f.modules {
 		name := f.modules[i].name
@@ -323,29 +280,6 @@ func (self *AutoCompleteContext) fixupModules(f *PackageFile) {
 			f.modules[i].alias = self.mcache[name].defalias
 		}
 		f.modules[i].module = self.mcache[name].main
-	}
-}
-
-func (self *AutoCompleteContext) buildModulesMap(ms map[string]*ModuleCache) {
-	self.m = make(map[string]*Decl)
-	for _, mc := range ms {
-		self.m[mc.name] = mc.main
-		// TODO handle relative packages in other packages?
-		for key, oth := range mc.others {
-			if _, ok := ms[key]; ok {
-				continue
-			}
-			var mod *Decl
-			var ok bool
-			if mod, ok = self.m[key]; !ok {
-				mod = NewDecl(key, DECL_MODULE, nil)
-				self.m[key] = mod
-			}
-			for _, decl := range oth.Children {
-				mod.AddChild(decl)
-			}
-
-		}
 	}
 }
 
@@ -409,22 +343,49 @@ func (self *AutoCompleteContext) mergeDecls() {
 	}
 }
 
-// return three slices of the same length containing:
+// returns three slices of the same length containing:
 // 1. apropos names
 // 2. apropos types (pretty-printed)
 // 3. apropos classes
+// and length of the part that should be replaced (if any)
 func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
 	var curctx ProcessDataContext
 
 	self.current.cursor = cursor
 	self.current.name = filename
+
+	// Update caches and parse the current file.
+	// This process is quite complicated, because I was trying to design it in a 
+	// concurrent fashion. Apparently I'm not really good at that. Hopefully 
+	// will be better in future.
+
+	// Stage 1:
+	// - parses file to AST
+	// - figures out package name
+	// - processes imports
 	self.current.processDataStage1(file, &curctx)
 	if filename != "" {
+		// If filename was provided, we're trying to find other package file of the
+		// currently editted package. And this one should be executed after stage1,
+		// because we need to know the package name.
 		self.updateOtherPackageFiles()
 	}
+
+	// This one updates cache of other files and modules. See the function for details of
+	// the process.
 	self.updateCaches()
+
+	// Stage 2:
+	// - applies import information to the current file
+	// - processes top level declarations
 	self.current.processDataStage2(&curctx)
+
+	// At this point we have collected all top level declarations, now we need to
+	// merge them in the common package block.
 	self.mergeDecls()
+
+	// Stage 3:
+	// - process local statements (e.g. those that are in a function where cursor is)
 	self.current.processDataStage3(&curctx)
 
 	b := NewOutBuffers(self)
@@ -474,6 +435,67 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	return b.names, b.types, b.classes, partial
 }
 
+func filePackageName(filename string) string {
+	file, _ := parser.ParseFile(filename, nil, nil, parser.PackageClauseOnly)
+	return file.Name.Name()
+}
+
+func makeDeclSetRecursive(set map[string]*Decl, scope *Scope) {
+	for name, ent := range scope.entities {
+		if _, ok := set[name]; !ok {
+			set[name] = ent
+		}
+	}
+	if scope.parent != nil {
+		makeDeclSetRecursive(set, scope.parent)
+	}
+}
+
+
+func checkFuncFieldList(f *ast.FieldList) bool {
+	if f == nil {
+		return true
+	}
+
+	for _, field := range f.List {
+		if !checkTypeExpr(field.Type) {
+			return false
+		}
+	}
+	return true
+}
+
+// checks for a type expression correctness, it the type expression has
+// ast.BadExpr somewhere, returns false, otherwise true
+func checkTypeExpr(e ast.Expr) bool {
+	switch t := e.(type) {
+	case *ast.StarExpr:
+		return checkTypeExpr(t.X)
+	case *ast.ArrayType:
+		return checkTypeExpr(t.Elt)
+	case *ast.SelectorExpr:
+		return checkTypeExpr(t.X)
+	case *ast.FuncType:
+		a := checkFuncFieldList(t.Params)
+		b := checkFuncFieldList(t.Results)
+		return a && b
+	case *ast.MapType:
+		a := checkTypeExpr(t.Key)
+		b := checkTypeExpr(t.Value)
+		return a && b
+	case *ast.Ellipsis:
+		return checkTypeExpr(t.Elt)
+	case *ast.ChanType:
+		return checkTypeExpr(t.Value)
+	case *ast.BadExpr:
+		return false
+	default:
+		return true
+	}
+	return true
+}
+
+
 //-------------------------------------------------------------------------
 // Status output
 //-------------------------------------------------------------------------
@@ -519,20 +541,6 @@ var declClassToColor = [...]string{
 func (self *AutoCompleteContext) Status() string {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	fmt.Fprintf(buf, "Server's GOMAXPROCS == %d\n", runtime.GOMAXPROCS(0))
-	fmt.Fprintf(buf, "\n%d packages were imported directly or indirectly to the current one\n", len(self.m))
-	if len(self.m) > 0 {
-		fmt.Fprintf(buf, "\nListing these packages:\n")
-		n := len(self.m)
-		i := 0
-		for _, decl := range self.m {
-			fmt.Fprintf(buf, "%s", decl.Name)
-			if i != n-1 {
-				fmt.Fprint(buf, ", ")
-			}
-			i++
-		}
-		fmt.Fprintf(buf, "\n")
-	}
 	fmt.Fprintf(buf, "\nPackage cache contains %d entries\n", len(self.mcache))
 	fmt.Fprintf(buf, "\nListing these entries:\n")
 	for _, mod := range self.mcache {
