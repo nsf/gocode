@@ -146,7 +146,7 @@ func (self *ModuleCache) processPackageData(s string) {
 	self.pathToAlias = nil
 	for key, value := range self.scope.entities {
 		m, ok := self.others[value.Name]
-		if !ok && value.Name == self.defalias {
+		if !ok && value.Name == self.name {
 			m = self.main
 		}
 		self.scope.entities[key] = m
