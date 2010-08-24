@@ -366,12 +366,12 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	self.current.processDataStage1(file, &curctx)
 	if filename != "" {
 		// If filename was provided, we're trying to find other package file of the
-		// currently editted package. And this one should be executed after stage1,
-		// because we need to know the package name.
+		// currently editted package. And the function should be executed after 
+		// Stage 1, because we need to know the package name.
 		self.updateOtherPackageFiles()
 	}
 
-	// This one updates cache of other files and modules. See the function for details of
+	// Updates cache of other files and modules. See the function for details of
 	// the process.
 	self.updateCaches()
 
