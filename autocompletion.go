@@ -375,6 +375,11 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	// the process.
 	self.updateCaches()
 
+	// TODO: this stage exists due to previous foreignification requirement thing.
+	// Probably we can get rid of that. Files don't need valid import information
+	// unless we're doing type inference and it happens only in Stage 3.
+	// TODO: merge Stage 1 and Stage 2 for the other files and for the current file.
+
 	// Stage 2:
 	// - applies import information to the current file
 	// - processes top level declarations
