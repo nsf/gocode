@@ -9,7 +9,6 @@ import (
 	"go/scanner"
 	"fmt"
 	"os"
-	"io"
 	"io/ioutil"
 )
 
@@ -123,11 +122,9 @@ func (self *ModuleCache) processPackageData(s string) {
 	}
 	self.others = make(map[string]*Decl)
 	for key, value := range internalPackages {
-		tmpbuf := bytes.NewBuffer(make([]byte, 0, value.Len()))
-		self.expandPackages(value.Bytes(), tmpbuf)
-
-		decls, err := parser.ParseDeclList("", tmpbuf.Bytes(), nil)
-		tmpbuf = nil
+		tmp := self.expandPackages(value.Bytes())
+		decls, err := parser.ParseDeclList("", tmp, nil)
+		tmp = nil
 
 		if err != nil {
 			panic(fmt.Sprintf("failure in:\n%s\n%s\n", value, err.String()))
@@ -230,7 +227,8 @@ func (self *ModuleCache) processImportStatement(s string) {
 	self.addFakeModuleToScope(alias, path)
 }
 
-func (self *ModuleCache) expandPackages(s []byte, out io.Writer) {
+func (self *ModuleCache) expandPackages(s []byte) []byte {
+	out := bytes.NewBuffer(make([]byte, 0, len(s)))
 	i := 0
 	for {
 		begin := i
@@ -240,7 +238,7 @@ func (self *ModuleCache) expandPackages(s []byte, out io.Writer) {
 
 		if i == len(s) {
 			out.Write(s[begin:])
-			return
+			return out.Bytes()
 		}
 
 		b := i // first '"'
@@ -252,7 +250,7 @@ func (self *ModuleCache) expandPackages(s []byte, out io.Writer) {
 
 		if i == len(s) {
 			out.Write(s[begin:])
-			return
+			return out.Bytes()
 		}
 
 		e := i // second '"'
