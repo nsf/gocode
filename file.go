@@ -20,7 +20,6 @@ type PackageFile struct {
 	name        string // file name
 	packageName string // package name that is in the file
 	mtime       int64
-	ctx         *AutoCompleteContext
 
 	modules   []moduleImport   // import section cache (abbrev -> full name)
 	decls     map[string]*Decl // cached
@@ -33,13 +32,12 @@ type PackageFile struct {
 	stage2go chan bool
 }
 
-func NewPackageFile(name, packageName string, ctx *AutoCompleteContext) *PackageFile {
+func NewPackageFile(name, packageName string) *PackageFile {
 	p := new(PackageFile)
 	p.name = name
 	p.packageName = packageName
 	p.mtime = 0
 	p.cursor = -1
-	p.ctx = ctx
 	p.stage2go = make(chan bool)
 	return p
 }

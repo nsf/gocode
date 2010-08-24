@@ -100,7 +100,7 @@ type AutoCompleteContext struct {
 
 func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
-	self.current = NewPackageFile("", "", self)
+	self.current = NewPackageFile("", "")
 	self.others = make(map[string]*PackageFile)
 	self.mcache = make(map[string]*ModuleCache)
 	self.pkg = NewScope(nil)
@@ -130,7 +130,7 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 			} else {
 				pkg := filePackageName(filepath)
 				if pkg == packageName {
-					newothers[filepath] = NewPackageFile(filepath, packageName, self)
+					newothers[filepath] = NewPackageFile(filepath, packageName)
 				}
 			}
 		}
