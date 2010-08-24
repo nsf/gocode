@@ -6,8 +6,10 @@ import (
 	"go/parser"
 	"go/ast"
 	"go/token"
+	"go/scanner"
 	"fmt"
 	"os"
+	"io"
 	"io/ioutil"
 )
 
@@ -21,6 +23,13 @@ type ModuleCache struct {
 	scope  *Scope
 	main   *Decl // module declaration
 	others map[string]*Decl
+
+	// map which has that kind of entries:
+	// ast -> go/ast
+	// parser -> go/parser
+	// etc.
+	// used for replacing "" module names in .a files
+	pathToAlias map[string]string
 }
 
 func NewModuleCache(name, filename string) *ModuleCache {
@@ -83,6 +92,8 @@ func (self *ModuleCache) processPackageData(s string) {
 	self.defalias = s[len("package ") : i-1]
 	s = s[i+1:]
 
+	self.pathToAlias = make(map[string]string)
+	self.addFakeModuleToScope(self.defalias, self.name)
 	internalPackages := make(map[string]*bytes.Buffer)
 	for {
 		// for each line
@@ -112,7 +123,12 @@ func (self *ModuleCache) processPackageData(s string) {
 	}
 	self.others = make(map[string]*Decl)
 	for key, value := range internalPackages {
-		decls, err := parser.ParseDeclList("", value.Bytes(), nil)
+		tmpbuf := bytes.NewBuffer(make([]byte, 0, value.Len()))
+		self.expandPackages(value.Bytes(), tmpbuf)
+
+		decls, err := parser.ParseDeclList("", tmpbuf.Bytes(), nil)
+		tmpbuf = nil
+
 		if err != nil {
 			panic(fmt.Sprintf("failure in:\n%s\n%s\n", value, err.String()))
 		} else {
@@ -127,6 +143,7 @@ func (self *ModuleCache) processPackageData(s string) {
 			}
 		}
 	}
+	self.pathToAlias = nil
 	for key, value := range self.scope.entities {
 		m, ok := self.others[value.Name]
 		if !ok && value.Name == self.defalias {
@@ -159,6 +176,7 @@ func (self *ModuleCache) processExport(s string) (string, string) {
 	switch s[b:e] {
 	case "import":
 		// skip import decls, we don't need them
+		self.processImportStatement(s)
 		return "", pkg
 	case "const":
 		s = preprocessConstDecl(s)
@@ -175,7 +193,6 @@ func (self *ModuleCache) processExport(s string) (string, string) {
 
 	// make everything parser friendly
 	s = strings.Replace(s, "?", "", -1)
-	s = self.expandPackages(s)
 
 	// skip system functions (Init, etc.)
 	i = strings.Index(s, "·")
@@ -190,50 +207,76 @@ func (self *ModuleCache) processExport(s string) (string, string) {
 	return s, pkg
 }
 
-func (self *ModuleCache) expandPackages(s string) string {
+func (self *ModuleCache) processImportStatement(s string) {
+	var scan scanner.Scanner
+	scan.Init("", []byte(s), nil, 0)
+
+	var alias, path string
+	for i := 0; i < 3; i++ {
+		_, tok, lit := scan.Scan()
+		str := string(lit)
+		switch tok {
+		case token.IDENT:
+			if str == "import" {
+				continue
+			} else {
+				alias = str
+			}
+		case token.STRING:
+			path = str[1 : len(str)-1]
+		}
+	}
+	self.pathToAlias[path] = alias
+	self.addFakeModuleToScope(alias, path)
+}
+
+func (self *ModuleCache) expandPackages(s []byte, out io.Writer) {
 	i := 0
 	for {
-		for i < len(s) && s[i] != '"' && s[i] != '=' {
+		begin := i
+		for i < len(s) && s[i] != '"' {
 			i++
 		}
 
-		if i == len(s) || s[i] == '=' {
-			return s
+		if i == len(s) {
+			out.Write(s[begin:])
+			return
 		}
 
 		b := i // first '"'
 		i++
 
-		for i < len(s) && !(s[i] == '"' && s[i-1] != '\\') && s[i] != '=' {
+		for i < len(s) && !(s[i] == '"' && s[i-1] != '\\') {
 			i++
 		}
 
-		if i == len(s) || s[i] == '=' {
-			return s
+		if i == len(s) {
+			out.Write(s[begin:])
+			return
 		}
 
 		e := i // second '"'
+		i++
 		if s[b-1] == ':' {
 			// special case, struct attribute literal, just remove ':'
-			s = s[0:b-1] + s[b:]
-			i = e
+			out.Write(s[begin : b-1])
+			out.Write(s[b : i])
 		} else if b+1 != e {
 			// wow, we actually have something here
-			pkgalias := identifyPackage(s[b+1 : e])
-			self.addFakeModuleToScope(pkgalias, s[b+1:e])
-			i++                           // skip to a first symbol after second '"'
-			s = s[0:b] + pkgalias + s[i:] // strip package clause completely
-			i = b
+			alias, ok := self.pathToAlias[string(s[b+1 : e])]
+			if ok {
+				out.Write(s[begin : b])
+				out.Write([]byte(alias))
+			} else {
+				out.Write(s[begin : i])
+			}
 		} else {
-			self.addFakeModuleToScope(self.defalias, self.name)
-			i++
-			s = s[0:b] + self.defalias + s[i:]
-			i = b
+			out.Write(s[begin : b])
+			out.Write([]byte(self.defalias))
 		}
 
 	}
 	panic("unreachable")
-	return ""
 }
 
 func (self *ModuleCache) addFakeModuleToScope(alias, realname string) {
@@ -312,23 +355,6 @@ func skipToSpace(i int, s string) int {
 		i++
 	}
 	return i
-}
-
-// convert package name to a nice ident, e.g.: "go/ast" -> "ast"
-func identifyPackage(s string) string {
-	i := len(s) - 1
-
-	// 'i > 0' is correct here, because we should never see '/' at the
-	// beginning of the name anyway
-	for ; i > 0; i-- {
-		if s[i] == '/' {
-			break
-		}
-	}
-	if s[i] == '/' {
-		return s[i+1:]
-	}
-	return s
 }
 
 func extractPackage(i int, s string) (string, string) {
