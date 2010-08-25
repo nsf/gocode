@@ -104,7 +104,7 @@ loop:
 
 func (self *AutoCompleteContext) deduceExpr(file []byte, partial string) *DeclApropos {
 	e := findExpr(file)
-	expr, err := parser.ParseExpr("", e, nil)
+	expr, err := parser.ParseExpr("", e)
 	if err != nil {
 		return nil
 	}

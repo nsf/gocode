@@ -123,7 +123,7 @@ func (self *ModuleCache) processPackageData(s string) {
 	self.others = make(map[string]*Decl)
 	for key, value := range internalPackages {
 		tmp := self.expandPackages(value.Bytes())
-		decls, err := parser.ParseDeclList("", tmp, nil)
+		decls, err := parser.ParseDeclList("", tmp)
 		tmp = nil
 
 		if err != nil {
@@ -453,22 +453,22 @@ func declNames(d ast.Decl) []string {
 			c := t.Specs[0].(*ast.ValueSpec)
 			names = make([]string, len(c.Names))
 			for i, name := range c.Names {
-				names[i] = name.Name()
+				names[i] = name.Name
 			}
 		case token.TYPE:
 			t := t.Specs[0].(*ast.TypeSpec)
 			names = make([]string, 1)
-			names[0] = t.Name.Name()
+			names[0] = t.Name.Name
 		case token.VAR:
 			v := t.Specs[0].(*ast.ValueSpec)
 			names = make([]string, len(v.Names))
 			for i, name := range v.Names {
-				names[i] = name.Name()
+				names[i] = name.Name
 			}
 		}
 	case *ast.FuncDecl:
 		names = make([]string, 1)
-		names[0] = t.Name.Name()
+		names[0] = t.Name.Name
 	}
 
 	return names

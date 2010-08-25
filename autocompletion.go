@@ -144,8 +144,6 @@ $$
 `
 
 type AutoCompleteContext struct {
-	//m map[string]*Decl // all visible modules
-
 	current *PackageFile            // currently editted file
 	others  map[string]*PackageFile // other files
 
@@ -441,8 +439,8 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 }
 
 func filePackageName(filename string) string {
-	file, _ := parser.ParseFile(filename, nil, nil, parser.PackageClauseOnly)
-	return file.Name.Name()
+	file, _ := parser.ParseFile(filename, nil, parser.PackageClauseOnly)
+	return file.Name.Name
 }
 
 func makeDeclSetRecursive(set map[string]*Decl, scope *Scope) {

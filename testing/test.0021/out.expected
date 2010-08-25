@@ -1,12 +1,12 @@
 Found 11 candidates:
   func IsExported() bool
   func IsValid() bool
-  func Name() string
   func Pos() token.Position
   func String() string
   var Column int
   var Filename string
   var Line int
+  var Name string
   var Obj *ast.Object
   var Offset int
   var Position token.Position

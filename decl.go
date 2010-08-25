@@ -133,11 +133,11 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 	decls := make(map[string]*Decl, count)
 	for _, field := range f.List {
 		for _, name := range field.Names {
-			if flags&DECL_FOREIGN != 0 && !ast.IsExported(name.Name()) {
+			if flags&DECL_FOREIGN != 0 && !ast.IsExported(name.Name) {
 				continue
 			}
 			d := new(Decl)
-			d.Name = name.Name()
+			d.Name = name.Name
 			d.Type = field.Type
 			d.Class = int16(class)
 			d.Flags = int16(flags)
@@ -270,9 +270,9 @@ func MethodOf(d ast.Decl) string {
 		if t.Recv != nil {
 			switch t := t.Recv.List[0].Type.(type) {
 			case *ast.StarExpr:
-				return t.X.(*ast.Ident).Name()
+				return t.X.(*ast.Ident).Name
 			case *ast.Ident:
-				return t.Name()
+				return t.Name
 			default:
 				return ""
 			}
@@ -386,9 +386,9 @@ func (d *Decl) AddChild(cd *Decl) {
 }
 
 func checkForBuiltinFuncs(typ *ast.Ident, c *ast.CallExpr) ast.Expr {
-	if strings.HasPrefix(typ.Name(), "func(") {
+	if strings.HasPrefix(typ.Name, "func(") {
 		if t, ok := c.Fun.(*ast.Ident); ok {
-			switch t.Name() {
+			switch t.Name {
 			case "new":
 				e := new(ast.StarExpr)
 				e.X = c.Args[0]
@@ -449,14 +449,14 @@ func typePath(e ast.Expr) (r TypePath) {
 
 	switch t := e.(type) {
 	case *ast.Ident:
-		r.name = t.Name()
+		r.name = t.Name
 	case *ast.StarExpr:
 		r = typePath(t.X)
 	case *ast.SelectorExpr:
 		if ident, ok := t.X.(*ast.Ident); ok {
-			r.module = ident.Name()
+			r.module = ident.Name
 		}
-		r.name = t.Sel.Name()
+		r.name = t.Sel.Name
 	}
 	return
 }
@@ -555,7 +555,7 @@ func funcPredicate(v ast.Expr) bool {
 func rangePredicate(v ast.Expr) bool {
 	switch t := v.(type) {
 	case *ast.Ident:
-		if t.Name() == "string" {
+		if t.Name == "string" {
 			return true
 		}
 	case *ast.ArrayType, *ast.MapType, *ast.ChanType:
@@ -573,9 +573,9 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 	case *ast.CompositeLit:
 		return t.Type, scope, true
 	case *ast.Ident:
-		if d := scope.lookup(t.Name()); d != nil {
+		if d := scope.lookup(t.Name); d != nil {
 			if d.Class == DECL_MODULE {
-				return ast.NewIdent(t.Name()), scope, false
+				return ast.NewIdent(t.Name), scope, false
 			}
 			typ, scope := d.InferType()
 			return typ, scope, d.Class == DECL_TYPE
@@ -690,7 +690,7 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 		}
 
 		if d != nil {
-			c := d.FindChildAndInEmbedded(t.Sel.Name())
+			c := d.FindChildAndInEmbedded(t.Sel.Name)
 			if c != nil {
 				if c.Class == DECL_TYPE {
 					// use foregnified module name
@@ -790,7 +790,7 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		fmt.Fprintf(out, "*")
 		prettyPrintTypeExpr(out, t.X)
 	case *ast.Ident:
-		fmt.Fprintf(out, t.Name())
+		fmt.Fprintf(out, t.Name)
 	case *ast.ArrayType:
 		al := ""
 		if t.Len != nil {
@@ -804,7 +804,7 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		prettyPrintTypeExpr(out, t.Elt)
 	case *ast.SelectorExpr:
 		prettyPrintTypeExpr(out, t.X)
-		fmt.Fprintf(out, ".%s", t.Sel.Name())
+		fmt.Fprintf(out, ".%s", t.Sel.Name)
 	case *ast.FuncType:
 		fmt.Fprintf(out, "func(")
 		prettyPrintFuncFieldList(out, t.Params)
@@ -862,7 +862,7 @@ func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 		// names
 		if field.Names != nil {
 			for j, name := range field.Names {
-				fmt.Fprintf(out, "%s", name.Name())
+				fmt.Fprintf(out, "%s", name.Name)
 				if j != len(field.Names)-1 {
 					fmt.Fprintf(out, ", ")
 				}
