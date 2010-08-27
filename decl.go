@@ -37,15 +37,6 @@ var declClassToString = [...]string{
 	DECL_METHODS_STUB: "IF YOU SEE THIS, REPORT A BUG", // :D
 }
 
-var declClassToStringDebug = [...]string{
-	DECL_CONST:        " const",
-	DECL_VAR:          "   var",
-	DECL_TYPE:         "  type",
-	DECL_FUNC:         "  func",
-	DECL_MODULE:       "module",
-	DECL_METHODS_STUB: "  stub",
-}
-
 type Decl struct {
 	Name  string
 	Type  ast.Expr

@@ -545,6 +545,15 @@ var declClassToColor = [...]string{
 	DECL_METHODS_STUB: COLOR_red,
 }
 
+var declClassToStringStatus = [...]string{
+	DECL_CONST:        " const",
+	DECL_VAR:          "   var",
+	DECL_TYPE:         "  type",
+	DECL_FUNC:         "  func",
+	DECL_MODULE:       "module",
+	DECL_METHODS_STUB: "  stub",
+}
+
 func (self *AutoCompleteContext) Status() string {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	fmt.Fprintf(buf, "Server's GOMAXPROCS == %d\n", runtime.GOMAXPROCS(0))
@@ -588,12 +597,12 @@ func (self *AutoCompleteContext) Status() string {
 			if len(d.Children) > 0 {
 				fmt.Fprintf(buf, STATUS_DECLS_CHILDREN,
 					declClassToColor[d.Class],
-					declClassToStringDebug[d.Class],
+					declClassToStringStatus[d.Class],
 					d.Name, len(d.Children))
 			} else {
 				fmt.Fprintf(buf, STATUS_DECLS,
 					declClassToColor[d.Class],
-					declClassToStringDebug[d.Class],
+					declClassToStringStatus[d.Class],
 					d.Name)
 			}
 		}
@@ -611,12 +620,12 @@ func (self *AutoCompleteContext) Status() string {
 				if len(d.Children) > 0 {
 					fmt.Fprintf(buf, STATUS_DECLS_CHILDREN,
 						declClassToColor[d.Class],
-						declClassToStringDebug[d.Class],
+						declClassToStringStatus[d.Class],
 						d.Name, len(d.Children))
 				} else {
 					fmt.Fprintf(buf, STATUS_DECLS,
 						declClassToColor[d.Class],
-						declClassToStringDebug[d.Class],
+						declClassToStringStatus[d.Class],
 						d.Name)
 				}
 			}
