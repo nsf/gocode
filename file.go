@@ -39,23 +39,23 @@ func NewPackageFile(name, packageName string) *PackageFile {
 	return p
 }
 
-func (self *PackageFile) updateCache() {
+func (self *PackageFile) updateCache(c *ASTCache) {
 	stat, err := os.Stat(self.name)
 	if err != nil {
 		panic(err.String())
 	}
 
 	if self.mtime != stat.Mtime_ns {
-		self.processFile(self.name)
 		self.mtime = stat.Mtime_ns
+		self.processFile(self.name, c)
 	}
 }
 
-func (self *PackageFile) processFile(filename string) {
+func (self *PackageFile) processFile(filename string, c *ASTCache) {
 	// drop cached modules and file scope
 	self.resetCache()
 
-	file, _ := parser.ParseFile(filename, nil, 0)
+	file, _ := c.ForceGet(filename, self.mtime)
 	self.processImports(file.Decls)
 
 	// process declarations

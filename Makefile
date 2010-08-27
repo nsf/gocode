@@ -11,7 +11,8 @@ GOFILES=gocode.go\
 	apropos.go\
 	scope.go\
 	ripper.go\
-	config.go
+	config.go\
+	astcache.go
 
 include $(GOROOT)/src/Make.cmd
 

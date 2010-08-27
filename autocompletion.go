@@ -153,6 +153,8 @@ type AutoCompleteContext struct {
 	mcache  map[string]*ModuleCache // modules cache
 	pkg     *Scope
 	uni     *Scope
+
+	astcache *ASTCache
 }
 
 func NewAutoCompleteContext() *AutoCompleteContext {
@@ -163,6 +165,7 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.pkg = NewScope(nil)
 	self.addBuiltinUnsafe()
 	self.createUniverseScope()
+	self.astcache = NewASTCache()
 	return self
 }
 
@@ -231,7 +234,7 @@ func (self *AutoCompleteContext) updateCaches() {
 	// start updateCache for other files
 	for _, other := range self.others {
 		go func(f *PackageFile) {
-			f.updateCache()
+			f.updateCache(self.astcache)
 			done <- true
 		}(other)
 	}
