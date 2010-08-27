@@ -92,6 +92,7 @@ func (self *ModuleCache) processPackageData(s string) {
 	s = s[i+1:]
 
 	self.pathToAlias = make(map[string]string)
+	// hack, add ourselves to the module scope
 	self.addFakeModuleToScope(self.defalias, self.name)
 	internalPackages := make(map[string]*bytes.Buffer)
 	for {
@@ -258,18 +259,18 @@ func (self *ModuleCache) expandPackages(s []byte) []byte {
 		if s[b-1] == ':' {
 			// special case, struct attribute literal, just remove ':'
 			out.Write(s[begin : b-1])
-			out.Write(s[b : i])
+			out.Write(s[b:i])
 		} else if b+1 != e {
 			// wow, we actually have something here
-			alias, ok := self.pathToAlias[string(s[b+1 : e])]
+			alias, ok := self.pathToAlias[string(s[b+1:e])]
 			if ok {
-				out.Write(s[begin : b])
+				out.Write(s[begin:b])
 				out.Write([]byte(alias))
 			} else {
-				out.Write(s[begin : i])
+				out.Write(s[begin:i])
 			}
 		} else {
-			out.Write(s[begin : b])
+			out.Write(s[begin:b])
 			out.Write([]byte(self.defalias))
 		}
 

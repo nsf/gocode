@@ -23,7 +23,7 @@ type OutBuffers struct {
 	tmpbuf                *bytes.Buffer
 	names, types, classes vector.StringVector
 	ctx                   *AutoCompleteContext
-	tmpns		      map[string]bool
+	tmpns                 map[string]bool
 }
 
 func NewOutBuffers(ctx *AutoCompleteContext) *OutBuffers {
@@ -150,9 +150,9 @@ $$
 type AutoCompleteContext struct {
 	current *PackageFile            // currently editted file
 	others  map[string]*PackageFile // other files
-	mcache map[string]*ModuleCache // modules cache
-	pkg    *Scope
-	uni    *Scope
+	mcache  map[string]*ModuleCache // modules cache
+	pkg     *Scope
+	uni     *Scope
 }
 
 func NewAutoCompleteContext() *AutoCompleteContext {
@@ -366,9 +366,9 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	// concurrent fashion. Apparently I'm not really good at that. Hopefully 
 	// will be better in future.
 
-	// I have two stages for the currently editted file, because stage 2 does
+	// I have two stages for the currently editted file, because Stage 2 does
 	// type inference. And type inference requires up-to-date module cache
-	// and up-to-date package scope.
+	// and up-to-date package block.
 
 	// Stage 1:
 	// - parses file to AST
