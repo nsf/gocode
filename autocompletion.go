@@ -143,10 +143,13 @@ package unsafe
 $$
 `
 
+// TODO: Move module cache outside of AutoCompleteContext.
+// TODO?: Rename PackageFile to something like AutoCompleteFile, because
+// it's really an AutoCompleteContext specific. Future semantic layer will use
+// different kind of file (most likely).
 type AutoCompleteContext struct {
 	current *PackageFile            // currently editted file
 	others  map[string]*PackageFile // other files
-
 	mcache map[string]*ModuleCache // modules cache
 	pkg    *Scope
 	uni    *Scope
@@ -169,6 +172,8 @@ func (self *AutoCompleteContext) addBuiltinUnsafe() {
 	self.mcache["unsafe"] = module
 }
 
+// Updates (or creates) a map of other files for the current package.
+// The cache is not updates, because it gets updated later.
 func (self *AutoCompleteContext) updateOtherPackageFiles() {
 	packageName := self.current.packageName
 	filename := self.current.name
@@ -198,6 +203,9 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 	self.others = newothers
 }
 
+// Inspects import information of a PackageFile and adds ModuleCache entries to 
+// the cache and to the 'ms' map. For 'ms' map description see 'updateCaches' 
+// method.
 func (self *AutoCompleteContext) appendModulesFromFile(ms map[string]*ModuleCache, f *PackageFile) {
 	for _, m := range f.modules {
 		if _, ok := ms[m.name]; ok {
@@ -262,12 +270,6 @@ func (self *AutoCompleteContext) updateCaches() {
 	}
 }
 
-func (self *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
-	set := make(map[string]*Decl, len(self.pkg.entities)*2)
-	makeDeclSetRecursive(set, scope)
-	return set
-}
-
 // Makes all PackageFile module entries valid (e.g. pointing to a real modules in
 // the cache). We can do that only after having updated module cache.
 // Also calls applyImports.
@@ -287,6 +289,20 @@ func (self *AutoCompleteContext) mergeDeclsFromFile(file *PackageFile) {
 		self.pkg.mergeDecl(d)
 	}
 	file.filescope.parent = self.pkg
+}
+
+func (self *AutoCompleteContext) mergeDecls() {
+	self.pkg = NewScope(self.uni)
+	self.mergeDeclsFromFile(self.current)
+	for _, file := range self.others {
+		self.mergeDeclsFromFile(file)
+	}
+}
+
+func (self *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
+	set := make(map[string]*Decl, len(self.pkg.entities)*2)
+	makeDeclSetRecursive(set, scope)
+	return set
 }
 
 func (self *AutoCompleteContext) createUniverseScope() {
@@ -332,14 +348,6 @@ func (self *AutoCompleteContext) createUniverseScope() {
 	self.uni.addNamedDecl(NewDeclTypedNamed("println", DECL_FUNC, "func(...interface{})", self.uni))
 	self.uni.addNamedDecl(NewDeclTypedNamed("real", DECL_FUNC, "func(complex)", self.uni))
 	self.uni.addNamedDecl(NewDeclTypedNamed("recover", DECL_FUNC, "func() interface{}", self.uni))
-}
-
-func (self *AutoCompleteContext) mergeDecls() {
-	self.pkg = NewScope(self.uni)
-	self.mergeDeclsFromFile(self.current)
-	for _, file := range self.others {
-		self.mergeDeclsFromFile(file)
-	}
 }
 
 // returns three slices of the same length containing:

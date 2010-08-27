@@ -98,6 +98,7 @@ func (self *PackageFile) processDataStage1(data []byte, ctx *ProcessDataContext)
 	}
 }
 
+// this one is used for current file buffer exclusively
 func (self *PackageFile) processDataStage2(ctx *ProcessDataContext) {
 	// STAGE 2 for current file buffer only
 	if ctx.block != nil {
