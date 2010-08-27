@@ -28,8 +28,6 @@ type PackageFile struct {
 	topscope *Scope
 	scope    *Scope // scope, used for parsing
 	cursor   int    // for current file buffer
-
-	stage2go chan bool
 }
 
 func NewPackageFile(name, packageName string) *PackageFile {
@@ -38,39 +36,28 @@ func NewPackageFile(name, packageName string) *PackageFile {
 	p.packageName = packageName
 	p.mtime = 0
 	p.cursor = -1
-	p.stage2go = make(chan bool)
 	return p
 }
 
-func (self *PackageFile) updateCache(stage1 chan *PackageFile, stage2 chan bool) {
+func (self *PackageFile) updateCache() {
 	stat, err := os.Stat(self.name)
 	if err != nil {
 		panic(err.String())
 	}
 
 	if self.mtime != stat.Mtime_ns {
-		self.processFile(self.name, stage1)
+		self.processFile(self.name)
 		self.mtime = stat.Mtime_ns
-	} else {
-		stage1 <- self
-		<-self.stage2go
 	}
-	stage2 <- true
 }
 
-func (self *PackageFile) processFile(filename string, stage1 chan *PackageFile) {
+func (self *PackageFile) processFile(filename string) {
 	// drop cached modules and file scope
 	self.resetCache()
 
 	file, _ := parser.ParseFile(filename, nil, 0)
-	// STAGE 1
-	// update import statements
 	self.processImports(file.Decls)
-	stage1 <- self
-	<-self.stage2go
 
-	// STAGE 2
-	self.applyImports()
 	// process declarations
 	self.decls = make(map[string]*Decl, len(file.Decls))
 	for _, decl := range file.Decls {
@@ -94,14 +81,11 @@ func (self *PackageFile) processDataStage1(data []byte, ctx *ProcessDataContext)
 
 	// process file without locals first
 	ctx.file, _ = parser.ParseFile("", filedata, 0)
+
 	// STAGE 1
 	self.packageName = packageName(ctx.file)
 	self.processImports(ctx.file.Decls)
-}
 
-func (self *PackageFile) processDataStage2(ctx *ProcessDataContext) {
-	// STAGE 2
-	self.applyImports()
 	for _, decl := range ctx.file.Decls {
 		self.processDecl(decl)
 	}
@@ -114,8 +98,8 @@ func (self *PackageFile) processDataStage2(ctx *ProcessDataContext) {
 	}
 }
 
-func (self *PackageFile) processDataStage3(ctx *ProcessDataContext) {
-	// STAGE 3 for current file buffer only
+func (self *PackageFile) processDataStage2(ctx *ProcessDataContext) {
+	// STAGE 2 for current file buffer only
 	if ctx.block != nil {
 		// parse local function as local
 		self.cursor = ctx.cur

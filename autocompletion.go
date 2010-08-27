@@ -218,26 +218,31 @@ func (self *AutoCompleteContext) updateCaches() {
 	// map is used as a set of unique items to prevent double checks
 	ms := make(map[string]*ModuleCache)
 
-	stage1 := make(chan *PackageFile)
-	stage2 := make(chan bool)
+	done := make(chan bool)
 
-	// start Stage 1 for the other files
+	// start updateCache for other files
 	for _, other := range self.others {
-		go other.updateCache(stage1, stage2)
+		go func(f *PackageFile) {
+			f.updateCache()
+			done <- true
+		}(other)
 	}
 
-	// while Stage 1 of the other files is in the process, collect import
+	// while updateCache of the other files is in the process, collect import
 	// information from the currently editted file
 	self.appendModulesFromFile(ms, self.current)
 
-	// when Stage 1 is done, collect other files import information
+	// wait for updateCache completion
 	for _ = range self.others {
-		f := <-stage1
+		<-done
+	}
+
+	// collect import information from other files
+	for _, f := range self.others {
 		self.appendModulesFromFile(ms, f)
 	}
 
 	// initiate module cache update
-	done := make(chan bool)
 	for _, m := range ms {
 		go func(m *ModuleCache) {
 			m.updateCache()
@@ -250,16 +255,10 @@ func (self *AutoCompleteContext) updateCaches() {
 		<-done
 	}
 
-	// update imports and start Stage 2 for the other files
+	// fix imports for all files
 	self.fixupModules(self.current)
 	for _, f := range self.others {
 		self.fixupModules(f)
-		f.stage2go <- true
-	}
-
-	// wait for its completion
-	for _ = range self.others {
-		<-stage2
 	}
 }
 
@@ -270,7 +269,8 @@ func (self *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
 }
 
 // Makes all PackageFile module entries valid (e.g. pointing to a real modules in
-// the cache).
+// the cache). We can do that only after having updated module cache.
+// Also calls applyImports.
 func (self *AutoCompleteContext) fixupModules(f *PackageFile) {
 	for i := range f.modules {
 		name := f.modules[i].name
@@ -279,6 +279,7 @@ func (self *AutoCompleteContext) fixupModules(f *PackageFile) {
 		}
 		f.modules[i].module = self.mcache[name].main
 	}
+	f.applyImports()
 }
 
 func (self *AutoCompleteContext) mergeDeclsFromFile(file *PackageFile) {
@@ -357,10 +358,15 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	// concurrent fashion. Apparently I'm not really good at that. Hopefully 
 	// will be better in future.
 
+	// I have two stages for the currently editted file, because stage 2 does
+	// type inference. And type inference requires up-to-date module cache
+	// and up-to-date package scope.
+
 	// Stage 1:
 	// - parses file to AST
 	// - figures out package name
 	// - processes imports
+	// - processes declarations
 	self.current.processDataStage1(file, &curctx)
 	if filename != "" {
 		// If filename was provided, we're trying to find other package file of the
@@ -373,23 +379,13 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	// the process.
 	self.updateCaches()
 
-	// TODO: this stage exists due to previous foreignification requirement thing.
-	// Probably we can get rid of that. Files don't need valid import information
-	// unless we're doing type inference and it happens only in Stage 3.
-	// TODO: merge Stage 1 and Stage 2 for the other files and for the current file.
-
-	// Stage 2:
-	// - applies import information to the current file
-	// - processes top level declarations
-	self.current.processDataStage2(&curctx)
-
 	// At this point we have collected all top level declarations, now we need to
 	// merge them in the common package block.
 	self.mergeDecls()
 
-	// Stage 3:
+	// Stage 2:
 	// - process local statements (e.g. those that are in a function where cursor is)
-	self.current.processDataStage3(&curctx)
+	self.current.processDataStage2(&curctx)
 
 	b := NewOutBuffers(self)
 
