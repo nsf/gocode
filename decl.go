@@ -874,3 +874,92 @@ func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 	}
 	return count
 }
+
+func declNames(d ast.Decl) []string {
+	var names []string
+
+	switch t := d.(type) {
+	case *ast.GenDecl:
+		switch t.Tok {
+		case token.CONST:
+			c := t.Specs[0].(*ast.ValueSpec)
+			names = make([]string, len(c.Names))
+			for i, name := range c.Names {
+				names[i] = name.Name
+			}
+		case token.TYPE:
+			t := t.Specs[0].(*ast.TypeSpec)
+			names = make([]string, 1)
+			names[0] = t.Name.Name
+		case token.VAR:
+			v := t.Specs[0].(*ast.ValueSpec)
+			names = make([]string, len(v.Names))
+			for i, name := range v.Names {
+				names[i] = name.Name
+			}
+		}
+	case *ast.FuncDecl:
+		names = make([]string, 1)
+		names[0] = t.Name.Name
+	}
+
+	return names
+}
+
+func declValues(d ast.Decl) []ast.Expr {
+	// TODO: CONST values here too
+	switch t := d.(type) {
+	case *ast.GenDecl:
+		switch t.Tok {
+		case token.VAR:
+			v := t.Specs[0].(*ast.ValueSpec)
+			if v.Values != nil {
+				return v.Values
+			}
+		}
+	}
+	return nil
+}
+
+func splitDecls(d ast.Decl) []ast.Decl {
+	var decls []ast.Decl
+	if t, ok := d.(*ast.GenDecl); ok {
+		decls = make([]ast.Decl, len(t.Specs))
+		for i, s := range t.Specs {
+			decl := new(ast.GenDecl)
+			*decl = *t
+			decl.Specs = make([]ast.Spec, 1)
+			decl.Specs[0] = s
+			decls[i] = decl
+		}
+	} else {
+		decls = make([]ast.Decl, 1)
+		decls[0] = d
+	}
+	return decls
+}
+
+type foreachDeclFunc func(ast.Decl, string, ast.Expr, int)
+
+func foreachDecl(decl ast.Decl, do foreachDeclFunc) {
+	decls := splitDecls(decl)
+	for _, decl := range decls {
+		names := declNames(decl)
+		values := declValues(decl)
+
+		for i, name := range names {
+			var value ast.Expr
+			valueindex := -1
+			if values != nil {
+				if len(values) > 1 {
+					value = values[i]
+				} else {
+					value = values[0]
+					valueindex = i
+				}
+			}
+
+			do(decl, name, value, valueindex)
+		}
+	}
+}
