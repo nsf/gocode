@@ -4,7 +4,7 @@ TARG=gocode
 GOFILES=gocode.go\
 	autocompletefile.go\
 	module.go\
-	autocompletion.go\
+	autocompletecontext.go\
 	server.go\
 	rpc.go\
 	decl.go\
