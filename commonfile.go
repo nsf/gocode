@@ -23,7 +23,7 @@ type commonFile struct {
 	// cache
 	modules   []moduleImport
 	filescope *Scope
-	scope *Scope
+	scope     *Scope
 }
 
 func (c *commonFile) resetCache() {
@@ -119,4 +119,3 @@ func packageName(file *ast.File) string {
 	}
 	return ""
 }
-

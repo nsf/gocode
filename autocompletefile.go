@@ -422,4 +422,3 @@ func (self *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
 	}
 	return false
 }
-

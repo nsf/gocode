@@ -426,4 +426,3 @@ func preprocessConstDecl(s string) string {
 
 	return s[0:b] + "0" + s[e:]
 }
-
