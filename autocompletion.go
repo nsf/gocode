@@ -418,7 +418,7 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 		}
 		if da.Decl == nil {
 			// In case if no declaraion is a subject of completion, propose all:
-			set := self.makeDeclSet(self.current.topscope)
+			set := self.makeDeclSet(self.current.scope)
 			for key, value := range set {
 				value.InferType()
 				b.appendDecl(da.Partial, key, value, class)

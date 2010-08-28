@@ -25,7 +25,6 @@ type PackageFile struct {
 	decls     map[string]*Decl // cached
 	filescope *Scope           // cached
 
-	topscope *Scope
 	scope    *Scope // scope, used for parsing
 	cursor   int    // for current file buffer
 }
@@ -114,7 +113,6 @@ func (self *PackageFile) resetCache() {
 	self.modules = make([]moduleImport, 0, 16)
 	self.filescope = NewScope(nil)
 	self.scope = self.filescope
-	self.topscope = self.filescope
 	self.decls = make(map[string]*Decl)
 }
 
@@ -178,16 +176,13 @@ func (self *PackageFile) processDeclLocals(decl ast.Decl) {
 			// 1. method var
 			// 2. args vars
 			// 3. results vars
-			savescope := self.scope
 			self.scope = NewScope(self.scope)
-			self.topscope = self.scope
 
 			self.processFieldList(t.Recv)
 			self.processFieldList(t.Type.Params)
 			self.processFieldList(t.Type.Results)
 			self.processBlockStmt(t.Body)
 
-			self.scope = savescope
 		}
 	}
 }
@@ -236,7 +231,6 @@ func (self *PackageFile) processDecl(decl ast.Decl) {
 					// and it's false for type declarations
 					if d.Class != DECL_TYPE {
 						self.scope = NewScope(self.scope)
-						self.topscope = self.scope
 					}
 					self.scope.addNamedDecl(d)
 				} else {
@@ -249,9 +243,7 @@ func (self *PackageFile) processDecl(decl ast.Decl) {
 
 func (self *PackageFile) processBlockStmt(block *ast.BlockStmt) {
 	if block != nil && self.cursorIn(block) {
-		savescope := self.scope
 		self.scope = AdvanceScope(self.scope)
-		self.topscope = self.scope
 
 		for _, stmt := range block.List {
 			self.processStmt(stmt)
@@ -261,8 +253,6 @@ func (self *PackageFile) processBlockStmt(block *ast.BlockStmt) {
 		v := new(funcLitVisitor)
 		v.ctx = self
 		ast.Walk(v, block)
-
-		self.scope = savescope
 	}
 }
 
@@ -272,15 +262,12 @@ type funcLitVisitor struct {
 
 func (v *funcLitVisitor) Visit(node interface{}) ast.Visitor {
 	if t, ok := node.(*ast.FuncLit); ok && v.ctx.cursorIn(t.Body) {
-		savescope := v.ctx.scope
 		v.ctx.scope = AdvanceScope(v.ctx.scope)
-		v.ctx.topscope = v.ctx.scope
 
 		v.ctx.processFieldList(t.Type.Params)
 		v.ctx.processFieldList(t.Type.Results)
 		v.ctx.processBlockStmt(t.Body)
 
-		v.ctx.scope = savescope
 		return nil
 	}
 	return v
@@ -294,14 +281,10 @@ func (self *PackageFile) processStmt(stmt ast.Stmt) {
 		self.processAssignStmt(t)
 	case *ast.IfStmt:
 		if self.cursorIn(t.Body) {
-			savescope := self.scope
 			self.scope = AdvanceScope(self.scope)
-			self.topscope = self.scope
 
 			self.processStmt(t.Init)
 			self.processBlockStmt(t.Body)
-
-			self.scope = savescope
 		}
 		self.processStmt(t.Else)
 	case *ast.BlockStmt:
@@ -310,14 +293,10 @@ func (self *PackageFile) processStmt(stmt ast.Stmt) {
 		self.processRangeStmt(t)
 	case *ast.ForStmt:
 		if self.cursorIn(t.Body) {
-			savescope := self.scope
 			self.scope = AdvanceScope(self.scope)
-			self.topscope = self.scope
 
 			self.processStmt(t.Init)
 			self.processBlockStmt(t.Body)
-
-			self.scope = savescope
 		}
 	case *ast.SwitchStmt:
 		self.processSwitchStmt(t)
@@ -334,9 +313,7 @@ func (self *PackageFile) processSelectStmt(a *ast.SelectStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
-	savescope := self.scope
 	self.scope = AdvanceScope(self.scope)
-	self.topscope = self.scope
 
 	var lastCursorAfter *ast.CommClause
 	for _, s := range a.Body.List {
@@ -355,17 +332,13 @@ func (self *PackageFile) processSelectStmt(a *ast.SelectStmt) {
 			self.processStmt(s)
 		}
 	}
-
-	self.scope = savescope
 }
 
 func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
-	savescope := self.scope
 	self.scope = AdvanceScope(self.scope)
-	self.topscope = self.scope
 
 	self.processStmt(a.Init)
 	// type var
@@ -398,17 +371,13 @@ func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 			self.processStmt(s)
 		}
 	}
-
-	self.scope = savescope
 }
 
 func (self *PackageFile) processSwitchStmt(a *ast.SwitchStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
-	savescope := self.scope
 	self.scope = AdvanceScope(self.scope)
-	self.topscope = self.scope
 
 	self.processStmt(a.Init)
 	var lastCursorAfter *ast.CaseClause
@@ -422,17 +391,13 @@ func (self *PackageFile) processSwitchStmt(a *ast.SwitchStmt) {
 			self.processStmt(s)
 		}
 	}
-
-	self.scope = savescope
 }
 
 func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
-	savescope := self.scope
 	self.scope = AdvanceScope(self.scope)
-	self.topscope = self.scope
 
 	if a.Tok == token.DEFINE {
 		var t1, t2 ast.Expr
@@ -482,8 +447,6 @@ func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
 	}
 
 	self.processBlockStmt(a.Body)
-
-	self.scope = savescope
 }
 
 func (self *PackageFile) processAssignStmt(a *ast.AssignStmt) {
