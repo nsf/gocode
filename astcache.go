@@ -4,6 +4,7 @@ import (
 	"os"
 	"go/ast"
 	"go/parser"
+	"io/ioutil"
 )
 
 //-------------------------------------------------------------------------
@@ -14,29 +15,33 @@ type astFileCache struct {
 	name string // file name
 	mtime int64 // last modification time
 	file *ast.File // an AST tree
+	data []byte // file contents
+	err os.Error // last parsing error
 }
 
-func (f *astFileCache) get() (*ast.File, os.Error) {
+func (f *astFileCache) get() (*ast.File, []byte, os.Error) {
 	stat, err := os.Stat(f.name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if f.mtime != stat.Mtime_ns {
-		f.mtime = stat.Mtime_ns
-		f.file, err = parser.ParseFile(f.name, nil, 0)
-		return f.file, err
-	}
-
-	return f.file, err
+	return f.forceGet(stat.Mtime_ns)
 }
 
-func (f *astFileCache) forceGet(mtime int64) (*ast.File, os.Error) {
+func (f *astFileCache) forceGet(mtime int64) (*ast.File, []byte, os.Error) {
 	var err os.Error
 
+	if f.mtime == mtime {
+		return f.file, f.data, f.err
+	}
+
 	f.mtime = mtime
-	f.file, err = parser.ParseFile(f.name, nil, 0)
-	return f.file, err
+	f.data, err = ioutil.ReadFile(f.name)
+	if err != nil {
+		return nil, nil, err
+	}
+	f.file, f.err = parser.ParseFile("", f.data, 0)
+	return f.file, f.data, f.err
 }
 
 //-------------------------------------------------------------------------
@@ -54,10 +59,10 @@ func NewASTCache() *ASTCache {
 }
 
 // Simply get me an AST of that file.
-func (c *ASTCache) Get(filename string) (*ast.File, os.Error) {
+func (c *ASTCache) Get(filename string) (*ast.File, []byte, os.Error) {
 	f, ok := c.files[filename]
 	if !ok {
-		f = &astFileCache{filename, 0, nil}
+		f = &astFileCache{filename, 0, nil, nil, nil}
 		c.files[filename] = f
 	}
 	return f.get()
@@ -66,10 +71,10 @@ func (c *ASTCache) Get(filename string) (*ast.File, os.Error) {
 // Get me an AST of that file and I know that it's out-dated, therefore force
 // update and I'm providing mtime for you.
 // (useful if called from other caching system)
-func (c *ASTCache) ForceGet(filename string, mtime int64) (*ast.File, os.Error) {
+func (c *ASTCache) ForceGet(filename string, mtime int64) (*ast.File, []byte, os.Error) {
 	f, ok := c.files[filename]
 	if !ok {
-		f = &astFileCache{filename, 0, nil}
+		f = &astFileCache{filename, 0, nil, nil, nil}
 		c.files[filename] = f
 	}
 	return f.forceGet(mtime)

@@ -55,7 +55,7 @@ func (self *PackageFile) processFile(filename string, c *ASTCache) {
 	// drop cached modules and file scope
 	self.resetCache()
 
-	file, _ := c.ForceGet(filename, self.mtime)
+	file, _, _ := c.ForceGet(filename, self.mtime)
 	self.processImports(file.Decls)
 
 	// process declarations
