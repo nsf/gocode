@@ -12,11 +12,11 @@ import (
 //-------------------------------------------------------------------------
 
 type astFileCache struct {
-	name string // file name
-	mtime int64 // last modification time
-	file *ast.File // an AST tree
-	data []byte // file contents
-	err os.Error // last parsing error
+	name  string    // file name
+	mtime int64     // last modification time
+	file  *ast.File // an AST tree
+	data  []byte    // file contents
+	err   os.Error  // last parsing error
 }
 
 func (f *astFileCache) get() (*ast.File, []byte, os.Error) {

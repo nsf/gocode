@@ -285,57 +285,40 @@ func (self *ModuleCache) addFakeModuleToScope(alias, realname string) {
 
 func addAstDeclsToModule(module *Decl, decls []ast.Decl, scope *Scope) {
 	for _, decl := range decls {
-		decls := splitDecls(decl)
-		for _, decl := range decls {
-			names := declNames(decl)
-			values := declValues(decl)
+		foreachDecl(decl, func(decl ast.Decl, name string, value ast.Expr, valueindex int) {
+			d := NewDeclFromAstDecl(name, DECL_FOREIGN, decl, value, valueindex, scope)
+			if d == nil {
+				return
+			}
 
-			for i, name := range names {
-				var value ast.Expr = nil
-				valueindex := -1
-				if values != nil {
-					if len(values) > 1 {
-						value = values[i]
-					} else {
-						value = values[0]
-						valueindex = i
-					}
-				}
-
-				d := NewDeclFromAstDecl(name, DECL_FOREIGN, decl, value, valueindex, scope)
-				if d == nil {
-					continue
-				}
-
-				if !ast.IsExported(name) {
-					// We need types here, because embeddeing may
-					// refer to unexported types which contain
-					// exported methods, like in reflect package.
-					if d.Class != DECL_TYPE {
-						continue
-					}
-				}
-
-				methodof := MethodOf(decl)
-				if methodof != "" {
-					decl := module.FindChild(methodof)
-					if decl != nil {
-						decl.AddChild(d)
-					} else {
-						decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
-						decl.AddChild(d)
-						module.AddChild(decl)
-					}
-				} else {
-					decl := module.FindChild(d.Name)
-					if decl != nil {
-						decl.ExpandOrReplace(d)
-					} else {
-						module.AddChild(d)
-					}
+			if !ast.IsExported(name) {
+				// We need types here, because embeddeing may
+				// refer to unexported types which contain
+				// exported methods, like in reflect package.
+				if d.Class != DECL_TYPE {
+					return
 				}
 			}
-		}
+
+			methodof := MethodOf(decl)
+			if methodof != "" {
+				decl := module.FindChild(methodof)
+				if decl != nil {
+					decl.AddChild(d)
+				} else {
+					decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
+					decl.AddChild(d)
+					module.AddChild(decl)
+				}
+			} else {
+				decl := module.FindChild(d.Name)
+				if decl != nil {
+					decl.ExpandOrReplace(d)
+				} else {
+					module.AddChild(d)
+				}
+			}
+		})
 	}
 }
 
@@ -506,4 +489,29 @@ func splitDecls(d ast.Decl) []ast.Decl {
 		decls[0] = d
 	}
 	return decls
+}
+
+type foreachDeclFunc func(ast.Decl, string, ast.Expr, int)
+
+func foreachDecl(decl ast.Decl, do foreachDeclFunc) {
+	decls := splitDecls(decl)
+	for _, decl := range decls {
+		names := declNames(decl)
+		values := declValues(decl)
+
+		for i, name := range names {
+			var value ast.Expr
+			valueindex := -1
+			if values != nil {
+				if len(values) > 1 {
+					value = values[i]
+				} else {
+					value = values[0]
+					valueindex = i
+				}
+			}
+
+			do(decl, name, value, valueindex)
+		}
+	}
 }

@@ -2,7 +2,7 @@ include $(GOROOT)/src/Make.inc
 
 TARG=gocode
 GOFILES=gocode.go\
-	file.go\
+	autocompletefile.go\
 	module.go\
 	autocompletion.go\
 	server.go\
@@ -12,7 +12,8 @@ GOFILES=gocode.go\
 	scope.go\
 	ripper.go\
 	config.go\
-	astcache.go
+	astcache.go\
+	commonfile.go
 
 include $(GOROOT)/src/Make.cmd
 

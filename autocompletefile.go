@@ -5,32 +5,17 @@ import (
 	"go/parser"
 	"go/ast"
 	"go/token"
-	"path"
-	"fmt"
 )
 
-type moduleImport struct {
-	alias  string
-	name   string
-	path   string
-	module *Decl
+type AutoCompleteFile struct {
+	commonFile
+
+	decls  map[string]*Decl // map of all top-level declarations (cached)
+	cursor int              // for current file buffer only
 }
 
-type PackageFile struct {
-	name        string // file name
-	packageName string // package name that is in the file
-	mtime       int64
-
-	modules   []moduleImport   // import section cache (abbrev -> full name)
-	decls     map[string]*Decl // cached
-	filescope *Scope           // cached
-
-	scope    *Scope // scope, used for parsing
-	cursor   int    // for current file buffer
-}
-
-func NewPackageFile(name, packageName string) *PackageFile {
-	p := new(PackageFile)
+func NewPackageFile(name, packageName string) *AutoCompleteFile {
+	p := new(AutoCompleteFile)
 	p.name = name
 	p.packageName = packageName
 	p.mtime = 0
@@ -38,7 +23,7 @@ func NewPackageFile(name, packageName string) *PackageFile {
 	return p
 }
 
-func (self *PackageFile) updateCache(c *ASTCache) {
+func (self *AutoCompleteFile) updateCache(c *ASTCache) {
 	stat, err := os.Stat(self.name)
 	if err != nil {
 		panic(err.String())
@@ -50,7 +35,7 @@ func (self *PackageFile) updateCache(c *ASTCache) {
 	}
 }
 
-func (self *PackageFile) processFile(filename string, c *ASTCache) {
+func (self *AutoCompleteFile) processFile(filename string, c *ASTCache) {
 	// drop cached modules and file scope
 	self.resetCache()
 
@@ -72,7 +57,7 @@ type ProcessDataContext struct {
 }
 
 // this one is used for current file buffer exclusively
-func (self *PackageFile) processDataStage1(data []byte, ctx *ProcessDataContext) {
+func (self *AutoCompleteFile) processDataStage1(data []byte, ctx *ProcessDataContext) {
 	self.resetCache()
 
 	var filedata []byte
@@ -98,7 +83,7 @@ func (self *PackageFile) processDataStage1(data []byte, ctx *ProcessDataContext)
 }
 
 // this one is used for current file buffer exclusively
-func (self *PackageFile) processDataStage2(ctx *ProcessDataContext) {
+func (self *AutoCompleteFile) processDataStage2(ctx *ProcessDataContext) {
 	// STAGE 2 for current file buffer only
 	if ctx.block != nil {
 		// parse local function as local
@@ -109,73 +94,15 @@ func (self *PackageFile) processDataStage2(ctx *ProcessDataContext) {
 	}
 }
 
-func (self *PackageFile) resetCache() {
-	self.modules = make([]moduleImport, 0, 16)
-	self.filescope = NewScope(nil)
-	self.scope = self.filescope
+func (self *AutoCompleteFile) resetCache() {
+	self.commonFile.resetCache()
 	self.decls = make(map[string]*Decl)
 }
 
-func (self *PackageFile) addModuleImport(alias, path string) {
-	if alias == "_" || alias == "." {
-		// TODO: support for modules imported in the current namespace
-		return
-	}
-	name := path
-	path = self.findFile(path)
-	if name[0] == '.' {
-		// use file path for local packages as name
-		name = path
-	}
-
-	n := len(self.modules)
-	if cap(self.modules) < n+1 {
-		s := make([]moduleImport, n, n*2+1)
-		copy(s, self.modules)
-		self.modules = s
-	}
-
-	self.modules = self.modules[0 : n+1]
-	self.modules[n] = moduleImport{alias, name, path, nil}
-}
-
-func (self *PackageFile) processImports(decls []ast.Decl) {
-	for _, decl := range decls {
-		if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.IMPORT {
-			for _, spec := range gd.Specs {
-				imp, ok := spec.(*ast.ImportSpec)
-				if !ok {
-					panic("Fail")
-				}
-				self.processImportSpec(imp)
-			}
-		} else {
-			return
-		}
-	}
-}
-
-func (self *PackageFile) applyImports() {
-	for _, mi := range self.modules {
-		self.filescope.addDecl(mi.alias, mi.module)
-	}
-}
-
-func (self *PackageFile) processImportSpec(imp *ast.ImportSpec) {
-	path, alias := pathAndAlias(imp)
-
-	// add module to a cache
-	self.addModuleImport(alias, path)
-}
-
-func (self *PackageFile) processDeclLocals(decl ast.Decl) {
+func (self *AutoCompleteFile) processDeclLocals(decl ast.Decl) {
 	switch t := decl.(type) {
 	case *ast.FuncDecl:
 		if self.cursorIn(t.Body) {
-			// put into 'locals' (if any):
-			// 1. method var
-			// 2. args vars
-			// 3. results vars
 			self.scope = NewScope(self.scope)
 
 			self.processFieldList(t.Recv)
@@ -187,61 +114,44 @@ func (self *PackageFile) processDeclLocals(decl ast.Decl) {
 	}
 }
 
-func (self *PackageFile) processDecl(decl ast.Decl) {
+func (self *AutoCompleteFile) processDecl(decl ast.Decl) {
 	if self.scope != self.filescope {
 		if t, ok := decl.(*ast.GenDecl); ok && t.Offset > self.cursor {
 			return
 		}
 	}
-	decls := splitDecls(decl)
-	for _, decl := range decls {
-		names := declNames(decl)
-		values := declValues(decl)
+	foreachDecl(decl, func(decl ast.Decl, name string, value ast.Expr, valueindex int) {
+		d := NewDeclFromAstDecl(name, 0, decl, value, valueindex, self.scope)
+		if d == nil {
+			return
+		}
 
-		for i, name := range names {
-			var value ast.Expr = nil
-			valueindex := -1
-			if values != nil {
-				if len(values) > 1 {
-					value = values[i]
-				} else {
-					value = values[0]
-					valueindex = i
-				}
-			}
-
-			d := NewDeclFromAstDecl(name, 0, decl, value, valueindex, self.scope)
-			if d == nil {
-				continue
-			}
-
-			methodof := MethodOf(decl)
-			if methodof != "" {
-				decl, ok := self.decls[methodof]
-				if ok {
-					decl.AddChild(d)
-				} else {
-					decl = NewDecl(methodof, DECL_METHODS_STUB, self.scope)
-					self.decls[methodof] = decl
-					decl.AddChild(d)
-				}
+		methodof := MethodOf(decl)
+		if methodof != "" {
+			decl, ok := self.decls[methodof]
+			if ok {
+				decl.AddChild(d)
 			} else {
-				if self.scope != self.filescope {
-					// the declaration itself has a scope which follows it's definition
-					// and it's false for type declarations
-					if d.Class != DECL_TYPE {
-						self.scope = NewScope(self.scope)
-					}
-					self.scope.addNamedDecl(d)
-				} else {
-					self.addVarDecl(d)
+				decl = NewDecl(methodof, DECL_METHODS_STUB, self.scope)
+				self.decls[methodof] = decl
+				decl.AddChild(d)
+			}
+		} else {
+			if self.scope != self.filescope {
+				// the declaration itself has a scope which follows it's definition
+				// and it's false for type declarations
+				if d.Class != DECL_TYPE {
+					self.scope = NewScope(self.scope)
 				}
+				self.scope.addNamedDecl(d)
+			} else {
+				self.addVarDecl(d)
 			}
 		}
-	}
+	})
 }
 
-func (self *PackageFile) processBlockStmt(block *ast.BlockStmt) {
+func (self *AutoCompleteFile) processBlockStmt(block *ast.BlockStmt) {
 	if block != nil && self.cursorIn(block) {
 		self.scope = AdvanceScope(self.scope)
 
@@ -257,7 +167,7 @@ func (self *PackageFile) processBlockStmt(block *ast.BlockStmt) {
 }
 
 type funcLitVisitor struct {
-	ctx *PackageFile
+	ctx *AutoCompleteFile
 }
 
 func (v *funcLitVisitor) Visit(node interface{}) ast.Visitor {
@@ -273,7 +183,7 @@ func (v *funcLitVisitor) Visit(node interface{}) ast.Visitor {
 	return v
 }
 
-func (self *PackageFile) processStmt(stmt ast.Stmt) {
+func (self *AutoCompleteFile) processStmt(stmt ast.Stmt) {
 	switch t := stmt.(type) {
 	case *ast.DeclStmt:
 		self.processDecl(t.Decl)
@@ -309,7 +219,7 @@ func (self *PackageFile) processStmt(stmt ast.Stmt) {
 	}
 }
 
-func (self *PackageFile) processSelectStmt(a *ast.SelectStmt) {
+func (self *AutoCompleteFile) processSelectStmt(a *ast.SelectStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
@@ -334,7 +244,7 @@ func (self *PackageFile) processSelectStmt(a *ast.SelectStmt) {
 	}
 }
 
-func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
+func (self *AutoCompleteFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
@@ -373,7 +283,7 @@ func (self *PackageFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 	}
 }
 
-func (self *PackageFile) processSwitchStmt(a *ast.SwitchStmt) {
+func (self *AutoCompleteFile) processSwitchStmt(a *ast.SwitchStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
@@ -393,7 +303,7 @@ func (self *PackageFile) processSwitchStmt(a *ast.SwitchStmt) {
 	}
 }
 
-func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
+func (self *AutoCompleteFile) processRangeStmt(a *ast.RangeStmt) {
 	if !self.cursorIn(a.Body) {
 		return
 	}
@@ -449,7 +359,7 @@ func (self *PackageFile) processRangeStmt(a *ast.RangeStmt) {
 	self.processBlockStmt(a.Body)
 }
 
-func (self *PackageFile) processAssignStmt(a *ast.AssignStmt) {
+func (self *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
 	if a.Tok != token.DEFINE || a.TokPos.Offset > self.cursor {
 		return
 	}
@@ -483,7 +393,7 @@ func (self *PackageFile) processAssignStmt(a *ast.AssignStmt) {
 	}
 }
 
-func (self *PackageFile) processFieldList(fieldList *ast.FieldList) {
+func (self *AutoCompleteFile) processFieldList(fieldList *ast.FieldList) {
 	if fieldList != nil {
 		decls := astFieldListToDecls(fieldList, DECL_VAR, 0, self.scope)
 		for _, d := range decls {
@@ -492,7 +402,7 @@ func (self *PackageFile) processFieldList(fieldList *ast.FieldList) {
 	}
 }
 
-func (self *PackageFile) addVarDecl(d *Decl) {
+func (self *AutoCompleteFile) addVarDecl(d *Decl) {
 	decl, ok := self.decls[d.Name]
 	if ok {
 		decl.ExpandOrReplace(d)
@@ -502,7 +412,7 @@ func (self *PackageFile) addVarDecl(d *Decl) {
 }
 
 
-func (self *PackageFile) cursorIn(block *ast.BlockStmt) bool {
+func (self *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
 	if self.cursor == -1 || block == nil {
 		return false
 	}
@@ -513,38 +423,3 @@ func (self *PackageFile) cursorIn(block *ast.BlockStmt) bool {
 	return false
 }
 
-func (self *PackageFile) findFile(imp string) string {
-	if imp[0] == '.' {
-		dir, _ := path.Split(self.name)
-		return fmt.Sprintf("%s.a", path.Join(dir, imp))
-	}
-	return findGlobalFile(imp)
-}
-
-func packageName(file *ast.File) string {
-	if file.Name != nil {
-		return file.Name.Name
-	}
-	return ""
-}
-
-func pathAndAlias(imp *ast.ImportSpec) (string, string) {
-	path := string(imp.Path.Value)
-	alias := ""
-	if imp.Name != nil {
-		alias = imp.Name.Name
-	}
-	path = path[1 : len(path)-1]
-	return path, alias
-}
-
-func findGlobalFile(imp string) string {
-	goroot := os.Getenv("GOROOT")
-	goarch := os.Getenv("GOARCH")
-	goos := os.Getenv("GOOS")
-
-	pkgdir := fmt.Sprintf("%s_%s", goos, goarch)
-	pkgfile := fmt.Sprintf("%s.a", imp)
-
-	return path.Join(goroot, "pkg", pkgdir, pkgfile)
-}

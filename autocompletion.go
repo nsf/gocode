@@ -144,13 +144,10 @@ $$
 `
 
 // TODO: Move module cache outside of AutoCompleteContext.
-// TODO?: Rename PackageFile to something like AutoCompleteFile, because
-// it's really an AutoCompleteContext specific. Future semantic layer will use
-// different kind of file (most likely).
 type AutoCompleteContext struct {
-	current *PackageFile            // currently editted file
-	others  map[string]*PackageFile // other files
-	mcache  map[string]*ModuleCache // modules cache
+	current *AutoCompleteFile            // currently editted file
+	others  map[string]*AutoCompleteFile // other files
+	mcache  map[string]*ModuleCache      // modules cache
 	pkg     *Scope
 	uni     *Scope
 
@@ -160,7 +157,7 @@ type AutoCompleteContext struct {
 func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
 	self.current = NewPackageFile("", "")
-	self.others = make(map[string]*PackageFile)
+	self.others = make(map[string]*AutoCompleteFile)
 	self.mcache = make(map[string]*ModuleCache)
 	self.pkg = NewScope(nil)
 	self.addBuiltinUnsafe()
@@ -187,7 +184,7 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 		panic(err.String())
 	}
 
-	newothers := make(map[string]*PackageFile)
+	newothers := make(map[string]*AutoCompleteFile)
 	for _, stat := range filesInDir {
 		ok, _ := path.Match("*.go", stat.Name)
 		if ok && stat.Name != file {
@@ -206,10 +203,10 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 	self.others = newothers
 }
 
-// Inspects import information of a PackageFile and adds ModuleCache entries to 
+// Inspects import information of a AutoCompleteFile and adds ModuleCache entries to 
 // the cache and to the 'ms' map. For 'ms' map description see 'updateCaches' 
 // method.
-func (self *AutoCompleteContext) appendModulesFromFile(ms map[string]*ModuleCache, f *PackageFile) {
+func (self *AutoCompleteContext) appendModulesFromFile(ms map[string]*ModuleCache, f *AutoCompleteFile) {
 	for _, m := range f.modules {
 		if _, ok := ms[m.name]; ok {
 			continue
@@ -233,7 +230,7 @@ func (self *AutoCompleteContext) updateCaches() {
 
 	// start updateCache for other files
 	for _, other := range self.others {
-		go func(f *PackageFile) {
+		go func(f *AutoCompleteFile) {
 			f.updateCache(self.astcache)
 			done <- true
 		}(other)
@@ -273,10 +270,10 @@ func (self *AutoCompleteContext) updateCaches() {
 	}
 }
 
-// Makes all PackageFile module entries valid (e.g. pointing to a real modules in
+// Makes all AutoCompleteFile module entries valid (e.g. pointing to a real modules in
 // the cache). We can do that only after having updated module cache.
 // Also calls applyImports.
-func (self *AutoCompleteContext) fixupModules(f *PackageFile) {
+func (self *AutoCompleteContext) fixupModules(f *AutoCompleteFile) {
 	for i := range f.modules {
 		name := f.modules[i].name
 		if f.modules[i].alias == "" {
@@ -287,7 +284,7 @@ func (self *AutoCompleteContext) fixupModules(f *PackageFile) {
 	f.applyImports()
 }
 
-func (self *AutoCompleteContext) mergeDeclsFromFile(file *PackageFile) {
+func (self *AutoCompleteContext) mergeDeclsFromFile(file *AutoCompleteFile) {
 	for _, d := range file.decls {
 		self.pkg.mergeDecl(d)
 	}
