@@ -36,6 +36,13 @@ to see a stack trace you may want to run it manually somewhere in the
 terminal using this command: 'gocode -s'. If the daemon was started
 previously, you can shut it down using this command: 'gocode close'.
 
+IMPORTANT!!!: One of the latest Go releases relaxed a requirement for
+having a bunch of environment variables in order to keep go compiler
+working. But gocode still requires you to have them. Gocode needs these
+environment variables in order to know where your libraries are:
+GOOS, GOARCH, GOROOT. Probably in future this requirement will be changed
+in favor of a config variable (like 'libpath' or something).
+
 NOTE: I'm trying to keep git master branch always in a working state.
 Therefore it's safe and a good idea to keep your app in sync with git
 repo.
