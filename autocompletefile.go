@@ -312,7 +312,7 @@ func (self *AutoCompleteFile) processRangeStmt(a *ast.RangeStmt) {
 	if a.Tok == token.DEFINE {
 		var t1, t2 ast.Expr
 		var scope *Scope
-		t1, scope = NewDeclVar("tmp", nil, a.X, -1, self.scope).InferType()
+		t1, scope, _ = inferType(a.X, self.scope, -1)
 		t1, scope = advanceToType(rangePredicate, t1, scope)
 		if t1 != nil {
 			// figure out range Key, Value types

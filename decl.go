@@ -478,7 +478,7 @@ func typeToDecl(t ast.Expr, scope *Scope) *Decl {
 }
 
 func exprToDecl(e ast.Expr, scope *Scope) *Decl {
-	t, scope := NewDeclVar("tmp", nil, e, -1, scope).InferType()
+	t, scope, _ := inferType(e, scope, -1)
 
 	var typedecl *Decl
 	switch t.(type) {
