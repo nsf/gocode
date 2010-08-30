@@ -285,13 +285,13 @@ func (self *ModuleCache) addFakeModuleToScope(alias, realname string) {
 
 func addAstDeclsToModule(module *Decl, decls []ast.Decl, scope *Scope) {
 	for _, decl := range decls {
-		foreachDecl(decl, func(decl ast.Decl, name string, value ast.Expr, valueindex int) {
-			d := NewDeclFromAstDecl(name, DECL_FOREIGN, decl, value, valueindex, scope)
+		foreachDecl(decl, func(decl ast.Decl, name *ast.Ident, value ast.Expr, valueindex int) {
+			d := NewDeclFromAstDecl(name.Name, DECL_FOREIGN, decl, value, valueindex, scope)
 			if d == nil {
 				return
 			}
 
-			if !ast.IsExported(name) {
+			if !name.IsExported() {
 				// We need types here, because embeddeing may
 				// refer to unexported types which contain
 				// exported methods, like in reflect package.

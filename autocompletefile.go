@@ -1,74 +1,60 @@
 package main
 
 import (
-	"os"
 	"go/parser"
 	"go/ast"
 	"go/token"
 )
 
 type AutoCompleteFile struct {
-	commonFile
+	name        string
+	packageName string
 
-	decls  map[string]*Decl // map of all top-level declarations (cached)
-	cursor int              // for current file buffer only
+	decls     map[string]*Decl
+	modules   ModuleImports
+	filescope *Scope
+	scope     *Scope
+
+	cursor int // for current file buffer only
 }
 
-func NewPackageFile(name, packageName string) *AutoCompleteFile {
+func NewPackageFile(name string) *AutoCompleteFile {
 	p := new(AutoCompleteFile)
 	p.name = name
-	p.packageName = packageName
-	p.mtime = 0
 	p.cursor = -1
 	return p
 }
 
-func (self *AutoCompleteFile) updateCache(c *ASTCache) {
-	stat, err := os.Stat(self.name)
-	if err != nil {
-		panic(err.String())
-	}
+func (self *AutoCompleteFile) updateCache(c *DeclCache) {
+	cache := c.Get(self.name)
+	self.packageName = packageName(cache.File)
 
-	if self.mtime != stat.Mtime_ns {
-		self.mtime = stat.Mtime_ns
-		self.processFile(self.name, c)
-	}
-}
-
-func (self *AutoCompleteFile) processFile(filename string, c *ASTCache) {
-	// drop cached modules and file scope
-	self.resetCache()
-
-	file, _, _ := c.ForceGet(filename, self.mtime)
-	self.processImports(file.Decls)
-
-	// process declarations
-	self.decls = make(map[string]*Decl, len(file.Decls))
-	for _, decl := range file.Decls {
-		self.processDecl(decl)
-	}
+	self.decls = cache.Decls
+	self.modules = cache.Modules
+	self.filescope = cache.FileScope
+	self.scope = self.filescope
 }
 
 // this one is used for current file buffer exclusively
 func (self *AutoCompleteFile) processData(data []byte) {
-	self.resetCache()
-
 	cur, filedata, block := RipOffDecl(data, self.cursor)
-
 	file, _ := parser.ParseFile("", filedata, 0)
-
 	self.packageName = packageName(file)
-	self.processImports(file.Decls)
+
+	self.decls = make(map[string]*Decl)
+	self.modules = NewModuleImports(self.name, file.Decls)
+	self.filescope = NewScope(nil)
+	self.scope = self.filescope
 
 	// process all top-level declarations
 	for _, decl := range file.Decls {
-		self.processDecl(decl)
+		appendToTopDecls(self.decls, decl, self.scope)
 	}
 	if block != nil {
 		// process local function as top-level declaration
 		decls, _ := parser.ParseDeclList("", block)
 		for _, decl := range decls {
-			self.processDecl(decl)
+			appendToTopDecls(self.decls, decl, self.scope)
 		}
 
 		// process function internals
@@ -77,11 +63,7 @@ func (self *AutoCompleteFile) processData(data []byte) {
 			self.processDeclLocals(decl)
 		}
 	}
-}
 
-func (self *AutoCompleteFile) resetCache() {
-	self.commonFile.resetCache()
-	self.decls = make(map[string]*Decl)
 }
 
 func (self *AutoCompleteFile) processDeclLocals(decl ast.Decl) {
@@ -100,13 +82,11 @@ func (self *AutoCompleteFile) processDeclLocals(decl ast.Decl) {
 }
 
 func (self *AutoCompleteFile) processDecl(decl ast.Decl) {
-	if self.scope != self.filescope {
-		if t, ok := decl.(*ast.GenDecl); ok && t.Offset > self.cursor {
-			return
-		}
+	if t, ok := decl.(*ast.GenDecl); ok && t.Offset > self.cursor {
+		return
 	}
-	foreachDecl(decl, func(decl ast.Decl, name string, value ast.Expr, valueindex int) {
-		d := NewDeclFromAstDecl(name, 0, decl, value, valueindex, self.scope)
+	foreachDecl(decl, func(decl ast.Decl, name *ast.Ident, value ast.Expr, valueindex int) {
+		d := NewDeclFromAstDecl(name.Name, 0, decl, value, valueindex, self.scope)
 		if d == nil {
 			return
 		}
@@ -122,16 +102,12 @@ func (self *AutoCompleteFile) processDecl(decl ast.Decl) {
 				decl.AddChild(d)
 			}
 		} else {
-			if self.scope != self.filescope {
-				// the declaration itself has a scope which follows it's definition
-				// and it's false for type declarations
-				if d.Class != DECL_TYPE {
-					self.scope = NewScope(self.scope)
-				}
-				self.scope.addNamedDecl(d)
-			} else {
-				self.addVarDecl(d)
+			// the declaration itself has a scope which follows it's definition
+			// and it's false for type declarations
+			if d.Class != DECL_TYPE {
+				self.scope = NewScope(self.scope)
 			}
+			self.scope.addNamedDecl(d)
 		}
 	})
 }
@@ -360,16 +336,6 @@ func (self *AutoCompleteFile) processFieldList(fieldList *ast.FieldList) {
 	}
 }
 
-func (self *AutoCompleteFile) addVarDecl(d *Decl) {
-	decl, ok := self.decls[d.Name]
-	if ok {
-		decl.ExpandOrReplace(d)
-	} else {
-		self.decls[d.Name] = d
-	}
-}
-
-
 func (self *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
 	if self.cursor == -1 || block == nil {
 		return false
@@ -379,4 +345,10 @@ func (self *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
 		return true
 	}
 	return false
+}
+
+func (self *AutoCompleteFile) applyImports() {
+	for _, mi := range self.modules {
+		self.filescope.addDecl(mi.Alias, mi.Module)
+	}
 }

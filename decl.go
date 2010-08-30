@@ -928,32 +928,32 @@ func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 	return count
 }
 
-func declNames(d ast.Decl) []string {
-	var names []string
+func declNames(d ast.Decl) []*ast.Ident {
+	var names []*ast.Ident
 
 	switch t := d.(type) {
 	case *ast.GenDecl:
 		switch t.Tok {
 		case token.CONST:
 			c := t.Specs[0].(*ast.ValueSpec)
-			names = make([]string, len(c.Names))
+			names = make([]*ast.Ident, len(c.Names))
 			for i, name := range c.Names {
-				names[i] = name.Name
+				names[i] = name
 			}
 		case token.TYPE:
 			t := t.Specs[0].(*ast.TypeSpec)
-			names = make([]string, 1)
-			names[0] = t.Name.Name
+			names = make([]*ast.Ident, 1)
+			names[0] = t.Name
 		case token.VAR:
 			v := t.Specs[0].(*ast.ValueSpec)
-			names = make([]string, len(v.Names))
+			names = make([]*ast.Ident, len(v.Names))
 			for i, name := range v.Names {
-				names[i] = name.Name
+				names[i] = name
 			}
 		}
 	case *ast.FuncDecl:
-		names = make([]string, 1)
-		names[0] = t.Name.Name
+		names = make([]*ast.Ident, 1)
+		names[0] = t.Name
 	}
 
 	return names
@@ -992,7 +992,7 @@ func splitDecls(d ast.Decl) []ast.Decl {
 	return decls
 }
 
-type foreachDeclFunc func(ast.Decl, string, ast.Expr, int)
+type foreachDeclFunc func(ast.Decl, *ast.Ident, ast.Expr, int)
 
 func foreachDecl(decl ast.Decl, do foreachDeclFunc) {
 	decls := splitDecls(decl)

@@ -12,8 +12,7 @@ GOFILES=gocode.go\
 	scope.go\
 	ripper.go\
 	config.go\
-	astcache.go\
-	commonfile.go
+	declcache.go
 
 include $(GOROOT)/src/Make.cmd
 

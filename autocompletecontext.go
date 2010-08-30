@@ -151,17 +151,17 @@ type AutoCompleteContext struct {
 	pkg     *Scope
 	uni     *Scope
 
-	astcache *ASTCache
+	declcache *DeclCache
 }
 
 func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
-	self.current = NewPackageFile("", "")
+	self.current = NewPackageFile("")
 	self.others = make(map[string]*AutoCompleteFile)
 	self.mcache = make(map[string]*ModuleCache)
 	self.pkg = NewScope(nil)
 	self.addBuiltinUnsafe()
-	self.astcache = NewASTCache()
+	self.declcache = NewDeclCache()
 	self.uni = universeScope
 	return self
 }
@@ -195,7 +195,7 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 			} else {
 				pkg := filePackageName(filepath)
 				if pkg == packageName {
-					newothers[filepath] = NewPackageFile(filepath, packageName)
+					newothers[filepath] = NewPackageFile(filepath)
 				}
 			}
 		}
@@ -208,15 +208,15 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 // method.
 func (self *AutoCompleteContext) appendModulesFromFile(ms map[string]*ModuleCache, f *AutoCompleteFile) {
 	for _, m := range f.modules {
-		if _, ok := ms[m.name]; ok {
+		if _, ok := ms[m.Name]; ok {
 			continue
 		}
-		if mod, ok := self.mcache[m.name]; ok {
-			ms[m.name] = mod
+		if mod, ok := self.mcache[m.Name]; ok {
+			ms[m.Name] = mod
 		} else {
-			mod = NewModuleCache(m.name, m.path)
-			ms[m.name] = mod
-			self.mcache[m.name] = mod
+			mod = NewModuleCache(m.Name, m.Path)
+			ms[m.Name] = mod
+			self.mcache[m.Name] = mod
 		}
 	}
 }
@@ -231,7 +231,7 @@ func (self *AutoCompleteContext) updateCaches() {
 	// start updateCache for other files
 	for _, other := range self.others {
 		go func(f *AutoCompleteFile) {
-			f.updateCache(self.astcache)
+			f.updateCache(self.declcache)
 			done <- true
 		}(other)
 	}
@@ -275,11 +275,11 @@ func (self *AutoCompleteContext) updateCaches() {
 // Also calls applyImports.
 func (self *AutoCompleteContext) fixupModules(f *AutoCompleteFile) {
 	for i := range f.modules {
-		name := f.modules[i].name
-		if f.modules[i].alias == "" {
-			f.modules[i].alias = self.mcache[name].defalias
+		name := f.modules[i].Name
+		if f.modules[i].Alias == "" {
+			f.modules[i].Alias = self.mcache[name].defalias
 		}
-		f.modules[i].module = self.mcache[name].main
+		f.modules[i].Module = self.mcache[name].main
 	}
 	f.applyImports()
 }
