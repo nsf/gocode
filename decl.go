@@ -26,6 +26,10 @@ const (
 // Decl.Flags
 const (
 	DECL_FOREIGN = 1 << iota // imported from another module
+
+	// means that the decl is a part of the range statement
+	// its type is inferred in a special way
+	DECL_RANGEVAR
 )
 
 var declClassToString = [...]string{
@@ -719,6 +723,13 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 }
 
 func (d *Decl) InferType() (ast.Expr, *Scope) {
+	// special case for range vars
+	if d.Flags&DECL_RANGEVAR != 0 {
+		var scope *Scope
+		d.Type, scope = inferRangeType(d.Value, d.Scope, d.ValueIndex)
+		return d.Type, scope
+	}
+
 	switch d.Class {
 	case DECL_MODULE:
 		// module is handled specially in inferType
@@ -759,6 +770,43 @@ func (d *Decl) FindChildAndInEmbedded(name string) *Decl {
 		}
 	}
 	return c
+}
+
+func inferRangeType(e ast.Expr, scope *Scope, valueindex int) (ast.Expr, *Scope) {
+	t, s, _ := inferType(e, scope, -1)
+	t, s = advanceToType(rangePredicate, e, scope)
+	if t != nil {
+		var t1, t2 ast.Expr
+		switch t := t.(type) {
+		case *ast.Ident:
+			// string
+			if t.Name == "string" {
+				t1 = ast.NewIdent("int")
+				t2 = ast.NewIdent("int")
+			} else {
+				t1, t2 = nil, nil
+			}
+		case *ast.ArrayType:
+			t1 = ast.NewIdent("int")
+			t2 = t.Elt
+		case *ast.MapType:
+			t1 = t.Key
+			t2 = t.Value
+		case *ast.ChanType:
+			t1 = t.Value
+			t2 = nil
+		default:
+			t1, t2 = nil, nil
+		}
+
+		switch valueindex {
+		case 0:
+			return t1, s
+		case 1:
+			return t2, s
+		}
+	}
+	return nil, nil
 }
 
 //-------------------------------------------------------------------------

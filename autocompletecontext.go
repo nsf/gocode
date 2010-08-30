@@ -356,8 +356,6 @@ func (self *AutoCompleteContext) createUniverseScope() {
 // 3. apropos classes
 // and length of the part that should be replaced (if any)
 func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
-	var curctx ProcessDataContext
-
 	self.current.cursor = cursor
 	self.current.name = filename
 
@@ -366,16 +364,9 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	// concurrent fashion. Apparently I'm not really good at that. Hopefully 
 	// will be better in future.
 
-	// I have two stages for the currently editted file, because Stage 2 does
-	// type inference. And type inference requires up-to-date module cache
-	// and up-to-date package block.
-
-	// Stage 1:
-	// - parses file to AST
-	// - figures out package name
-	// - processes imports
-	// - processes declarations
-	self.current.processDataStage1(file, &curctx)
+	// Does full processing of the currently editted file (top-level declarations plus
+	// active function).
+	self.current.processData(file)
 	if filename != "" {
 		// If filename was provided, we're trying to find other package file of the
 		// currently editted package. And the function should be executed after 
@@ -391,9 +382,7 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	// merge them in the common package block.
 	self.mergeDecls()
 
-	// Stage 2:
-	// - process local statements (e.g. those that are in a function where cursor is)
-	self.current.processDataStage2(&curctx)
+	// And we're ready to Go. ;)
 
 	b := NewOutBuffers(self)
 

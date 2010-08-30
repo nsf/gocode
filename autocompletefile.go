@@ -49,46 +49,31 @@ func (self *AutoCompleteFile) processFile(filename string, c *ASTCache) {
 	}
 }
 
-type ProcessDataContext struct {
-	cur   int
-	block []byte
-	file  *ast.File
-	decls []ast.Decl
-}
-
 // this one is used for current file buffer exclusively
-func (self *AutoCompleteFile) processDataStage1(data []byte, ctx *ProcessDataContext) {
+func (self *AutoCompleteFile) processData(data []byte) {
 	self.resetCache()
 
-	var filedata []byte
-	ctx.cur, filedata, ctx.block = RipOffDecl(data, self.cursor)
+	cur, filedata, block := RipOffDecl(data, self.cursor)
 
-	// process file without locals first
-	ctx.file, _ = parser.ParseFile("", filedata, 0)
+	file, _ := parser.ParseFile("", filedata, 0)
 
-	// STAGE 1
-	self.packageName = packageName(ctx.file)
-	self.processImports(ctx.file.Decls)
+	self.packageName = packageName(file)
+	self.processImports(file.Decls)
 
-	for _, decl := range ctx.file.Decls {
+	// process all top-level declarations
+	for _, decl := range file.Decls {
 		self.processDecl(decl)
 	}
-	if ctx.block != nil {
-		// parse local function as global
-		ctx.decls, _ = parser.ParseDeclList("", ctx.block)
-		for _, decl := range ctx.decls {
+	if block != nil {
+		// process local function as top-level declaration
+		decls, _ := parser.ParseDeclList("", block)
+		for _, decl := range decls {
 			self.processDecl(decl)
 		}
-	}
-}
 
-// this one is used for current file buffer exclusively
-func (self *AutoCompleteFile) processDataStage2(ctx *ProcessDataContext) {
-	// STAGE 2 for current file buffer only
-	if ctx.block != nil {
-		// parse local function as local
-		self.cursor = ctx.cur
-		for _, decl := range ctx.decls {
+		// process function internals
+		self.cursor = cur
+		for _, decl := range decls {
 			self.processDeclLocals(decl)
 		}
 	}
@@ -310,47 +295,20 @@ func (self *AutoCompleteFile) processRangeStmt(a *ast.RangeStmt) {
 	self.scope = AdvanceScope(self.scope)
 
 	if a.Tok == token.DEFINE {
-		var t1, t2 ast.Expr
-		var scope *Scope
-		t1, scope, _ = inferType(a.X, self.scope, -1)
-		t1, scope = advanceToType(rangePredicate, t1, scope)
-		if t1 != nil {
-			// figure out range Key, Value types
-			switch t := t1.(type) {
-			case *ast.Ident:
-				// string
-				if t.Name == "string" {
-					t1 = ast.NewIdent("int")
-					t2 = ast.NewIdent("int")
-				} else {
-					t1, t2 = nil, nil
-				}
-			case *ast.ArrayType:
-				t1 = ast.NewIdent("int")
-				t2 = t.Elt
-			case *ast.MapType:
-				t1 = t.Key
-				t2 = t.Value
-			case *ast.ChanType:
-				t1 = t.Value
-				t2 = nil
-			default:
-				t1, t2 = nil, nil
+		if t, ok := a.Key.(*ast.Ident); ok {
+			d := NewDeclVar(t.Name, nil, a.X, 0, self.scope)
+			if d != nil {
+				d.Flags |= DECL_RANGEVAR
+				self.scope.addNamedDecl(d)
 			}
+		}
 
-			if t, ok := a.Key.(*ast.Ident); ok {
-				d := NewDeclVar(t.Name, t1, nil, -1, self.scope)
+		if a.Value != nil {
+			if t, ok := a.Value.(*ast.Ident); ok {
+				d := NewDeclVar(t.Name, nil, a.X, 1, self.scope)
 				if d != nil {
+					d.Flags |= DECL_RANGEVAR
 					self.scope.addNamedDecl(d)
-				}
-			}
-
-			if a.Value != nil {
-				if t, ok := a.Value.(*ast.Ident); ok {
-					d := NewDeclVar(t.Name, t2, nil, -1, self.scope)
-					if d != nil {
-						self.scope.addNamedDecl(d)
-					}
 				}
 			}
 		}
