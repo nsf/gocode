@@ -1,0 +1,7 @@
+*.8
+*.a
+*.out
+gocode
+goremote
+gocodetest
+rpc.go
