@@ -20,3 +20,4 @@ test.0019 - map[string]something.# case
 test.0020 - embedded types, method overloading (sort of)
 test.0021 - SelectorExpr case, uses package local scope
 test.0022 - range loop, but iteratable is returned by a function
+test.0023 - simple check for unicode awareness
