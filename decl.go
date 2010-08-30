@@ -380,24 +380,24 @@ func (d *Decl) AddChild(cd *Decl) {
 	d.Children[cd.Name] = cd
 }
 
-func checkForBuiltinFuncs(typ *ast.Ident, c *ast.CallExpr) ast.Expr {
+func checkForBuiltinFuncs(typ *ast.Ident, c *ast.CallExpr, scope *Scope) (ast.Expr, *Scope) {
 	if strings.HasPrefix(typ.Name, "func(") {
 		if t, ok := c.Fun.(*ast.Ident); ok {
 			switch t.Name {
 			case "new":
 				e := new(ast.StarExpr)
 				e.X = c.Args[0]
-				return e
+				return e, scope
 			case "make":
-				return c.Args[0]
+				return c.Args[0], scope
 			case "cmplx":
-				return ast.NewIdent("complex")
+				return ast.NewIdent("complex"), universeScope
 			case "closed":
-				return ast.NewIdent("bool")
+				return ast.NewIdent("bool"), universeScope
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func funcReturnType(f *ast.FuncType, index int) ast.Expr {
@@ -600,7 +600,7 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 			case 1:
 				// technically it's a value, but in case of index == 1
 				// it is always the last infer operation
-				return ast.NewIdent("bool"), s, false // TODO: return real built-in bool here
+				return ast.NewIdent("bool"), universeScope, false
 			}
 		}
 	case *ast.IndexExpr:
@@ -618,7 +618,7 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 			case -1, 0:
 				return t.Value, s, false
 			case 1:
-				return ast.NewIdent("bool"), s, false // TODO: return real built-in bool here
+				return ast.NewIdent("bool"), universeScope, false
 			}
 		}
 	case *ast.StarExpr:
@@ -652,9 +652,9 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 			// it must be a function call or a built-in function
 			// first check for built-in
 			if ct, ok := it.(*ast.Ident); ok {
-				ty := checkForBuiltinFuncs(ct, t)
+				ty, s := checkForBuiltinFuncs(ct, t, scope)
 				if ty != nil {
-					return ty, scope, false
+					return ty, s, false
 				}
 			}
 
@@ -688,8 +688,6 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 			c := d.FindChildAndInEmbedded(t.Sel.Name)
 			if c != nil {
 				if c.Class == DECL_TYPE {
-					// use foregnified module name
-					//t.X = ast.NewIdent(d.Name)
 					return t, scope, true
 				} else {
 					typ, s := c.InferType()
@@ -711,7 +709,7 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 			it, _, _ := inferType(t.Type, scope, -1)
 			return it, scope, false
 		case 1:
-			return ast.NewIdent("bool"), scope, false // TODO: return real built-in bool here
+			return ast.NewIdent("bool"), universeScope, false
 		}
 	case *ast.ArrayType, *ast.MapType, *ast.ChanType, *ast.FuncType:
 		return t, scope, true
@@ -774,20 +772,27 @@ func (d *Decl) FindChildAndInEmbedded(name string) *Decl {
 
 func inferRangeType(e ast.Expr, scope *Scope, valueindex int) (ast.Expr, *Scope) {
 	t, s, _ := inferType(e, scope, -1)
-	t, s = advanceToType(rangePredicate, e, scope)
+	t, s = advanceToType(rangePredicate, t, s)
 	if t != nil {
 		var t1, t2 ast.Expr
+		var s1, s2 *Scope
+		s1 = s
+		s2 = s
+
 		switch t := t.(type) {
 		case *ast.Ident:
 			// string
 			if t.Name == "string" {
 				t1 = ast.NewIdent("int")
 				t2 = ast.NewIdent("int")
+				s1 = universeScope
+				s2 = universeScope
 			} else {
 				t1, t2 = nil, nil
 			}
 		case *ast.ArrayType:
 			t1 = ast.NewIdent("int")
+			s1 = universeScope
 			t2 = t.Elt
 		case *ast.MapType:
 			t1 = t.Key
@@ -801,9 +806,9 @@ func inferRangeType(e ast.Expr, scope *Scope, valueindex int) (ast.Expr, *Scope)
 
 		switch valueindex {
 		case 0:
-			return t1, s
+			return t1, s1
 		case 1:
-			return t2, s
+			return t2, s2
 		}
 	}
 	return nil, nil
@@ -1010,4 +1015,55 @@ func foreachDecl(decl ast.Decl, do foreachDeclFunc) {
 			do(decl, name, value, valueindex)
 		}
 	}
+}
+
+//-------------------------------------------------------------------------
+// Built-in declarations
+//-------------------------------------------------------------------------
+
+var universeScope = NewScope(nil)
+
+func init() {
+	t := ast.NewIdent("built-in")
+	u := universeScope
+	u.addNamedDecl(NewDeclTyped("bool", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("byte", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("complex64", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("complex128", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("float32", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("float64", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("int8", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("int16", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("int32", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("int64", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("string", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("uint8", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("uint16", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("uint32", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("uint64", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("complex", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("float", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("int", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("uint", DECL_TYPE, t, u))
+	u.addNamedDecl(NewDeclTyped("uintptr", DECL_TYPE, t, u))
+
+	u.addNamedDecl(NewDeclTyped("true", DECL_CONST, t, u))
+	u.addNamedDecl(NewDeclTyped("false", DECL_CONST, t, u))
+	u.addNamedDecl(NewDeclTyped("iota", DECL_CONST, t, u))
+	u.addNamedDecl(NewDeclTyped("nil", DECL_CONST, t, u))
+
+	u.addNamedDecl(NewDeclTypedNamed("cap", DECL_FUNC, "func(container) int", u))
+	u.addNamedDecl(NewDeclTypedNamed("close", DECL_FUNC, "func(channel)", u))
+	u.addNamedDecl(NewDeclTypedNamed("closed", DECL_FUNC, "func(channel) bool", u))
+	u.addNamedDecl(NewDeclTypedNamed("cmplx", DECL_FUNC, "func(real, imag)", u))
+	u.addNamedDecl(NewDeclTypedNamed("copy", DECL_FUNC, "func(dst, src)", u))
+	u.addNamedDecl(NewDeclTypedNamed("imag", DECL_FUNC, "func(complex)", u))
+	u.addNamedDecl(NewDeclTypedNamed("len", DECL_FUNC, "func(container) int", u))
+	u.addNamedDecl(NewDeclTypedNamed("make", DECL_FUNC, "func(type, len[, cap]) type", u))
+	u.addNamedDecl(NewDeclTypedNamed("new", DECL_FUNC, "func(type) *type", u))
+	u.addNamedDecl(NewDeclTypedNamed("panic", DECL_FUNC, "func(interface{})", u))
+	u.addNamedDecl(NewDeclTypedNamed("print", DECL_FUNC, "func(...interface{})", u))
+	u.addNamedDecl(NewDeclTypedNamed("println", DECL_FUNC, "func(...interface{})", u))
+	u.addNamedDecl(NewDeclTypedNamed("real", DECL_FUNC, "func(complex)", u))
+	u.addNamedDecl(NewDeclTypedNamed("recover", DECL_FUNC, "func() interface{}", u))
 }

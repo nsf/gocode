@@ -161,8 +161,8 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.mcache = make(map[string]*ModuleCache)
 	self.pkg = NewScope(nil)
 	self.addBuiltinUnsafe()
-	self.createUniverseScope()
 	self.astcache = NewASTCache()
+	self.uni = universeScope
 	return self
 }
 
@@ -303,51 +303,6 @@ func (self *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
 	set := make(map[string]*Decl, len(self.pkg.entities)*2)
 	makeDeclSetRecursive(set, scope)
 	return set
-}
-
-func (self *AutoCompleteContext) createUniverseScope() {
-	builtin := ast.NewIdent("built-in")
-	self.uni = NewScope(nil)
-	self.uni.addNamedDecl(NewDeclTyped("bool", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("byte", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("complex64", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("complex128", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("float32", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("float64", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("int8", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("int16", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("int32", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("int64", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("string", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("uint8", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("uint16", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("uint32", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("uint64", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("complex", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("float", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("int", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("uint", DECL_TYPE, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("uintptr", DECL_TYPE, builtin, self.uni))
-
-	self.uni.addNamedDecl(NewDeclTyped("true", DECL_CONST, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("false", DECL_CONST, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("iota", DECL_CONST, builtin, self.uni))
-	self.uni.addNamedDecl(NewDeclTyped("nil", DECL_CONST, builtin, self.uni))
-
-	self.uni.addNamedDecl(NewDeclTypedNamed("cap", DECL_FUNC, "func(container) int", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("close", DECL_FUNC, "func(channel)", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("closed", DECL_FUNC, "func(channel) bool", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("cmplx", DECL_FUNC, "func(real, imag)", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("copy", DECL_FUNC, "func(dst, src)", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("imag", DECL_FUNC, "func(complex)", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("len", DECL_FUNC, "func(container) int", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("make", DECL_FUNC, "func(type, len[, cap]) type", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("new", DECL_FUNC, "func(type) *type", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("panic", DECL_FUNC, "func(interface{})", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("print", DECL_FUNC, "func(...interface{})", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("println", DECL_FUNC, "func(...interface{})", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("real", DECL_FUNC, "func(complex)", self.uni))
-	self.uni.addNamedDecl(NewDeclTypedNamed("recover", DECL_FUNC, "func() interface{}", self.uni))
 }
 
 // returns three slices of the same length containing:
