@@ -276,13 +276,6 @@ func MethodOf(d ast.Decl) string {
 	return ""
 }
 
-func (d *Decl) MoveToScope(scope *Scope) {
-	d.Scope = scope
-	for _, c := range d.Children {
-		c.MoveToScope(scope)
-	}
-}
-
 // complete copy
 func (d *Decl) Copy(other *Decl) {
 	d.Name = other.Name
