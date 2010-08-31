@@ -287,6 +287,7 @@ func (d *Decl) Copy(other *Decl) {
 	d.Embedded = other.Embedded
 	d.Scope = other.Scope
 }
+
 func (other *Decl) DeepCopy() *Decl {
 	d := new(Decl)
 	d.Name = other.Name

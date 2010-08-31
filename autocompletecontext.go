@@ -458,10 +458,10 @@ func checkTypeExpr(e ast.Expr) bool {
 type DeclSlice []*Decl
 
 func (s DeclSlice) Less(i, j int) bool {
-	if declClassToString[s[i].Class][0] == declClassToString[s[j].Class][0] {
+	if s[i].ClassName()[0] == s[j].ClassName()[0] {
 		return s[i].Name < s[j].Name
 	}
-	return declClassToString[s[i].Class] < declClassToString[s[j].Class]
+	return s[i].ClassName() < s[j].ClassName()
 }
 func (s DeclSlice) Len() int      { return len(s) }
 func (s DeclSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
