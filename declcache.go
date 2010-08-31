@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"path"
 	"fmt"
+	"sync"
 )
 
 //-------------------------------------------------------------------------
@@ -194,18 +195,23 @@ func packageName(file *ast.File) string {
 
 type DeclCache struct {
 	cache map[string]*DeclFileCache
+	sync.Mutex
 }
 
 func NewDeclCache() *DeclCache {
-	return &DeclCache{make(map[string]*DeclFileCache)}
+	c := new(DeclCache)
+	c.cache = make(map[string]*DeclFileCache)
+	return c
 }
 
 func (c *DeclCache) Get(filename string) *DeclFileCache {
+	c.Lock()
 	f, ok := c.cache[filename]
 	if !ok {
 		f = NewDeclFileCache(filename)
 		c.cache[filename] = f
 	}
+	c.Unlock()
 	f.update()
 	return f
 }
