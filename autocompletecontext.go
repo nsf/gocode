@@ -160,7 +160,6 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.current = NewPackageFile("")
 	self.others = make(map[string]*AutoCompleteFile)
 	self.mcache = make(map[string]*ModuleCache)
-	self.pkg = NewScope(nil)
 	self.addBuiltinUnsafe()
 	self.declcache = NewDeclCache()
 	return self
