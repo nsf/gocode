@@ -13,8 +13,7 @@ import (
 )
 
 type ModuleCache struct {
-	name     string
-	filename string
+	name     string // file name
 	mtime    int64
 	defalias string
 
@@ -31,10 +30,9 @@ type ModuleCache struct {
 	pathToAlias map[string]string
 }
 
-func NewModuleCache(name, filename string) *ModuleCache {
+func NewModuleCache(name string) *ModuleCache {
 	m := new(ModuleCache)
 	m.name = name
-	m.filename = filename
 	m.mtime = 0
 	m.defalias = ""
 	return m
@@ -52,7 +50,7 @@ func (self *ModuleCache) updateCache() {
 	if self.mtime == -1 {
 		return
 	}
-	stat, err := os.Stat(self.filename)
+	stat, err := os.Stat(self.name)
 	if err != nil {
 		return
 	}
@@ -62,7 +60,7 @@ func (self *ModuleCache) updateCache() {
 		self.mtime = stat.Mtime_ns
 
 		// try load new
-		data, err := ioutil.ReadFile(self.filename)
+		data, err := ioutil.ReadFile(self.name)
 		if err != nil {
 			return
 		}

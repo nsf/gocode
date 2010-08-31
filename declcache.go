@@ -18,7 +18,6 @@ import (
 
 type ModuleImport struct {
 	Alias string
-	Name  string
 	Path  string
 }
 
@@ -36,8 +35,8 @@ func (mi *ModuleImports) appendImports(filename string, decls []ast.Decl) {
 			for _, spec := range gd.Specs {
 				imp := spec.(*ast.ImportSpec)
 				path, alias := pathAndAlias(imp)
-				fullpath := fullPathForModule(filename, path)
-				mi.appendImport(alias, path, fullpath)
+				path = absPathForModule(filename, path)
+				mi.appendImport(alias, path)
 			}
 		} else {
 			return
@@ -45,15 +44,11 @@ func (mi *ModuleImports) appendImports(filename string, decls []ast.Decl) {
 	}
 }
 
-func (mi *ModuleImports) appendImport(alias, name, path string) {
+func (mi *ModuleImports) appendImport(alias, path string) {
 	v := *mi
 	if alias == "_" || alias == "." {
 		// TODO: support for modules imported in the current namespace
 		return
-	}
-	if name[0] == '.' {
-		// use file path for local packages as name
-		name = path
 	}
 
 	n := len(v)
@@ -64,7 +59,7 @@ func (mi *ModuleImports) appendImport(alias, name, path string) {
 	}
 
 	v = v[0 : n+1]
-	v[n] = ModuleImport{alias, name, path}
+	v[n] = ModuleImport{alias, path}
 	*mi = v
 }
 
@@ -153,7 +148,7 @@ func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
 	})
 }
 
-func fullPathForModule(filename, p string) string {
+func absPathForModule(filename, p string) string {
 	if p[0] == '.' {
 		dir, _ := path.Split(filename)
 		return fmt.Sprintf("%s.a", path.Join(dir, p))

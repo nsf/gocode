@@ -166,9 +166,10 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 }
 
 func (self *AutoCompleteContext) addBuiltinUnsafe() {
-	module := NewModuleCacheForever("unsafe", "unsafe")
+	name := findGlobalFile("unsafe")
+	module := NewModuleCacheForever(name, "unsafe")
 	module.processPackageData(builtinUnsafePackage)
-	self.mcache["unsafe"] = module
+	self.mcache[name] = module
 }
 
 // Updates (or creates) a map of other files for the current package.
@@ -207,15 +208,15 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 // method.
 func (self *AutoCompleteContext) appendModulesFromFile(ms map[string]*ModuleCache, f *AutoCompleteFile) {
 	for _, m := range f.modules {
-		if _, ok := ms[m.Name]; ok {
+		if _, ok := ms[m.Path]; ok {
 			continue
 		}
-		if mod, ok := self.mcache[m.Name]; ok {
-			ms[m.Name] = mod
+		if mod, ok := self.mcache[m.Path]; ok {
+			ms[m.Path] = mod
 		} else {
-			mod = NewModuleCache(m.Name, m.Path)
-			ms[m.Name] = mod
-			self.mcache[m.Name] = mod
+			mod = NewModuleCache(m.Path)
+			ms[m.Path] = mod
+			self.mcache[m.Path] = mod
 		}
 	}
 }
@@ -275,12 +276,12 @@ func (self *AutoCompleteContext) updateCaches() {
 func (self *AutoCompleteContext) fixupModules(f *AutoCompleteFile) {
 	f.filescope.entities = make(map[string]*Decl, len(f.modules))
 	for _, m := range f.modules {
-		name := m.Name
+		path := m.Path
 		alias := m.Alias
 		if alias == "" {
-			alias = self.mcache[name].defalias
+			alias = self.mcache[path].defalias
 		}
-		f.filescope.addDecl(alias, self.mcache[name].main)
+		f.filescope.addDecl(alias, self.mcache[path].main)
 	}
 }
 
