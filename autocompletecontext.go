@@ -56,7 +56,7 @@ func (self *OutBuffers) Swap(i, j int) {
 }
 
 func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
-	if !Config.ProposeBuiltins && decl.Scope == self.ctx.uni {
+	if !Config.ProposeBuiltins && decl.Scope == universeScope {
 		return
 	}
 	if class != -1 && !matchClass(int(decl.Class), class) {
@@ -151,7 +151,6 @@ type AutoCompleteContext struct {
 	others  map[string]*AutoCompleteFile // other files
 	mcache  map[string]*ModuleCache      // modules cache
 	pkg     *Scope
-	uni     *Scope
 
 	declcache *DeclCache
 }
@@ -164,7 +163,6 @@ func NewAutoCompleteContext() *AutoCompleteContext {
 	self.pkg = NewScope(nil)
 	self.addBuiltinUnsafe()
 	self.declcache = NewDeclCache()
-	self.uni = universeScope
 	return self
 }
 
@@ -295,7 +293,7 @@ func (self *AutoCompleteContext) mergeDeclsFromFile(file *AutoCompleteFile) {
 }
 
 func (self *AutoCompleteContext) mergeDecls() {
-	self.pkg = NewScope(self.uni)
+	self.pkg = NewScope(universeScope)
 	self.mergeDeclsFromFile(self.current)
 	for _, file := range self.others {
 		self.mergeDeclsFromFile(file)
