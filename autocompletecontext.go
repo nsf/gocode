@@ -20,10 +20,12 @@ import (
 //-------------------------------------------------------------------------
 
 type OutBuffers struct {
-	tmpbuf                *bytes.Buffer
-	names, types, classes vector.StringVector
-	ctx                   *AutoCompleteContext
-	tmpns                 map[string]bool
+	tmpbuf  *bytes.Buffer
+	names   vector.StringVector
+	types   vector.StringVector
+	classes vector.StringVector
+	ctx     *AutoCompleteContext
+	tmpns   map[string]bool
 }
 
 func NewOutBuffers(ctx *AutoCompleteContext) *OutBuffers {

@@ -17,9 +17,9 @@ import (
 //-------------------------------------------------------------------------
 
 type ModuleImport struct {
-	Alias  string
-	Name   string
-	Path   string
+	Alias string
+	Name  string
+	Path  string
 }
 
 type ModuleImports []ModuleImport
