@@ -19,7 +19,6 @@ type ModuleImport struct {
 	Alias  string
 	Name   string
 	Path   string
-	Module *Decl
 }
 
 type ModuleImports []ModuleImport
@@ -64,7 +63,7 @@ func (mi *ModuleImports) appendImport(alias, name, path string) {
 	}
 
 	v = v[0 : n+1]
-	v[n] = ModuleImport{alias, name, path, nil}
+	v[n] = ModuleImport{alias, name, path}
 	*mi = v
 }
 
@@ -122,13 +121,6 @@ func (f *DeclFileCache) readFile(filename string) {
 	f.Decls = make(map[string]*Decl, len(f.File.Decls))
 	for _, decl := range f.File.Decls {
 		appendToTopDecls(f.Decls, decl, f.FileScope)
-	}
-}
-
-func (f *DeclFileCache) applyImports() {
-	f.FileScope.entities = make(map[string]*Decl, len(f.Modules))
-	for _, mi := range f.Modules {
-		f.FileScope.addDecl(mi.Alias, mi.Module)
 	}
 }
 

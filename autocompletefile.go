@@ -346,9 +346,3 @@ func (self *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
 	}
 	return false
 }
-
-func (self *AutoCompleteFile) applyImports() {
-	for _, mi := range self.modules {
-		self.filescope.addDecl(mi.Alias, mi.Module)
-	}
-}

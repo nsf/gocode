@@ -274,14 +274,15 @@ func (self *AutoCompleteContext) updateCaches() {
 // the cache). We can do that only after having updated module cache.
 // Also calls applyImports.
 func (self *AutoCompleteContext) fixupModules(f *AutoCompleteFile) {
-	for i := range f.modules {
-		name := f.modules[i].Name
-		if f.modules[i].Alias == "" {
-			f.modules[i].Alias = self.mcache[name].defalias
+	f.filescope.entities = make(map[string]*Decl, len(f.modules))
+	for _, m := range f.modules {
+		name := m.Name
+		alias := m.Alias
+		if alias == "" {
+			alias = self.mcache[name].defalias
 		}
-		f.modules[i].Module = self.mcache[name].main
+		f.filescope.addDecl(alias, self.mcache[name].main)
 	}
-	f.applyImports()
 }
 
 func (self *AutoCompleteContext) mergeDeclsFromFile(file *AutoCompleteFile) {
