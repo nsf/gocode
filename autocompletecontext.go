@@ -130,8 +130,7 @@ func matchClass(declclass int, class int) bool {
 
 // TODO: Move module cache outside of AutoCompleteContext.
 type AutoCompleteContext struct {
-	current *AutoCompleteFile            // currently editted file
-	others  []*DeclFileCache // other files
+	current *AutoCompleteFile // currently editted file
 	pkg     *Scope
 
 	mcache    MCache     // modules cache
@@ -151,11 +150,10 @@ func (self *AutoCompleteContext) updateCaches() {
 	// map is used as a set of unique items to prevent double checks
 	ms := make(map[string]*ModuleCache)
 
-
 	// collect import information from all of the files
 	self.mcache.AppendModules(ms, self.current.modules)
-	self.others = getOtherPackageFiles(self.current.name, self.current.packageName, self.declcache)
-	for _, other := range self.others {
+	others := getOtherPackageFiles(self.current.name, self.current.packageName, self.declcache)
+	for _, other := range others {
 		self.mcache.AppendModules(ms, other.Modules)
 	}
 
@@ -163,15 +161,19 @@ func (self *AutoCompleteContext) updateCaches() {
 
 	// fix imports for all files
 	fixupModules(self.current.filescope, self.current.modules, self.mcache)
-	for _, f := range self.others {
+	for _, f := range others {
 		fixupModules(f.FileScope, f.Modules, self.mcache)
 	}
+
+	// At this point we have collected all top level declarations, now we need to
+	// merge them in the common package block.
+	self.mergeDecls(others)
 }
 
-func (self *AutoCompleteContext) mergeDecls() {
+func (self *AutoCompleteContext) mergeDecls(others []*DeclFileCache) {
 	self.pkg = NewScope(universeScope)
 	mergeDecls(self.current.filescope, self.pkg, self.current.decls)
-	for _, f := range self.others {
+	for _, f := range others {
 		mergeDecls(f.FileScope, self.pkg, f.Decls)
 	}
 }
@@ -201,12 +203,9 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	self.current.processData(file)
 
 	// Updates cache of other files and modules. See the function for details of
-	// the process.
+	// the process. At the end merges all the top-level declarations into the package
+	// block.
 	self.updateCaches()
-
-	// At this point we have collected all top level declarations, now we need to
-	// merge them in the common package block.
-	self.mergeDecls()
 
 	// And we're ready to Go. ;)
 
@@ -343,7 +342,7 @@ func findOtherPackageFiles(filename, packageName string) []string {
 		abspath := path.Join(dir, stat.Name)
 		if filePackageName(abspath) == packageName {
 			n := len(out)
-			out = out[0:n+1]
+			out = out[0 : n+1]
 			out[n] = abspath
 		}
 	}
