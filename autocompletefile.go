@@ -301,6 +301,7 @@ func (self *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
 			continue
 		}
 
+		self.scope = NewScope(self.scope)
 		self.scope.addNamedDecl(d)
 	}
 }
