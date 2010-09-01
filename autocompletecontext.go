@@ -131,6 +131,7 @@ func matchClass(declclass int, class int) bool {
 // TODO: Move module cache outside of AutoCompleteContext.
 type AutoCompleteContext struct {
 	current *AutoCompleteFile // currently editted file
+	others  []*DeclFileCache  // other files of the current package
 	pkg     *Scope
 
 	mcache    MCache     // modules cache
@@ -152,8 +153,8 @@ func (self *AutoCompleteContext) updateCaches() {
 
 	// collect import information from all of the files
 	self.mcache.AppendModules(ms, self.current.modules)
-	others := getOtherPackageFiles(self.current.name, self.current.packageName, self.declcache)
-	for _, other := range others {
+	self.others = getOtherPackageFiles(self.current.name, self.current.packageName, self.declcache)
+	for _, other := range self.others {
 		self.mcache.AppendModules(ms, other.Modules)
 	}
 
@@ -161,19 +162,19 @@ func (self *AutoCompleteContext) updateCaches() {
 
 	// fix imports for all files
 	fixupModules(self.current.filescope, self.current.modules, self.mcache)
-	for _, f := range others {
+	for _, f := range self.others {
 		fixupModules(f.FileScope, f.Modules, self.mcache)
 	}
 
 	// At this point we have collected all top level declarations, now we need to
 	// merge them in the common package block.
-	self.mergeDecls(others)
+	self.mergeDecls()
 }
 
-func (self *AutoCompleteContext) mergeDecls(others []*DeclFileCache) {
+func (self *AutoCompleteContext) mergeDecls() {
 	self.pkg = NewScope(universeScope)
 	mergeDecls(self.current.filescope, self.pkg, self.current.decls)
-	for _, f := range others {
+	for _, f := range self.others {
 		mergeDecls(f.FileScope, self.pkg, f.Decls)
 	}
 }
