@@ -81,24 +81,12 @@ func (self *AutoCompleteFile) processDecl(decl ast.Decl) {
 			return
 		}
 
-		methodof := MethodOf(decl)
-		if methodof != "" {
-			decl, ok := self.decls[methodof]
-			if ok {
-				decl.AddChild(d)
-			} else {
-				decl = NewDecl(methodof, DECL_METHODS_STUB, self.scope)
-				self.decls[methodof] = decl
-				decl.AddChild(d)
-			}
-		} else {
-			// the declaration itself has a scope which follows it's definition
-			// and it's false for type declarations
-			if d.Class != DECL_TYPE {
-				self.scope = NewScope(self.scope)
-			}
-			self.scope.addNamedDecl(d)
+		// the declaration itself has a scope which follows it's definition
+		// and it's false for type declarations
+		if d.Class != DECL_TYPE {
+			self.scope = NewScope(self.scope)
 		}
+		self.scope.addNamedDecl(d)
 	})
 }
 
