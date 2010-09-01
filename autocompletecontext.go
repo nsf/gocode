@@ -128,48 +128,23 @@ func matchClass(declclass int, class int) bool {
 // includes cache for modules and for package files.
 //-------------------------------------------------------------------------
 
-const builtinUnsafePackage = `
-import
-$$
-package unsafe 
-	type "".Pointer *any
-	func "".Offsetof (? any) int
-	func "".Sizeof (? any) int
-	func "".Alignof (? any) int
-	func "".Typeof (i interface { }) interface { }
-	func "".Reflect (i interface { }) (typ interface { }, addr "".Pointer)
-	func "".Unreflect (typ interface { }, addr "".Pointer) interface { }
-	func "".New (typ interface { }) "".Pointer
-	func "".NewArray (typ interface { }, n int) "".Pointer
-
-$$
-`
-
 // TODO: Move module cache outside of AutoCompleteContext.
 type AutoCompleteContext struct {
 	current *AutoCompleteFile            // currently editted file
 	others  map[string]*AutoCompleteFile // other files
-	mcache  map[string]*ModuleCache      // modules cache
 	pkg     *Scope
 
-	declcache *DeclCache
+	mcache    MCache     // modules cache
+	declcache *DeclCache // top-level declarations cache
 }
 
 func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
 	self.current = NewPackageFile("")
 	self.others = make(map[string]*AutoCompleteFile)
-	self.mcache = make(map[string]*ModuleCache)
-	self.addBuiltinUnsafe()
+	self.mcache = NewMCache()
 	self.declcache = NewDeclCache()
 	return self
-}
-
-func (self *AutoCompleteContext) addBuiltinUnsafe() {
-	name := findGlobalFile("unsafe")
-	module := NewModuleCacheForever(name, "unsafe")
-	module.processPackageData(builtinUnsafePackage)
-	self.mcache[name] = module
 }
 
 // Updates (or creates) a map of other files for the current package.
@@ -203,24 +178,6 @@ func (self *AutoCompleteContext) updateOtherPackageFiles() {
 	self.others = newothers
 }
 
-// Inspects import information of a AutoCompleteFile and adds ModuleCache entries to 
-// the cache and to the 'ms' map. For 'ms' map description see 'updateCaches' 
-// method.
-func (self *AutoCompleteContext) appendModulesFromFile(ms map[string]*ModuleCache, f *AutoCompleteFile) {
-	for _, m := range f.modules {
-		if _, ok := ms[m.Path]; ok {
-			continue
-		}
-		if mod, ok := self.mcache[m.Path]; ok {
-			ms[m.Path] = mod
-		} else {
-			mod = NewModuleCache(m.Path)
-			ms[m.Path] = mod
-			self.mcache[m.Path] = mod
-		}
-	}
-}
-
 func (self *AutoCompleteContext) updateCaches() {
 	// temporary map for modules that we need to check for a cache expiration
 	// map is used as a set of unique items to prevent double checks
@@ -238,7 +195,7 @@ func (self *AutoCompleteContext) updateCaches() {
 
 	// while updateCache of the other files is in the process, collect import
 	// information from the currently editted file
-	self.appendModulesFromFile(ms, self.current)
+	self.mcache.AppendModules(ms, self.current.modules)
 
 	// wait for updateCache completion
 	for _ = range self.others {
@@ -247,7 +204,7 @@ func (self *AutoCompleteContext) updateCaches() {
 
 	// collect import information from other files
 	for _, f := range self.others {
-		self.appendModulesFromFile(ms, f)
+		self.mcache.AppendModules(ms, f.modules)
 	}
 
 	// initiate module cache update

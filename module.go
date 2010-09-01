@@ -12,6 +12,10 @@ import (
 	"io/ioutil"
 )
 
+//-------------------------------------------------------------------------
+// ModuleCache (TODO: will be ModuleFileCache or something)
+//-------------------------------------------------------------------------
+
 type ModuleCache struct {
 	name     string // file name
 	mtime    int64
@@ -423,4 +427,61 @@ func preprocessConstDecl(s string) string {
 	e := i
 
 	return s[0:b] + "0" + s[e:]
+}
+
+//-------------------------------------------------------------------------
+// MCache (TODO: will be ModuleCache)
+//-------------------------------------------------------------------------
+
+type MCache map[string]*ModuleCache
+
+func NewMCache() MCache {
+	m := make(MCache)
+
+	// add built-in "unsafe" package
+	m.addBuiltinUnsafePackage()
+
+	return m
+}
+
+// Function fills 'ms' set with modules from 'modules' import information.
+// In case if module is not in the cache, it creates one and adds one to the cache.
+func (c MCache) AppendModules(ms map[string]*ModuleCache, modules ModuleImports) {
+	for _, m := range modules {
+		if _, ok := ms[m.Path]; ok {
+			continue
+		}
+
+		if mod, ok := c[m.Path]; ok {
+			ms[m.Path] = mod
+		} else {
+			mod = NewModuleCache(m.Path)
+			ms[m.Path] = mod
+			c[m.Path] = mod
+		}
+	}
+}
+
+const builtinUnsafePackage = `
+import
+$$
+package unsafe 
+	type "".Pointer *any
+	func "".Offsetof (? any) int
+	func "".Sizeof (? any) int
+	func "".Alignof (? any) int
+	func "".Typeof (i interface { }) interface { }
+	func "".Reflect (i interface { }) (typ interface { }, addr "".Pointer)
+	func "".Unreflect (typ interface { }, addr "".Pointer) interface { }
+	func "".New (typ interface { }) "".Pointer
+	func "".NewArray (typ interface { }, n int) "".Pointer
+
+$$
+`
+
+func (c MCache) addBuiltinUnsafePackage() {
+	name := findGlobalFile("unsafe")
+	module := NewModuleCacheForever(name, "unsafe")
+	module.processPackageData(builtinUnsafePackage)
+	c[name] = module
 }
