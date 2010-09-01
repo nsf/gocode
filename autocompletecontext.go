@@ -131,7 +131,7 @@ func matchClass(declclass int, class int) bool {
 // TODO: Move module cache outside of AutoCompleteContext.
 type AutoCompleteContext struct {
 	current *AutoCompleteFile            // currently editted file
-	others  map[string]*AutoCompleteFile // other files
+	others  []*DeclFileCache // other files
 	pkg     *Scope
 
 	mcache    MCache     // modules cache
@@ -141,41 +141,9 @@ type AutoCompleteContext struct {
 func NewAutoCompleteContext() *AutoCompleteContext {
 	self := new(AutoCompleteContext)
 	self.current = NewPackageFile("")
-	self.others = make(map[string]*AutoCompleteFile)
 	self.mcache = NewMCache()
 	self.declcache = NewDeclCache()
 	return self
-}
-
-// Updates (or creates) a map of other files for the current package.
-// The cache is not updates, because it gets updated later.
-func (self *AutoCompleteContext) updateOtherPackageFiles() {
-	packageName := self.current.packageName
-	filename := self.current.name
-
-	dir, file := path.Split(filename)
-	filesInDir, err := ioutil.ReadDir(dir)
-	if err != nil {
-		panic(err.String())
-	}
-
-	newothers := make(map[string]*AutoCompleteFile)
-	for _, stat := range filesInDir {
-		ok, _ := path.Match("*.go", stat.Name)
-		if ok && stat.Name != file {
-			filepath := path.Join(dir, stat.Name)
-			oldother, ok := self.others[filepath]
-			if ok && oldother.packageName == packageName {
-				newothers[filepath] = oldother
-			} else {
-				pkg := filePackageName(filepath)
-				if pkg == packageName {
-					newothers[filepath] = NewPackageFile(filepath)
-				}
-			}
-		}
-	}
-	self.others = newothers
 }
 
 func (self *AutoCompleteContext) updateCaches() {
@@ -183,77 +151,28 @@ func (self *AutoCompleteContext) updateCaches() {
 	// map is used as a set of unique items to prevent double checks
 	ms := make(map[string]*ModuleCache)
 
-	done := make(chan bool)
 
-	// start updateCache for other files
-	for _, other := range self.others {
-		go func(f *AutoCompleteFile) {
-			f.updateCache(self.declcache)
-			done <- true
-		}(other)
-	}
-
-	// while updateCache of the other files is in the process, collect import
-	// information from the currently editted file
+	// collect import information from all of the files
 	self.mcache.AppendModules(ms, self.current.modules)
-
-	// wait for updateCache completion
-	for _ = range self.others {
-		<-done
+	self.others = getOtherPackageFiles(self.current.name, self.current.packageName, self.declcache)
+	for _, other := range self.others {
+		self.mcache.AppendModules(ms, other.Modules)
 	}
 
-	// collect import information from other files
-	for _, f := range self.others {
-		self.mcache.AppendModules(ms, f.modules)
-	}
-
-	// initiate module cache update
-	for _, m := range ms {
-		go func(m *ModuleCache) {
-			m.updateCache()
-			done <- true
-		}(m)
-	}
-
-	// wait for its completion
-	for _ = range ms {
-		<-done
-	}
+	updateModules(ms)
 
 	// fix imports for all files
-	self.fixupModules(self.current)
+	fixupModules(self.current.filescope, self.current.modules, self.mcache)
 	for _, f := range self.others {
-		self.fixupModules(f)
+		fixupModules(f.FileScope, f.Modules, self.mcache)
 	}
-}
-
-// Makes all AutoCompleteFile module entries valid (e.g. pointing to a real modules in
-// the cache). We can do that only after having updated module cache.
-// Also calls applyImports.
-func (self *AutoCompleteContext) fixupModules(f *AutoCompleteFile) {
-	f.filescope.entities = make(map[string]*Decl, len(f.modules))
-	for _, m := range f.modules {
-		path := m.Path
-		alias := m.Alias
-		if alias == "" {
-			alias = self.mcache[path].defalias
-		}
-		f.filescope.addDecl(alias, self.mcache[path].main)
-	}
-}
-
-func (self *AutoCompleteContext) mergeDeclsFromFile(file *AutoCompleteFile) {
-	for _, d := range file.decls {
-		self.pkg.mergeDecl(d)
-	}
-	file.filescope.parent = self.pkg
 }
 
 func (self *AutoCompleteContext) mergeDecls() {
 	self.pkg = NewScope(universeScope)
-	self.mergeDeclsFromFile(self.current)
-	for _, file := range self.others {
-		self.mergeDeclsFromFile(file)
+	mergeDecls(self.current.filescope, self.pkg, self.current.decls)
+	for _, f := range self.others {
+		mergeDecls(f.FileScope, self.pkg, f.Decls)
 	}
 }
 
@@ -280,12 +199,6 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 	// Does full processing of the currently editted file (top-level declarations plus
 	// active function).
 	self.current.processData(file)
-	if filename != "" {
-		// If filename was provided, we're trying to find other package file of the
-		// currently editted package. And the function should be executed after 
-		// Stage 1, because we need to know the package name.
-		self.updateOtherPackageFiles()
-	}
 
 	// Updates cache of other files and modules. See the function for details of
 	// the process.
@@ -345,6 +258,97 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 
 	sort.Sort(b)
 	return b.names, b.types, b.classes, partial
+}
+
+func updateModules(ms map[string]*ModuleCache) {
+	// initiate module cache update
+	done := make(chan bool)
+	for _, m := range ms {
+		go func(m *ModuleCache) {
+			m.updateCache()
+			done <- true
+		}(m)
+	}
+
+	// wait for its completion
+	for _ = range ms {
+		<-done
+	}
+}
+
+func mergeDecls(filescope *Scope, pkg *Scope, decls map[string]*Decl) {
+	for _, d := range decls {
+		pkg.mergeDecl(d)
+	}
+	filescope.parent = pkg
+}
+
+func fixupModules(filescope *Scope, modules ModuleImports, mcache MCache) {
+	filescope.entities = make(map[string]*Decl, len(modules))
+	for _, m := range modules {
+		path, alias := m.Path, m.Alias
+		if alias == "" {
+			alias = mcache[path].defalias
+		}
+		filescope.addDecl(alias, mcache[path].main)
+	}
+}
+
+func getOtherPackageFiles(filename, packageName string, declcache *DeclCache) []*DeclFileCache {
+	others := findOtherPackageFiles(filename, packageName)
+
+	ret := make([]*DeclFileCache, len(others))
+	done := make(chan *DeclFileCache)
+
+	for _, nm := range others {
+		go func(name string) {
+			done <- declcache.Get(name)
+		}(nm)
+	}
+
+	for i := range others {
+		ret[i] = <-done
+	}
+
+	return ret
+}
+
+func findOtherPackageFiles(filename, packageName string) []string {
+	if filename == "" {
+		return nil
+	}
+
+	dir, file := path.Split(filename)
+	filesInDir, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(err.String())
+	}
+
+	count := 0
+	for _, stat := range filesInDir {
+		ok, _ := path.Match("*.go", stat.Name)
+		if !ok || stat.Name == file {
+			continue
+		}
+		count++
+	}
+
+	out := make([]string, 0, count)
+	for _, stat := range filesInDir {
+		ok, _ := path.Match("*.go", stat.Name)
+		if !ok || stat.Name == file {
+			continue
+		}
+
+		abspath := path.Join(dir, stat.Name)
+		if filePackageName(abspath) == packageName {
+			n := len(out)
+			out = out[0:n+1]
+			out[n] = abspath
+		}
+	}
+
+	return out
 }
 
 func filePackageName(filename string) string {
@@ -514,9 +518,9 @@ func (self *AutoCompleteContext) Status() string {
 
 		for _, f := range self.others {
 			fmt.Fprintf(buf, "\n%s:\n", f.name)
-			ds = make(DeclSlice, len(f.decls))
+			ds = make(DeclSlice, len(f.Decls))
 			i = 0
-			for _, d := range f.decls {
+			for _, d := range f.Decls {
 				ds[i] = d
 				i++
 			}

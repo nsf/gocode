@@ -25,16 +25,6 @@ func NewPackageFile(name string) *AutoCompleteFile {
 	return p
 }
 
-func (self *AutoCompleteFile) updateCache(c *DeclCache) {
-	cache := c.Get(self.name)
-	self.packageName = packageName(cache.File)
-
-	self.decls = cache.Decls
-	self.modules = cache.Modules
-	self.filescope = cache.FileScope
-	self.scope = self.filescope
-}
-
 // this one is used for current file buffer exclusively
 func (self *AutoCompleteFile) processData(data []byte) {
 	cur, filedata, block := RipOffDecl(data, self.cursor)
