@@ -615,6 +615,19 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 				return ast.NewIdent("bool"), universeScope, false
 			}
 		}
+	case *ast.SliceExpr:
+		// something[start : end] always returns a value
+		it, s, _ := inferType(t.X, scope, -1)
+		if it == nil {
+			break
+		}
+		it, s = advanceToType(indexPredicate, it, s)
+		switch t := it.(type) {
+		case *ast.ArrayType:
+			e := new(ast.ArrayType)
+			e.Elt = t.Elt
+			return e, s, false
+		}
 	case *ast.StarExpr:
 		it, s, isType := inferType(t.X, scope, -1)
 		if it == nil {
