@@ -5,3 +5,4 @@ gocode
 goremote
 gocodetest
 rpc.go
+*.swp
