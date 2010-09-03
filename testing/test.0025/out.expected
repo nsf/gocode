@@ -1,0 +1,10 @@
+Found 9 candidates:
+  func Alignof(any) int
+  func New(typ interface{}) unsafe.Pointer
+  func NewArray(typ interface{}, n int) unsafe.Pointer
+  func Offsetof(any) int
+  func Reflect(i interface{}) (typ interface{}, addr unsafe.Pointer)
+  func Sizeof(any) int
+  func Typeof(i interface{}) interface{}
+  func Unreflect(typ interface{}, addr unsafe.Pointer) interface{}
+  type Pointer *any
