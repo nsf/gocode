@@ -721,6 +721,12 @@ func (s *SemanticContext) Collect(filename string) []*SemanticFile {
 	return files
 }
 
+//-------------------------------------------------------------------------
+// SemanticContext.GetSMap
+// Returns a list of entities for the 'filename' which have semantic
+// information. Useful for testing only.
+//-------------------------------------------------------------------------
+
 type DeclDesc struct {
 	//Id int
 	Offset int
@@ -730,23 +736,11 @@ type DeclDesc struct {
 func (s *SemanticContext) GetSMap(filename string) []DeclDesc {
 	files := s.Collect(filename)
 
-	m := make(map[*Decl]int)
-
-	idgen := 0
 	i := 0
 	f := files[0]
 	decls := make([]DeclDesc, len(f.entries))
 	for _, e := range f.entries {
-		// generate ID for decl
-		id, ok := m[e.decl]
-		if !ok {
-			id = idgen
-			idgen++
-			m[e.decl] = id
-		}
-
 		// append
-		//decls[i].Id = id
 		decls[i].Length = e.length
 		decls[i].Offset = e.offset
 		i++
