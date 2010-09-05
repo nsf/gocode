@@ -149,7 +149,7 @@ func (self *ModuleCache) processPackageData(s string) {
 		if !ok && value.Name == self.name {
 			m = self.main
 		}
-		self.scope.entities[key] = m
+		self.scope.replaceDecl(key, m)
 	}
 }
 

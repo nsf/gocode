@@ -33,6 +33,10 @@ func (s *Scope) addDecl(name string, d *Decl) *Decl {
 	return decl
 }
 
+func (s *Scope) replaceDecl(name string, d *Decl) {
+	s.entities[name] = d
+}
+
 func (s *Scope) mergeDecl(d *Decl) {
 	decl, ok := s.entities[d.Name]
 	if !ok {

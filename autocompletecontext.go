@@ -284,13 +284,12 @@ func mergeDecls(filescope *Scope, pkg *Scope, decls map[string]*Decl) {
 }
 
 func fixupModules(filescope *Scope, modules ModuleImports, mcache MCache) {
-	filescope.entities = make(map[string]*Decl, len(modules))
 	for _, m := range modules {
 		path, alias := m.Path, m.Alias
 		if alias == "" {
 			alias = mcache[path].defalias
 		}
-		filescope.addDecl(alias, mcache[path].main)
+		filescope.replaceDecl(alias, mcache[path].main)
 	}
 }
 
