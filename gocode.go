@@ -27,6 +27,7 @@ type Formatter interface {
 	WriteEmpty()
 	WriteCandidates(names, types, classes []string, num int)
 	WriteSMap(decldescs []DeclDesc)
+	WriteRename(renamedescs []RenameDesc)
 }
 
 //-------------------------------------------------------------------------
@@ -52,6 +53,14 @@ func (*NiceFormatter) WriteCandidates(names, types, classes []string, num int) {
 
 func (*NiceFormatter) WriteSMap(decldescs []DeclDesc) {
 	data, err := json.Marshal(decldescs)
+	if err != nil {
+		panic(err.String())
+	}
+	os.Stdout.Write(data)
+}
+
+func (*NiceFormatter) WriteRename(renamedescs []RenameDesc) {
+	data, err := json.Marshal(renamedescs)
 	if err != nil {
 		panic(err.String())
 	}
@@ -92,6 +101,9 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 func (*VimFormatter) WriteSMap(decldescs []DeclDesc) {
 }
 
+func (*VimFormatter) WriteRename(renamedescs []RenameDesc) {
+}
+
 //-------------------------------------------------------------------------
 // EmacsFormatter
 //-------------------------------------------------------------------------
@@ -113,6 +125,9 @@ func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) 
 }
 
 func (*EmacsFormatter) WriteSMap(decldescs []DeclDesc) {
+}
+
+func (*EmacsFormatter) WriteRename(renamedescs []RenameDesc) {
 }
 
 //-------------------------------------------------------------------------
@@ -223,6 +238,26 @@ func Cmd_SMap(c *rpc.Client) {
 	formatter.WriteSMap(decldescs)
 }
 
+func Cmd_Rename(c *rpc.Client) {
+	if flag.NArg() != 3 {
+		return
+	}
+
+	cursor := 0
+	filename := flag.Arg(1)
+	cursor, _ = strconv.Atoi(flag.Arg(2))
+
+	if filename != "" && filename[0] != '/' {
+		cwd, _ := os.Getwd()
+		filename = path.Join(cwd, filename)
+	}
+
+	formatter := getFormatter()
+	renamedescs := Client_Rename(c, filename, cursor)
+
+	formatter.WriteRename(renamedescs)
+}
+
 func Cmd_Close(c *rpc.Client) {
 	Client_Close(c, 0)
 }
@@ -331,6 +366,8 @@ func clientFunc() int {
 			Cmd_Set(client)
 		case "smap":
 			Cmd_SMap(client)
+		case "rename":
+			Cmd_Rename(client)
 		}
 	}
 	return 0

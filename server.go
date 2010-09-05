@@ -84,6 +84,20 @@ func Server_SMap(filename string) []DeclDesc {
 	return daemon.semantic.GetSMap(filename)
 }
 
+func Server_Rename(filename string, cursor int) []RenameDesc {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("GOT PANIC!!!:\n")
+			fmt.Println(err)
+			printBacktrace()
+
+			// drop cache
+			daemon.DropCache()
+		}
+	}()
+	return daemon.semantic.Rename(filename, cursor)
+}
+
 func Server_Close(notused int) int {
 	daemon.acr.Close()
 	return 0

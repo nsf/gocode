@@ -748,3 +748,59 @@ func (s *SemanticContext) GetSMap(filename string) []DeclDesc {
 
 	return decls
 }
+
+//-------------------------------------------------------------------------
+// SemanticContext.Rename
+//-------------------------------------------------------------------------
+
+// TODO: length is always the same for a set of identifiers
+type RenameDesc struct {
+	Filename string
+	Decls []DeclDesc
+}
+
+func (d *RenameDesc) append(offset, length int) {
+	if d.Decls == nil {
+		d.Decls = make([]DeclDesc, 0, 16)
+	}
+
+	n := len(d.Decls)
+	if cap(d.Decls) < n+1 {
+		s := make([]DeclDesc, n, n*2+1)
+		copy(s, d.Decls)
+		d.Decls = s
+	}
+
+	d.Decls = d.Decls[0 : n+1]
+	d.Decls[n] = DeclDesc{offset, length}
+}
+
+func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
+	files := s.Collect(filename)
+
+	var theDecl *Decl
+	// find the declaration under the cursor
+	for _, e := range files[0].entries {
+		if cursor >= e.offset && cursor < e.offset + e.length {
+			theDecl = e.decl
+			break
+		}
+	}
+
+	// if there is no such declaration, return nil
+	if theDecl == nil {
+		return nil
+	}
+
+	// collect decldescs about this declaration in each file
+	renames := make([]RenameDesc, len(files))
+	for i, f := range files {
+		for _, e := range f.entries {
+			if e.decl == theDecl {
+				renames[i].append(e.offset, e.length)
+			}
+		}
+	}
+
+	return renames
+}
