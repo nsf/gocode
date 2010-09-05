@@ -287,37 +287,38 @@ func (self *ModuleCache) addFakeModuleToScope(alias, realname string) {
 
 func addAstDeclsToModule(module *Decl, decls []ast.Decl, scope *Scope) {
 	for _, decl := range decls {
-		foreachDecl(decl, func(decl ast.Decl, name *ast.Ident, value ast.Expr, valueindex int) {
-			d := NewDeclFromAstDecl(name.Name, DECL_FOREIGN, decl, value, valueindex, scope)
-			if d == nil {
-				return
-			}
+		foreachDecl(decl, func(data *foreachDeclStruct) {
+			class := astDeclClass(data.decl)
+			data.tryMakeAnonType(class, DECL_FOREIGN, scope)
+			for i, name := range data.names {
+				typ, v, vi := data.typeValueIndex(i, DECL_FOREIGN, scope)
 
-			if !name.IsExported() {
-				// We need types here, because embeddeing may
-				// refer to unexported types which contain
-				// exported methods, like in reflect package.
-				if d.Class != DECL_TYPE {
+				d := NewDecl2(name.Name, class, DECL_FOREIGN, typ, v, vi, scope)
+				if d == nil {
 					return
 				}
-			}
 
-			methodof := MethodOf(decl)
-			if methodof != "" {
-				decl := module.FindChild(methodof)
-				if decl != nil {
-					decl.AddChild(d)
-				} else {
-					decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
-					decl.AddChild(d)
-					module.AddChild(decl)
+				if !name.IsExported() && d.Class != DECL_TYPE {
+					return
 				}
-			} else {
-				decl := module.FindChild(d.Name)
-				if decl != nil {
-					decl.ExpandOrReplace(d)
+
+				methodof := MethodOf(data.decl)
+				if methodof != "" {
+					decl := module.FindChild(methodof)
+					if decl != nil {
+						decl.AddChild(d)
+					} else {
+						decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
+						decl.AddChild(d)
+						module.AddChild(decl)
+					}
 				} else {
-					module.AddChild(d)
+					decl := module.FindChild(d.Name)
+					if decl != nil {
+						decl.ExpandOrReplace(d)
+					} else {
+						module.AddChild(d)
+					}
 				}
 			}
 		})

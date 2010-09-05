@@ -56,19 +56,16 @@ func (self *OutBuffers) Swap(i, j int) {
 }
 
 func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
-	if !Config.ProposeBuiltins && decl.Scope == universeScope {
-		return
-	}
-	if class != -1 && !matchClass(int(decl.Class), class) {
-		return
-	}
-	if class == -1 && !strings.HasPrefix(name, p) {
+	c1 := !Config.ProposeBuiltins && decl.Scope == universeScope
+	c2 := class != -1 && !matchClass(int(decl.Class), class)
+	c3 := class == -1 && !strings.HasPrefix(name, p)
+	c4 := !decl.Matches()
+	c5 := !checkTypeExpr(decl.Type)
+
+	if c1 || c2 || c3 || c4 || c5 {
 		return
 	}
 
-	if !checkTypeExpr(decl.Type) {
-		return
-	}
 	self.names.Push(name)
 
 	decl.PrettyPrintType(self.tmpbuf)

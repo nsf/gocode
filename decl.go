@@ -8,6 +8,7 @@ import (
 	"io"
 	"bytes"
 	"strings"
+	"sync"
 )
 
 // Decl.Class
@@ -206,21 +207,77 @@ func astTypeToChildren(ty ast.Expr, flags int, scope *Scope) map[string]*Decl {
 	return nil
 }
 
-func NewDeclFromAstDecl(name string, flags int, d ast.Decl, value ast.Expr, vindex int, scope *Scope) *Decl {
-	if !astDeclConvertable(d) || name == "_" {
-		return nil
+//-------------------------------------------------------------------------
+// AnonymousIDGen
+// ID generator for anonymous types (thread-safe)
+//-------------------------------------------------------------------------
+
+type AnonymousIDGen struct {
+	sync.Mutex
+	i int
+}
+
+func (a *AnonymousIDGen) Gen() (id int) {
+	a.Lock()
+	id = a.i
+	a.i++
+	a.Unlock()
+	return
+}
+
+var anonGen AnonymousIDGen
+
+//-------------------------------------------------------------------------
+
+func checkForAnonType(t ast.Expr, flags int, s *Scope) ast.Expr {
+	var name string
+
+	switch t.(type) {
+	case *ast.StructType:
+		name = fmt.Sprintf("$s_%d", anonGen.Gen())
+	case *ast.InterfaceType:
+		name = fmt.Sprintf("$i_%d", anonGen.Gen())
 	}
-	decl := new(Decl)
-	decl.Name = name
-	decl.Type = astDeclType(d)
-	decl.Class = int16(astDeclClass(d))
-	decl.Flags = int16(flags)
-	decl.Children = astTypeToChildren(decl.Type, flags, scope)
-	decl.Embedded = astTypeToEmbedded(decl.Type)
-	decl.Value = value
-	decl.ValueIndex = vindex
-	decl.Scope = scope
-	return decl
+
+	if name != "" {
+		d := NewDeclAnonType(name, flags, t, s)
+		s.addNamedDecl(d)
+		return ast.NewIdent(name)
+	}
+	return t
+}
+
+func checkValueForAnonType(v ast.Expr, flags int, s *Scope) ast.Expr {
+	switch t := v.(type) {
+	case *ast.CompositeLit:
+		return checkForAnonType(t.Type, flags, s)
+	}
+	return nil
+}
+
+//-------------------------------------------------------------------------
+
+func NewDecl2(name string, class, flags int, typ, v ast.Expr, vi int, s *Scope) *Decl {
+	d := new(Decl)
+	d.Name = name
+	d.Class = int16(class)
+	d.Flags = int16(flags)
+	d.Type = typ
+	d.Value = v
+	d.ValueIndex = vi
+	d.Scope = s
+	d.Children = astTypeToChildren(d.Type, flags, s)
+	d.Embedded = astTypeToEmbedded(d.Type)
+	return d
+}
+
+func NewDeclAnonType(name string, flags int, typ ast.Expr, s *Scope) *Decl {
+	d := NewDecl(name, DECL_TYPE, s)
+	d.Type = typ
+	d.Flags = int16(flags)
+	d.Children = astTypeToChildren(d.Type, flags, s)
+	d.Embedded = astTypeToEmbedded(d.Type)
+	return d
 }
 
 func NewDeclTyped(name string, class int, typ ast.Expr, scope *Scope) *Decl {
@@ -252,8 +309,6 @@ func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, scope *Sc
 	decl.Name = name
 	decl.Class = DECL_VAR
 	decl.Type = typ
-	decl.Children = astTypeToChildren(decl.Type, 0, scope)
-	decl.Embedded = astTypeToEmbedded(decl.Type)
 	decl.Value = value
 	decl.ValueIndex = vindex
 	decl.Scope = scope
@@ -335,11 +390,8 @@ func (d *Decl) ExpandOrReplace(other *Decl) {
 	}
 }
 
-func (d *Decl) Matches(p string) bool {
-	if p != "" && !strings.HasPrefix(d.Name, p) {
-		return false
-	}
-	if d.Class == DECL_METHODS_STUB {
+func (d *Decl) Matches() bool {
+	if strings.HasPrefix(d.Name, "$") || d.Class == DECL_METHODS_STUB {
 		return false
 	}
 	return true
@@ -477,15 +529,7 @@ func typeToDecl(t ast.Expr, scope *Scope) *Decl {
 
 func exprToDecl(e ast.Expr, scope *Scope) *Decl {
 	t, scope, _ := inferType(e, scope, -1)
-
-	var typedecl *Decl
-	switch t.(type) {
-	case *ast.StructType, *ast.InterfaceType:
-		typedecl = NewDeclVar("tmp", t, nil, -1, scope)
-	default:
-		typedecl = typeToDecl(t, scope)
-	}
-	return typedecl
+	return typeToDecl(t, scope)
 }
 
 //-------------------------------------------------------------------------
@@ -683,15 +727,7 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 			break
 		}
 
-		var d *Decl
-		switch it.(type) {
-		case *ast.StructType, *ast.InterfaceType:
-			d = NewDeclVar("tmp", it, nil, -1, s)
-		default:
-			d = typeToDecl(it, s)
-		}
-
-		if d != nil {
+		if d := typeToDecl(it, s); d != nil {
 			c := d.FindChildAndInEmbedded(t.Sel.Name)
 			if c != nil {
 				if c.Class == DECL_TYPE {
@@ -841,7 +877,17 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		fmt.Fprintf(out, "*")
 		prettyPrintTypeExpr(out, t.X)
 	case *ast.Ident:
-		fmt.Fprintf(out, t.Name)
+		if strings.HasPrefix(t.Name, "$") {
+			// beautify anonymous types
+			switch t.Name[1] {
+			case 's':
+				fmt.Fprintf(out, "struct")
+			case 'i':
+				fmt.Fprintf(out, "interface")
+			}
+		} else {
+			fmt.Fprintf(out, t.Name)
+		}
 	case *ast.ArrayType:
 		al := ""
 		if t.Len != nil {
@@ -935,7 +981,7 @@ func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 	return count
 }
 
-func declNames(d ast.Decl) []*ast.Ident {
+func astDeclNames(d ast.Decl) []*ast.Ident {
 	var names []*ast.Ident
 
 	switch t := d.(type) {
@@ -966,7 +1012,7 @@ func declNames(d ast.Decl) []*ast.Ident {
 	return names
 }
 
-func declValues(d ast.Decl) []ast.Expr {
+func astDeclValues(d ast.Decl) []ast.Expr {
 	// TODO: CONST values here too
 	switch t := d.(type) {
 	case *ast.GenDecl:
@@ -981,7 +1027,7 @@ func declValues(d ast.Decl) []ast.Expr {
 	return nil
 }
 
-func splitDecls(d ast.Decl) []ast.Decl {
+func astDeclSplit(d ast.Decl) []ast.Decl {
 	var decls []ast.Decl
 	if t, ok := d.(*ast.GenDecl); ok {
 		decls = make([]ast.Decl, len(t.Specs))
@@ -999,28 +1045,99 @@ func splitDecls(d ast.Decl) []ast.Decl {
 	return decls
 }
 
-type foreachDeclFunc func(ast.Decl, *ast.Ident, ast.Expr, int)
+type declPack struct {
+	names []*ast.Ident
+	typ ast.Expr
+	values []ast.Expr
+}
+
+type foreachDeclStruct struct {
+	declPack
+	decl ast.Decl
+}
+
+func (f *declPack) value(i int) ast.Expr {
+	if f.values == nil {
+		return nil
+	}
+	if len(f.values) > 1 {
+		return f.values[i]
+	}
+	return f.values[0]
+}
+
+func (f *declPack) valueIndex(i int) (v ast.Expr, vi int) {
+	// default: nil value
+	v = nil
+	vi = -1
+
+	if f.values != nil {
+		// A = B, if there is only one name, the value is solo too
+		if len(f.names) == 1 {
+			return f.values[0], -1
+		}
+
+		if len(f.values) > 1 {
+			// in case if there are multiple values, it's a usual
+			// multiassignment
+			v = f.values[i]
+		} else {
+			// in case if there is one value, but many names, it's
+			// a tuple unpack.. use index here
+			v = f.values[0]
+			vi = i
+		}
+	}
+	return
+}
+
+func (f *declPack) tryMakeAnonType(class, flags int, scope *Scope) {
+	if class == DECL_VAR && f.typ != nil {
+		f.typ = checkForAnonType(f.typ, flags, scope)
+	}
+}
+
+func (f *declPack) tryMakeAnonTypeFromValue(i, flags int, scope *Scope) ast.Expr {
+	v, vi := f.valueIndex(i)
+	if v != nil && vi == -1 {
+		return checkValueForAnonType(v, flags, scope)
+	}
+	return nil
+}
+
+func (f *declPack) typeValueIndex(i, flags int, scope *Scope) (ast.Expr, ast.Expr, int) {
+	if f.typ != nil {
+		// If there is a type, we don't care about value, just return the type
+		// and zero value.
+		return f.typ, nil, -1
+	}
+	// Otherwise the type is being introduced by the value and we need to check
+	// for anonymous type here. If value introduces anonymous type we use it.
+	typ := f.tryMakeAnonTypeFromValue(i, flags, scope)
+	if typ != nil {
+		return typ, nil, -1
+	}
+
+	// And otherwise we simply return nil type and a valid value for later inferring.
+	v, vi := f.valueIndex(i)
+	return nil, v, vi
+}
+
+type foreachDeclFunc func(data *foreachDeclStruct)
 
 func foreachDecl(decl ast.Decl, do foreachDeclFunc) {
-	decls := splitDecls(decl)
+	decls := astDeclSplit(decl)
+	var data foreachDeclStruct
 	for _, decl := range decls {
-		names := declNames(decl)
-		values := declValues(decl)
-
-		for i, name := range names {
-			var value ast.Expr
-			valueindex := -1
-			if values != nil {
-				if len(values) > 1 {
-					value = values[i]
-				} else {
-					value = values[0]
-					valueindex = i
-				}
-			}
-
-			do(decl, name, value, valueindex)
+		if !astDeclConvertable(decl) {
+			continue
 		}
+		data.names = astDeclNames(decl)
+		data.typ = astDeclType(decl)
+		data.values = astDeclValues(decl)
+		data.decl = decl
+
+		do(&data)
 	}
 }
 

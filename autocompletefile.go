@@ -75,18 +75,25 @@ func (self *AutoCompleteFile) processDecl(decl ast.Decl) {
 	if t, ok := decl.(*ast.GenDecl); ok && t.Offset > self.cursor {
 		return
 	}
-	foreachDecl(decl, func(decl ast.Decl, name *ast.Ident, value ast.Expr, valueindex int) {
-		d := NewDeclFromAstDecl(name.Name, 0, decl, value, valueindex, self.scope)
-		if d == nil {
-			return
-		}
+	foreachDecl(decl, func(data *foreachDeclStruct) {
+		class := astDeclClass(data.decl)
+		data.tryMakeAnonType(class, 0, self.scope)
+		for i, name := range data.names {
+			typ, v, vi := data.typeValueIndex(i, 0, self.scope)
 
-		// the declaration itself has a scope which follows it's definition
-		// and it's false for type declarations
-		if d.Class != DECL_TYPE {
-			self.scope = NewScope(self.scope)
+			d := NewDecl2(name.Name, class, 0, typ, v, vi, self.scope)
+			if d == nil {
+				return
+			}
+
+			// the declaration itself has a scope which follows it's definition
+			// and it's false for type declarations
+			// TODO: WTF?
+			if d.Class != DECL_TYPE {
+				self.scope = NewScope(self.scope)
+			}
+			self.scope.addNamedDecl(d)
 		}
-		self.scope.addNamedDecl(d)
 	})
 }
 
@@ -276,27 +283,20 @@ func (self *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
 		return
 	}
 
-	names := make([]string, len(a.Lhs))
+	names := make([]*ast.Ident, len(a.Lhs))
 	for i, name := range a.Lhs {
 		id, ok := name.(*ast.Ident)
 		if !ok {
 			// something is wrong, just ignore the whole stmt
 			return
 		}
-		names[i] = id.Name
+		names[i] = id
 	}
 
-	for i, name := range names {
-		var value ast.Expr
-		valueindex := -1
-		if len(a.Rhs) > 1 {
-			value = a.Rhs[i]
-		} else {
-			value = a.Rhs[0]
-			valueindex = i
-		}
-
-		d := NewDeclVar(name, nil, value, valueindex, self.scope)
+	pack := declPack{names, nil, a.Rhs}
+	for i, name := range pack.names {
+		typ, v, vi := pack.typeValueIndex(i, 0, self.scope)
+		d := NewDeclVar(name.Name, typ, v, vi, self.scope)
 		if d == nil {
 			continue
 		}

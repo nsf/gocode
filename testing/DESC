@@ -23,3 +23,4 @@ test.0022 - range loop, but iteratable is returned by a function
 test.0023 - simple check for unicode awareness
 test.0024 - variable and the type with the same name
 test.0025 - built-in package "unsafe"
+test.0026 - more anonymous structs

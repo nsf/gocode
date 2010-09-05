@@ -121,28 +121,34 @@ func (f *DeclFileCache) readFile(filename string) {
 }
 
 func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
-	foreachDecl(decl, func(decl ast.Decl, name *ast.Ident, value ast.Expr, valueindex int) {
-		d := NewDeclFromAstDecl(name.Name, 0, decl, value, valueindex, scope)
-		if d == nil {
-			return
-		}
+	foreachDecl(decl, func(data *foreachDeclStruct) {
+		class := astDeclClass(data.decl)
+		data.tryMakeAnonType(class, 0, scope)
+		for i, name := range data.names {
+			typ, v, vi := data.typeValueIndex(i, 0, scope)
 
-		methodof := MethodOf(decl)
-		if methodof != "" {
-			decl, ok := decls[methodof]
-			if ok {
-				decl.AddChild(d)
-			} else {
-				decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
-				decls[methodof] = decl
-				decl.AddChild(d)
+			d := NewDecl2(name.Name, class, 0, typ, v, vi, scope)
+			if d == nil {
+				return
 			}
-		} else {
-			decl, ok := decls[d.Name]
-			if ok {
-				decl.ExpandOrReplace(d)
+
+			methodof := MethodOf(decl)
+			if methodof != "" {
+				decl, ok := decls[methodof]
+				if ok {
+					decl.AddChild(d)
+				} else {
+					decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
+					decls[methodof] = decl
+					decl.AddChild(d)
+				}
 			} else {
-				decls[d.Name] = d
+				decl, ok := decls[d.Name]
+				if ok {
+					decl.ExpandOrReplace(d)
+				} else {
+					decls[d.Name] = d
+				}
 			}
 		}
 	})
