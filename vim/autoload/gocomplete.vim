@@ -43,12 +43,12 @@ fu! s:gocodeAutocomplete()
 endf
 
 fu! gocomplete#Complete(findstart, base)
-    "findstart = 1 when we need to get the text length
-    if a:findstart == 1
-        execute "silent let g:gocomplete_completions = " . s:gocodeAutocomplete()
-        return col('.') - g:gocomplete_completions[0] - 1
-    "findstart = 0 when we need to return the list of completions
-    else
-        return g:gocomplete_completions[1]
-    endif
+	"findstart = 1 when we need to get the text length
+	if a:findstart == 1
+		execute "silent let g:gocomplete_completions = " . s:gocodeAutocomplete()
+		return col('.') - g:gocomplete_completions[0] - 1
+	"findstart = 0 when we need to return the list of completions
+	else
+		return g:gocomplete_completions[1]
+	endif
 endf
