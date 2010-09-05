@@ -12,14 +12,27 @@ import (
 
 type AutoCompletionDaemon struct {
 	acr *ACRServer
-	ctx *AutoCompleteContext
+	acc *AutoCompleteContext
+	semantic *SemanticContext
+	mcache MCache
+	declcache *DeclCache
 }
 
 func NewAutoCompletionDaemon(path string) *AutoCompletionDaemon {
 	self := new(AutoCompletionDaemon)
 	self.acr = NewACRServer(path)
-	self.ctx = NewAutoCompleteContext()
+	self.mcache = NewMCache()
+	self.declcache = NewDeclCache()
+	self.acc = NewAutoCompleteContext(self.mcache, self.declcache)
+	self.semantic = NewSemanticContext(self.mcache, self.declcache)
 	return self
+}
+
+func (self *AutoCompletionDaemon) DropCache() {
+	self.mcache = NewMCache()
+	self.declcache = NewDeclCache()
+	self.acc = NewAutoCompleteContext(self.mcache, self.declcache)
+	self.semantic = NewSemanticContext(self.mcache, self.declcache)
 }
 
 var daemon *AutoCompletionDaemon
@@ -50,11 +63,25 @@ func Server_AutoComplete(file []byte, filename string, cursor int) (a, b, c []st
 			c = a
 
 			// drop cache
-			daemon.ctx = NewAutoCompleteContext()
+			daemon.DropCache()
 		}
 	}()
-	a, b, c, d = daemon.ctx.Apropos(file, filename, cursor)
+	a, b, c, d = daemon.acc.Apropos(file, filename, cursor)
 	return
+}
+
+func Server_SMap(filename string) []DeclDesc {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("GOT PANIC!!!:\n")
+			fmt.Println(err)
+			printBacktrace()
+
+			// drop cache
+			daemon.DropCache()
+		}
+	}()
+	return daemon.semantic.GetSMap(filename)
 }
 
 func Server_Close(notused int) int {
@@ -63,12 +90,12 @@ func Server_Close(notused int) int {
 }
 
 func Server_Status(notused int) string {
-	return daemon.ctx.Status()
+	return daemon.acc.Status()
 }
 
 func Server_DropCache(notused int) int {
 	// drop cache
-	daemon.ctx = NewAutoCompleteContext()
+	daemon.DropCache()
 	return 0
 }
 

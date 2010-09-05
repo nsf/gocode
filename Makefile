@@ -12,7 +12,8 @@ GOFILES=gocode.go\
 	scope.go\
 	ripper.go\
 	config.go\
-	declcache.go
+	declcache.go\
+	semanticcontext.go
 
 include $(GOROOT)/src/Make.cmd
 

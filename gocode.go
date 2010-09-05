@@ -10,6 +10,7 @@ import (
 	"path"
 	"fmt"
 	"os"
+	"json"
 )
 
 var (
@@ -25,6 +26,7 @@ var (
 type Formatter interface {
 	WriteEmpty()
 	WriteCandidates(names, types, classes []string, num int)
+	WriteSMap(decldescs []DeclDesc)
 }
 
 //-------------------------------------------------------------------------
@@ -46,6 +48,14 @@ func (*NiceFormatter) WriteCandidates(names, types, classes []string, num int) {
 		}
 		fmt.Printf("  %s\n", abbr)
 	}
+}
+
+func (*NiceFormatter) WriteSMap(decldescs []DeclDesc) {
+	data, err := json.Marshal(decldescs)
+	if err != nil {
+		panic(err.String())
+	}
+	os.Stdout.Write(data)
 }
 
 //-------------------------------------------------------------------------
@@ -79,6 +89,9 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 	fmt.Printf("]]")
 }
 
+func (*VimFormatter) WriteSMap(decldescs []DeclDesc) {
+}
+
 //-------------------------------------------------------------------------
 // EmacsFormatter
 //-------------------------------------------------------------------------
@@ -97,6 +110,9 @@ func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) 
 		}
 		fmt.Printf("%s,,%s\n", name, hint)
 	}
+}
+
+func (*EmacsFormatter) WriteSMap(decldescs []DeclDesc) {
 }
 
 //-------------------------------------------------------------------------
@@ -188,6 +204,23 @@ func Cmd_AutoComplete(c *rpc.Client) {
 	}
 
 	formatter.WriteCandidates(names, types, classes, partial)
+}
+
+func Cmd_SMap(c *rpc.Client) {
+	if flag.NArg() != 2 {
+		return
+	}
+
+	filename := flag.Arg(1)
+	if filename != "" && filename[0] != '/' {
+		cwd, _ := os.Getwd()
+		filename = path.Join(cwd, filename)
+	}
+
+	formatter := getFormatter()
+	decldescs := Client_SMap(c, filename)
+
+	formatter.WriteSMap(decldescs)
 }
 
 func Cmd_Close(c *rpc.Client) {
@@ -296,6 +329,8 @@ func clientFunc() int {
 			Cmd_DropCache(client)
 		case "set":
 			Cmd_Set(client)
+		case "smap":
+			Cmd_SMap(client)
 		}
 	}
 	return 0

@@ -135,11 +135,11 @@ type AutoCompleteContext struct {
 	declcache *DeclCache // top-level declarations cache
 }
 
-func NewAutoCompleteContext() *AutoCompleteContext {
+func NewAutoCompleteContext(mcache MCache, declcache *DeclCache) *AutoCompleteContext {
 	self := new(AutoCompleteContext)
 	self.current = NewPackageFile("")
-	self.mcache = NewMCache()
-	self.declcache = NewDeclCache()
+	self.mcache = mcache
+	self.declcache = declcache
 	return self
 }
 
