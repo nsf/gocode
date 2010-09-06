@@ -14,11 +14,11 @@ fu! s:system(str, ...)
 	return (a:0 == 0 ? system(a:str) : system(a:str, join(a:000)))
 endf
 
-fu! s:gocodeCommand(preargs, args)
+fu! s:gocodeCommand(cmd, preargs, args)
 	for i in range(0, len(a:args) - 1)
 		let a:args[i] = shellescape(a:args[i])
 	endfor
-	let result = s:system(printf('gocode %s autocomplete %s', join(a:preargs), join(a:args)))
+	let result = s:system(printf('gocode %s %s %s', join(a:preargs), a:cmd, join(a:args)))
 	if v:shell_error != 0
 		return "[\"0\", []]"
 	else
@@ -36,7 +36,8 @@ endf
 
 fu! s:gocodeAutocomplete()
 	let filename = s:gocodeCurrentBuffer()
-	let result = s:gocodeCommand([s:gocodeCurrentBufferOpt(filename), '-f=vim'],
+	let result = s:gocodeCommand('autocomplete',
+				   \ [s:gocodeCurrentBufferOpt(filename), '-f=vim'],
 				   \ [bufname('%'), s:gocodeCursor()])
 	call delete(filename)
 	return result
