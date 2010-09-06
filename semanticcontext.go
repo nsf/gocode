@@ -101,6 +101,14 @@ func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 		for _, e := range t.Elts {
 			s.semantifyExpr(e)
 		}
+	case *ast.FuncLit:
+		savescope, saveblock := s.advanceScopeAndBlock()
+
+		s.processFieldList(t.Type.Params)
+		s.processFieldList(t.Type.Results)
+		s.processBlockStmt(t.Body)
+
+		s.restoreScopeAndBlock(savescope, saveblock)
 	case *ast.Ident:
 		if t.Name == "_" {
 			return
@@ -236,29 +244,7 @@ func (s *SemanticFile) processBlockStmt(block *ast.BlockStmt) {
 		for _, stmt := range block.List {
 			s.processStmt(stmt)
 		}
-
-		// hack to process all func literals
-		ast.Walk(&funcLitSemanticVisitor{s}, block)
 	}
-}
-
-type funcLitSemanticVisitor struct {
-	s *SemanticFile
-}
-
-func (f *funcLitSemanticVisitor) Visit(node interface{}) ast.Visitor {
-	v := f.s
-	if t, ok := node.(*ast.FuncLit); ok {
-		savescope, saveblock := v.advanceScopeAndBlock()
-
-		v.processFieldList(t.Type.Params)
-		v.processFieldList(t.Type.Results)
-		v.processBlockStmt(t.Body)
-
-		v.restoreScopeAndBlock(savescope, saveblock)
-		return nil
-	}
-	return f
 }
 
 func (s *SemanticFile) processStmt(stmt ast.Stmt) {
