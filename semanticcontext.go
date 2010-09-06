@@ -543,7 +543,7 @@ func (s *SemanticFile) processDeclLocals(decl ast.Decl) {
 	case *ast.FuncDecl:
 		methodof := MethodOf(t)
 		if methodof != "" {
-			d := exprToDecl(ast.NewIdent(methodof), s.scope)
+			d := s.scope.lookup(methodof)
 			if d == nil {
 				msg := fmt.Sprintf("Can't find a method owner called '%s'",
 						   methodof)
