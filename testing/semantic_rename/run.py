@@ -194,3 +194,8 @@ else:
 
 t.print_summary()
 
+try: os.unlink("tmp.go")
+except: pass
+try: os.unlink("tmp.obj")
+except: pass
+
