@@ -52,7 +52,7 @@ func (s *SemanticFile) appendEntry(offset, length, line, col int, decl *Decl) {
 	s.entries[n] = SemanticEntry{offset, length, line, col, decl}
 }
 
-func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
+func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) *Decl {
 	c := d.FindChildAndInEmbedded(e.Name)
 	if c == nil {
 		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
@@ -60,6 +60,7 @@ func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
 		panic(msg)
 	}
 	s.appendEntry(e.Offset, len(e.Name), e.Line, e.Column, c)
+	return c
 }
 
 func (s *SemanticFile) semantifyTypeFor(e ast.Expr, d *Decl) {
@@ -165,10 +166,15 @@ func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 
 func (s *SemanticFile) semantifyFieldListFor(fieldList *ast.FieldList, d *Decl) {
 	for _, f := range fieldList.List {
+		var c *Decl
 		for _, name := range f.Names {
-			s.semantifyIdentFor(name, d)
+			c = s.semantifyIdentFor(name, d)
 		}
-		s.semantifyExpr(f.Type)
+		if c == nil {
+			s.semantifyExpr(f.Type)
+		} else {
+			s.semantifyTypeFor(f.Type, c)
+		}
 	}
 }
 

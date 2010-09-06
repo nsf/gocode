@@ -128,17 +128,16 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 
 	decls := make(map[string]*Decl, count)
 	for _, field := range f.List {
+		typ := checkForAnonType(field.Type, flags, scope)
 		for _, name := range field.Names {
 			if flags&DECL_FOREIGN != 0 && !ast.IsExported(name.Name) {
 				continue
 			}
 			d := new(Decl)
 			d.Name = name.Name
-			d.Type = field.Type
+			d.Type = typ
 			d.Class = int16(class)
 			d.Flags = int16(flags)
-			d.Children = astTypeToChildren(field.Type, flags, scope)
-			d.Embedded = astTypeToEmbedded(field.Type)
 			d.Scope = scope
 			d.ValueIndex = -1
 			decls[d.Name] = d
@@ -152,7 +151,7 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 			}
 			d := new(Decl)
 			d.Name = tp.name
-			d.Type = field.Type
+			d.Type = typ
 			d.Class = int16(class)
 			d.Flags = int16(flags)
 			d.Scope = scope
