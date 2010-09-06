@@ -1,21 +1,14 @@
-all: showcursor showsmap rename
+TOOLS=showcursor showsmap rename listidents
 
-showcursor:
-	make -C utils/showcursor
-	cp utils/showcursor/showcursor .
+.PHONY: all clean $(TOOLS)
 
-showsmap:
-	make -C utils/showsmap
-	cp utils/showsmap/showsmap .
+all: $(TOOLS)
 
-rename:
-	make -C utils/rename
-	cp utils/rename/rename .
+$(TOOLS):
+	make -C utils/$@
+	cp utils/$@/$@ .
 
 clean:
-	make -C utils/showcursor clean
-	rm -rf showcursor
-	make -C utils/showsmap clean
-	rm -rf showsmap
-	make -C utils/rename clean
-	rm -rf rename
+	for i in $(TOOLS); do make -C utils/$$i clean; done
+	rm -rf $(TOOLS)
+

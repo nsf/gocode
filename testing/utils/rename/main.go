@@ -9,14 +9,16 @@ import (
 	"os"
 )
 
-type DeclDesc struct {
+type RenameDeclDesc struct {
 	Offset int
-	Length int
+	Line int
+	Col int
 }
 
 type RenameDesc struct {
+	Length int
 	Filename string
-	Decls []DeclDesc
+	Decls []RenameDeclDesc
 }
 
 // Sort interface
@@ -74,14 +76,18 @@ func main() {
 		panic(err.String())
 	}
 
-	sort.Sort(&rename[0])
+	if len(rename) != 0 {
+		sort.Sort(&rename[0])
 
-	cur := 0
-	for _, desc := range rename[0].Decls {
-		os.Stdout.Write(data[cur:desc.Offset])
-		os.Stdout.Write([]byte(newname))
-		cur = desc.Offset + desc.Length
+		cur := 0
+		for _, desc := range rename[0].Decls {
+			os.Stdout.Write(data[cur:desc.Offset])
+			os.Stdout.Write([]byte(newname))
+			cur = desc.Offset + rename[0].Length
+		}
+
+		os.Stdout.Write(data[cur:])
+	} else {
+		os.Stdout.Write(data)
 	}
-
-	os.Stdout.Write(data[cur:])
 }

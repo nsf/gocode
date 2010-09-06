@@ -19,3 +19,9 @@ tests.
 
   showsmap - Dumps file and highlights each identifier which has
   semantic information in the semantic map.
+
+  rename - Renames an identifier pointed by the cursor position and
+  prints the renamed version of the source code to stdout.
+
+  listidents - Scans the source code with a lexer, and returns the
+  list of all identifiers in the code together with their positions.
