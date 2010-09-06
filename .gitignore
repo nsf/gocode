@@ -6,3 +6,7 @@ goremote
 gocodetest
 rpc.go
 *.swp
+listidents
+showcursor
+showsmap
+rename
