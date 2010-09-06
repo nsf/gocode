@@ -7,7 +7,10 @@ import (
 )
 
 type SemanticEntry struct {
-	offset, length int
+	offset int
+	length int
+	line int
+	col int
 	decl *Decl
 }
 
@@ -37,7 +40,7 @@ func NewSemanticFile(dc *DeclFileCache) *SemanticFile {
 	return s
 }
 
-func (s *SemanticFile) appendEntry(offset, length int, decl *Decl) {
+func (s *SemanticFile) appendEntry(offset, length, line, col int, decl *Decl) {
 	n := len(s.entries)
 	if cap(s.entries) < n+1 {
 		e := make([]SemanticEntry, n, n*2+1)
@@ -46,7 +49,7 @@ func (s *SemanticFile) appendEntry(offset, length int, decl *Decl) {
 	}
 
 	s.entries = s.entries[0 : n+1]
-	s.entries[n] = SemanticEntry{offset, length, decl}
+	s.entries[n] = SemanticEntry{offset, length, line, col, decl}
 }
 
 func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
@@ -56,7 +59,7 @@ func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
 				   e.Name, s.name, e.Line)
 		panic(msg)
 	}
-	s.appendEntry(e.Offset, len(e.Name), c)
+	s.appendEntry(e.Offset, len(e.Name), e.Line, e.Column, c)
 }
 
 func (s *SemanticFile) semantifyTypeFor(e ast.Expr, d *Decl) {
@@ -107,7 +110,7 @@ func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 					   t.Name, s.name, t.Line)
 			panic(msg)
 		}
-		s.appendEntry(t.Offset, len(t.Name), d)
+		s.appendEntry(t.Offset, len(t.Name), t.Line, t.Column, d)
 	case *ast.UnaryExpr:
 		s.semantifyExpr(t.X)
 	case *ast.BinaryExpr:
@@ -586,7 +589,7 @@ func (s *SemanticFile) processDeclLocals(decl ast.Decl) {
 			for _, spec := range t.Specs {
 				t := spec.(*ast.TypeSpec)
 				s.semantifyExpr(t.Name)
-				d := exprToDecl(t.Name, s.scope)
+				d := s.scope.lookup(t.Name.Name)
 				if d == nil {
 					panic("FAIL")
 				}
@@ -598,7 +601,7 @@ func (s *SemanticFile) processDeclLocals(decl ast.Decl) {
 				decls := make([]*Decl, len(v.Names))
 				for i, name := range v.Names {
 					s.semantifyExpr(name)
-					d := exprToDecl(name, s.scope)
+					d := s.scope.lookup(name.Name)
 					if d == nil {
 						panic(fmt.Sprintf("Can't resolve symbol: '%s' at %s:%d", name.Name, s.name, name.Line))
 					}
@@ -754,25 +757,32 @@ func (s *SemanticContext) GetSMap(filename string) []DeclDesc {
 //-------------------------------------------------------------------------
 
 // TODO: length is always the same for a set of identifiers
-type RenameDesc struct {
-	Filename string
-	Decls []DeclDesc
+type RenameDeclDesc struct {
+	Offset int
+	Line int
+	Col int
 }
 
-func (d *RenameDesc) append(offset, length int) {
+type RenameDesc struct {
+	Length int
+	Filename string
+	Decls []RenameDeclDesc
+}
+
+func (d *RenameDesc) append(offset, line, col int) {
 	if d.Decls == nil {
-		d.Decls = make([]DeclDesc, 0, 16)
+		d.Decls = make([]RenameDeclDesc, 0, 16)
 	}
 
 	n := len(d.Decls)
 	if cap(d.Decls) < n+1 {
-		s := make([]DeclDesc, n, n*2+1)
+		s := make([]RenameDeclDesc, n, n*2+1)
 		copy(s, d.Decls)
 		d.Decls = s
 	}
 
 	d.Decls = d.Decls[0 : n+1]
-	d.Decls[n] = DeclDesc{offset, length}
+	d.Decls[n] = RenameDeclDesc{offset, line, col}
 }
 
 func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
@@ -792,12 +802,19 @@ func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
 		return nil
 	}
 
+	// foreign declarations and universe scope declarations are a no-no too
+	if theDecl.Flags&DECL_FOREIGN != 0 || theDecl.Scope == universeScope {
+		return nil
+	}
+
 	// collect decldescs about this declaration in each file
 	renames := make([]RenameDesc, len(files))
 	for i, f := range files {
+		renames[i].Filename = f.name
 		for _, e := range f.entries {
 			if e.decl == theDecl {
-				renames[i].append(e.offset, e.length)
+				renames[i].append(e.offset, e.line, e.col)
+				renames[i].Length = e.length
 			}
 		}
 	}
