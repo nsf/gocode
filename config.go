@@ -13,7 +13,9 @@ import (
 
 var Config = struct {
 	ProposeBuiltins bool "propose-builtins"
+	DenyModuleRenames bool "deny-module-renames"
 }{
+	false,
 	false,
 }
 

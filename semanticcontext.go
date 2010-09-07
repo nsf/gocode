@@ -799,6 +799,12 @@ func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
 		return nil
 	}
 
+	// I need that for testing currently, and maybe some people will want that
+	// too.
+	if Config.DenyModuleRenames && theDecl.Class == DECL_MODULE {
+		return nil
+	}
+
 	// collect decldescs about this declaration in each file
 	renames := make([]RenameDesc, len(files))
 	for i, f := range files {
