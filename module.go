@@ -50,30 +50,30 @@ func NewModuleCacheForever(name, defalias string) *ModuleCache {
 	return m
 }
 
-func (self *ModuleCache) updateCache() {
-	if self.mtime == -1 {
+func (m *ModuleCache) updateCache() {
+	if m.mtime == -1 {
 		return
 	}
-	stat, err := os.Stat(self.name)
+	stat, err := os.Stat(m.name)
 	if err != nil {
 		return
 	}
 
-	if self.mtime != stat.Mtime_ns {
+	if m.mtime != stat.Mtime_ns {
 		// clear tmp scope
-		self.mtime = stat.Mtime_ns
+		m.mtime = stat.Mtime_ns
 
 		// try load new
-		data, err := ioutil.ReadFile(self.name)
+		data, err := ioutil.ReadFile(m.name)
 		if err != nil {
 			return
 		}
-		self.processPackageData(string(data))
+		m.processPackageData(string(data))
 	}
 }
 
-func (self *ModuleCache) processPackageData(s string) {
-	self.scope = NewScope(nil)
+func (m *ModuleCache) processPackageData(s string) {
+	m.scope = NewScope(nil)
 	i := strings.Index(s, "import\n$$\n")
 	if i == -1 {
 		panic("Can't find the import section in the archive file")
@@ -90,12 +90,12 @@ func (self *ModuleCache) processPackageData(s string) {
 		panic("Wrong file")
 	}
 
-	self.defalias = s[len("package ") : i-1]
+	m.defalias = s[len("package ") : i-1]
 	s = s[i+1:]
 
-	self.pathToAlias = make(map[string]string)
+	m.pathToAlias = make(map[string]string)
 	// hack, add ourselves to the module scope
-	self.addFakeModuleToScope(self.defalias, self.name)
+	m.addFakeModuleToScope(m.defalias, m.name)
 	internalPackages := make(map[string]*bytes.Buffer)
 	for {
 		// for each line
@@ -108,7 +108,7 @@ func (self *ModuleCache) processPackageData(s string) {
 			s = s[i+1:]
 			continue
 		}
-		decl2, pkg := self.processExport(decl)
+		decl2, pkg := m.processExport(decl)
 		if len(decl2) == 0 {
 			s = s[i+1:]
 			continue
@@ -123,33 +123,33 @@ func (self *ModuleCache) processPackageData(s string) {
 		buf.WriteString("\n")
 		s = s[i+1:]
 	}
-	self.others = make(map[string]*Decl)
+	m.others = make(map[string]*Decl)
 	for key, value := range internalPackages {
-		tmp := self.expandPackages(value.Bytes())
+		tmp := m.expandPackages(value.Bytes())
 		decls, err := parser.ParseDeclList("", tmp)
 		tmp = nil
 
 		if err != nil {
 			panic(fmt.Sprintf("failure in:\n%s\n%s\n", value, err.String()))
 		} else {
-			if key == self.name {
+			if key == m.name {
 				// main package
-				self.main = NewDecl(self.name, DECL_MODULE, nil)
-				addAstDeclsToModule(self.main, decls, self.scope)
+				m.main = NewDecl(m.name, DECL_MODULE, nil)
+				addAstDeclsToModule(m.main, decls, m.scope)
 			} else {
 				// others
-				self.others[key] = NewDecl(key, DECL_MODULE, nil)
-				addAstDeclsToModule(self.others[key], decls, self.scope)
+				m.others[key] = NewDecl(key, DECL_MODULE, nil)
+				addAstDeclsToModule(m.others[key], decls, m.scope)
 			}
 		}
 	}
-	self.pathToAlias = nil
-	for key, value := range self.scope.entities {
-		m, ok := self.others[value.Name]
-		if !ok && value.Name == self.name {
-			m = self.main
+	m.pathToAlias = nil
+	for key, value := range m.scope.entities {
+		module, ok := m.others[value.Name]
+		if !ok && value.Name == m.name {
+			module = m.main
 		}
-		self.scope.replaceDecl(key, m)
+		m.scope.replaceDecl(key, module)
 	}
 }
 
@@ -157,7 +157,7 @@ func (self *ModuleCache) processPackageData(s string) {
 // returns:
 // 1. a go/parser parsable string representing one Go declaration
 // 2. and a package name this declaration belongs to
-func (self *ModuleCache) processExport(s string) (string, string) {
+func (m *ModuleCache) processExport(s string) (string, string) {
 	i := 0
 	pkg := ""
 
@@ -176,7 +176,7 @@ func (self *ModuleCache) processExport(s string) (string, string) {
 	switch s[b:e] {
 	case "import":
 		// skip import decls, we don't need them
-		self.processImportStatement(s)
+		m.processImportStatement(s)
 		return "", pkg
 	case "const":
 		s = preprocessConstDecl(s)
@@ -201,13 +201,13 @@ func (self *ModuleCache) processExport(s string) (string, string) {
 	}
 
 	if pkg == "" {
-		pkg = self.name
+		pkg = m.name
 	}
 
 	return s, pkg
 }
 
-func (self *ModuleCache) processImportStatement(s string) {
+func (m *ModuleCache) processImportStatement(s string) {
 	var scan scanner.Scanner
 	scan.Init("", []byte(s), nil, 0)
 
@@ -226,11 +226,11 @@ func (self *ModuleCache) processImportStatement(s string) {
 			path = str[1 : len(str)-1]
 		}
 	}
-	self.pathToAlias[path] = alias
-	self.addFakeModuleToScope(alias, path)
+	m.pathToAlias[path] = alias
+	m.addFakeModuleToScope(alias, path)
 }
 
-func (self *ModuleCache) expandPackages(s []byte) []byte {
+func (m *ModuleCache) expandPackages(s []byte) []byte {
 	out := bytes.NewBuffer(make([]byte, 0, len(s)))
 	i := 0
 	for {
@@ -264,7 +264,7 @@ func (self *ModuleCache) expandPackages(s []byte) []byte {
 			out.Write(s[b:i])
 		} else if b+1 != e {
 			// wow, we actually have something here
-			alias, ok := self.pathToAlias[string(s[b+1:e])]
+			alias, ok := m.pathToAlias[string(s[b+1:e])]
 			if ok {
 				out.Write(s[begin:b])
 				out.Write([]byte(alias))
@@ -273,16 +273,16 @@ func (self *ModuleCache) expandPackages(s []byte) []byte {
 			}
 		} else {
 			out.Write(s[begin:b])
-			out.Write([]byte(self.defalias))
+			out.Write([]byte(m.defalias))
 		}
 
 	}
 	panic("unreachable")
 }
 
-func (self *ModuleCache) addFakeModuleToScope(alias, realname string) {
+func (m *ModuleCache) addFakeModuleToScope(alias, realname string) {
 	d := NewDecl(realname, DECL_MODULE, nil)
-	self.scope.addDecl(alias, d)
+	m.scope.addDecl(alias, d)
 }
 
 func addAstDeclsToModule(module *Decl, decls []ast.Decl, scope *Scope) {

@@ -151,7 +151,7 @@ func generateStructWrapper(out io.Writer, fun *ast.FieldList, structname, name s
 
 // function that is being exposed to an RPC API, but calls simple "Server_" one
 func generateServerRPCWrapper(out io.Writer, fun *ast.FuncDecl, name string, argcnt, replycnt int) {
-	fmt.Fprintf(out, "func (self *RPCRemote) RPCServer_%s(args *Args_%s, reply *Reply_%s) os.Error {\n",
+	fmt.Fprintf(out, "func (r *RPCRemote) RPCServer_%s(args *Args_%s, reply *Reply_%s) os.Error {\n",
 		    name, name, name)
 
 	fmt.Fprintf(out, "\t")

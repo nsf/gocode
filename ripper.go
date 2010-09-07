@@ -14,39 +14,39 @@ type TokCollection struct {
 	tokens []TokPos
 }
 
-func (self *TokCollection) appendToken(pos token.Position, tok token.Token) {
-	if self.tokens == nil {
-		self.tokens = make([]TokPos, 0, 4)
+func (t *TokCollection) appendToken(pos token.Position, tok token.Token) {
+	if t.tokens == nil {
+		t.tokens = make([]TokPos, 0, 4)
 	}
 
-	n := len(self.tokens)
-	if cap(self.tokens) < n+1 {
+	n := len(t.tokens)
+	if cap(t.tokens) < n+1 {
 		s := make([]TokPos, n, n*2+1)
-		copy(s, self.tokens)
-		self.tokens = s
+		copy(s, t.tokens)
+		t.tokens = s
 	}
 
-	self.tokens = self.tokens[0 : n+1]
-	self.tokens[n] = TokPos{tok, pos}
+	t.tokens = t.tokens[0 : n+1]
+	t.tokens[n] = TokPos{tok, pos}
 }
 
-func (self *TokCollection) next(s *scanner.Scanner) bool {
+func (t *TokCollection) next(s *scanner.Scanner) bool {
 	pos, tok, _ := s.Scan()
 	if tok == token.EOF {
 		return false
 	}
 
-	self.appendToken(pos, tok)
+	t.appendToken(pos, tok)
 	return true
 }
 
-func (self *TokCollection) findDeclBeg(pos int) int {
+func (t *TokCollection) findDeclBeg(pos int) int {
 	lowest := 0
 	lowpos := -1
 	lowi := -1
 	cur := 0
 	for i := pos; i >= 0; i-- {
-		switch self.tokens[i].Tok {
+		switch t.tokens[i].Tok {
 		case token.RBRACE:
 			cur++
 		case token.LBRACE:
@@ -55,14 +55,14 @@ func (self *TokCollection) findDeclBeg(pos int) int {
 
 		if cur < lowest {
 			lowest = cur
-			lowpos = self.tokens[i].Pos.Offset
+			lowpos = t.tokens[i].Pos.Offset
 			lowi = i
 		}
 	}
 
 	for i := lowi; i >= 0; i-- {
-		if self.tokens[i].Tok == token.SEMICOLON {
-			lowpos = self.tokens[i+1].Pos.Offset
+		if t.tokens[i].Tok == token.SEMICOLON {
+			lowpos = t.tokens[i+1].Pos.Offset
 			break
 		}
 	}
@@ -70,17 +70,17 @@ func (self *TokCollection) findDeclBeg(pos int) int {
 	return lowpos
 }
 
-func (self *TokCollection) findDeclEnd(pos int) int {
+func (t *TokCollection) findDeclEnd(pos int) int {
 	highest := 0
 	highpos := -1
 	cur := 0
 
-	if self.tokens[pos].Tok == token.LBRACE {
+	if t.tokens[pos].Tok == token.LBRACE {
 		pos++
 	}
 
-	for i := pos; i < len(self.tokens); i++ {
-		switch self.tokens[i].Tok {
+	for i := pos; i < len(t.tokens); i++ {
+		switch t.tokens[i].Tok {
 		case token.RBRACE:
 			cur++
 		case token.LBRACE:
@@ -89,37 +89,37 @@ func (self *TokCollection) findDeclEnd(pos int) int {
 
 		if cur > highest {
 			highest = cur
-			highpos = self.tokens[i].Pos.Offset
+			highpos = t.tokens[i].Pos.Offset
 		}
 	}
 
 	return highpos
 }
 
-func (self *TokCollection) findOutermostScope(cursor int) (int, int) {
+func (t *TokCollection) findOutermostScope(cursor int) (int, int) {
 	pos := 0
 
-	for i, t := range self.tokens {
-		if cursor <= t.Pos.Offset {
+	for i, tok := range t.tokens {
+		if cursor <= tok.Pos.Offset {
 			break
 		}
 		pos = i
 	}
 
-	return self.findDeclBeg(pos), self.findDeclEnd(pos)
+	return t.findDeclBeg(pos), t.findDeclEnd(pos)
 }
 
 // return new cursor position, file without ripped part and the ripped part itself
 // variants:
 //   new-cursor, file-without-ripped-part, ripped-part
 //   old-cursor, file, nil
-func (self *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []byte) {
+func (t *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []byte) {
 	s := new(scanner.Scanner)
 	s.Init("", file, nil, scanner.ScanComments|scanner.InsertSemis)
-	for self.next(s) {
+	for t.next(s) {
 	}
 
-	beg, end := self.findOutermostScope(cursor)
+	beg, end := t.findOutermostScope(cursor)
 	if beg == -1 || end == -1 {
 		return cursor, file, nil
 	}

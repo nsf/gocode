@@ -102,20 +102,20 @@ loop:
 	return file[cursor+1:]
 }
 
-func (self *AutoCompleteContext) deduceExpr(file []byte, partial string) *DeclApropos {
+func (c *AutoCompleteContext) deduceExpr(file []byte, partial string) *DeclApropos {
 	e := findExpr(file)
 	expr, err := parser.ParseExpr("", e)
 	if err != nil {
 		return nil
 	}
-	typedecl := exprToDecl(expr, self.current.scope)
+	typedecl := exprToDecl(expr, c.current.scope)
 	if typedecl != nil {
 		return &DeclApropos{typedecl, partial}
 	}
 	return nil
 }
 
-func (self *AutoCompleteContext) deduceDecl(file []byte, cursor int) *DeclApropos {
+func (c *AutoCompleteContext) deduceDecl(file []byte, cursor int) *DeclApropos {
 	orig := cursor
 
 	if cursor < 0 {
@@ -130,7 +130,7 @@ func (self *AutoCompleteContext) deduceDecl(file []byte, cursor int) *DeclApropo
 	if file[cursor] == '.' {
 		// we're '<whatever>.'
 		// figure out decl, Parital is ""
-		return self.deduceExpr(file[0:cursor], "")
+		return c.deduceExpr(file[0:cursor], "")
 	} else {
 		letter, _ := utf8.DecodeRune(file[cursor:])
 		if isIdent(letter) {
@@ -139,7 +139,7 @@ func (self *AutoCompleteContext) deduceDecl(file []byte, cursor int) *DeclApropo
 			cursor = skipIdent(file, cursor)
 			partial := string(file[cursor+1 : orig])
 			if file[cursor] == '.' {
-				return self.deduceExpr(file[0:cursor], partial)
+				return c.deduceExpr(file[0:cursor], partial)
 			} else {
 				return &DeclApropos{nil, partial}
 			}

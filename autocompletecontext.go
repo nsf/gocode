@@ -38,24 +38,24 @@ func NewOutBuffers(ctx *AutoCompleteContext) *OutBuffers {
 	return b
 }
 
-func (self *OutBuffers) Len() int {
-	return self.names.Len()
+func (b *OutBuffers) Len() int {
+	return b.names.Len()
 }
 
-func (self *OutBuffers) Less(i, j int) bool {
-	if self.classes[i][0] == self.classes[j][0] {
-		return self.names[i] < self.names[j]
+func (b *OutBuffers) Less(i, j int) bool {
+	if b.classes[i][0] == b.classes[j][0] {
+		return b.names[i] < b.names[j]
 	}
-	return self.classes[i] < self.classes[j]
+	return b.classes[i] < b.classes[j]
 }
 
-func (self *OutBuffers) Swap(i, j int) {
-	self.names[i], self.names[j] = self.names[j], self.names[i]
-	self.types[i], self.types[j] = self.types[j], self.types[i]
-	self.classes[i], self.classes[j] = self.classes[j], self.classes[i]
+func (b *OutBuffers) Swap(i, j int) {
+	b.names[i], b.names[j] = b.names[j], b.names[i]
+	b.types[i], b.types[j] = b.types[j], b.types[i]
+	b.classes[i], b.classes[j] = b.classes[j], b.classes[i]
 }
 
-func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
+func (b *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
 	c1 := !Config.ProposeBuiltins && decl.Scope == universeScope
 	c2 := class != -1 && !matchClass(int(decl.Class), class)
 	c3 := class == -1 && !strings.HasPrefix(name, p)
@@ -66,29 +66,29 @@ func (self *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
 		return
 	}
 
-	self.names.Push(name)
+	b.names.Push(name)
 
-	decl.PrettyPrintType(self.tmpbuf)
-	self.types.Push(self.tmpbuf.String())
-	self.tmpbuf.Reset()
+	decl.PrettyPrintType(b.tmpbuf)
+	b.types.Push(b.tmpbuf.String())
+	b.tmpbuf.Reset()
 
-	self.classes.Push(decl.ClassName())
+	b.classes.Push(decl.ClassName())
 }
 
-func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
+func (b *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 	if decl.Embedded == nil {
 		return
 	}
 
 	firstLevel := false
-	if self.tmpns == nil {
+	if b.tmpns == nil {
 		// first level, create tmp namespace
-		self.tmpns = make(map[string]bool)
+		b.tmpns = make(map[string]bool)
 		firstLevel = true
 
 		// add all children of the current decl to the namespace
 		for _, c := range decl.Children {
-			self.tmpns[c.Name] = true
+			b.tmpns[c.Name] = true
 		}
 	}
 
@@ -96,19 +96,19 @@ func (self *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
 		typedecl := typeToDecl(emb, decl.Scope)
 		if typedecl != nil {
 			for _, c := range typedecl.Children {
-				if _, has := self.tmpns[c.Name]; has {
+				if _, has := b.tmpns[c.Name]; has {
 					continue
 				}
-				self.appendDecl(p, c.Name, c, class)
-				self.tmpns[c.Name] = true
+				b.appendDecl(p, c.Name, c, class)
+				b.tmpns[c.Name] = true
 			}
-			self.appendEmbedded(p, typedecl, class)
+			b.appendEmbedded(p, typedecl, class)
 		}
 	}
 
 	if firstLevel {
 		// remove tmp namespace
-		self.tmpns = nil
+		b.tmpns = nil
 	}
 }
 
@@ -136,48 +136,48 @@ type AutoCompleteContext struct {
 }
 
 func NewAutoCompleteContext(mcache MCache, declcache *DeclCache) *AutoCompleteContext {
-	self := new(AutoCompleteContext)
-	self.current = NewPackageFile("")
-	self.mcache = mcache
-	self.declcache = declcache
-	return self
+	c := new(AutoCompleteContext)
+	c.current = NewPackageFile("")
+	c.mcache = mcache
+	c.declcache = declcache
+	return c
 }
 
-func (self *AutoCompleteContext) updateCaches() {
+func (c *AutoCompleteContext) updateCaches() {
 	// temporary map for modules that we need to check for a cache expiration
 	// map is used as a set of unique items to prevent double checks
 	ms := make(map[string]*ModuleCache)
 
 	// collect import information from all of the files
-	self.mcache.AppendModules(ms, self.current.modules)
-	self.others = getOtherPackageFiles(self.current.name, self.current.packageName, self.declcache)
-	for _, other := range self.others {
-		self.mcache.AppendModules(ms, other.Modules)
+	c.mcache.AppendModules(ms, c.current.modules)
+	c.others = getOtherPackageFiles(c.current.name, c.current.packageName, c.declcache)
+	for _, other := range c.others {
+		c.mcache.AppendModules(ms, other.Modules)
 	}
 
 	updateModules(ms)
 
 	// fix imports for all files
-	fixupModules(self.current.filescope, self.current.modules, self.mcache)
-	for _, f := range self.others {
-		fixupModules(f.FileScope, f.Modules, self.mcache)
+	fixupModules(c.current.filescope, c.current.modules, c.mcache)
+	for _, f := range c.others {
+		fixupModules(f.FileScope, f.Modules, c.mcache)
 	}
 
 	// At this point we have collected all top level declarations, now we need to
 	// merge them in the common package block.
-	self.mergeDecls()
+	c.mergeDecls()
 }
 
-func (self *AutoCompleteContext) mergeDecls() {
-	self.pkg = NewScope(universeScope)
-	mergeDecls(self.current.filescope, self.pkg, self.current.decls)
-	for _, f := range self.others {
-		mergeDecls(f.FileScope, self.pkg, f.Decls)
+func (c *AutoCompleteContext) mergeDecls() {
+	c.pkg = NewScope(universeScope)
+	mergeDecls(c.current.filescope, c.pkg, c.current.decls)
+	for _, f := range c.others {
+		mergeDecls(f.FileScope, c.pkg, f.Decls)
 	}
 }
 
-func (self *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
-	set := make(map[string]*Decl, len(self.pkg.entities)*2)
+func (c *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
+	set := make(map[string]*Decl, len(c.pkg.entities)*2)
 	makeDeclSetRecursive(set, scope)
 	return set
 }
@@ -187,9 +187,9 @@ func (self *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
 // 2. apropos types (pretty-printed)
 // 3. apropos classes
 // and length of the part that should be replaced (if any)
-func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
-	self.current.cursor = cursor
-	self.current.name = filename
+func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
+	c.current.cursor = cursor
+	c.current.name = filename
 
 	// Update caches and parse the current file.
 	// This process is quite complicated, because I was trying to design it in a 
@@ -198,19 +198,19 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 
 	// Does full processing of the currently editted file (top-level declarations plus
 	// active function).
-	self.current.processData(file)
+	c.current.processData(file)
 
 	// Updates cache of other files and modules. See the function for details of
 	// the process. At the end merges all the top-level declarations into the package
 	// block.
-	self.updateCaches()
+	c.updateCaches()
 
 	// And we're ready to Go. ;)
 
-	b := NewOutBuffers(self)
+	b := NewOutBuffers(c)
 
 	partial := 0
-	da := self.deduceDecl(file, cursor)
+	da := c.deduceDecl(file, cursor)
 	if da != nil {
 		class := -1
 		switch da.Partial {
@@ -227,7 +227,7 @@ func (self *AutoCompleteContext) Apropos(file []byte, filename string, cursor in
 		}
 		if da.Decl == nil {
 			// In case if no declaraion is a subject of completion, propose all:
-			set := self.makeDeclSet(self.current.scope)
+			set := c.makeDeclSet(c.current.scope)
 			for key, value := range set {
 				if value == nil {
 					continue
@@ -459,12 +459,12 @@ var declClassToStringStatus = [...]string{
 	DECL_METHODS_STUB: "  stub",
 }
 
-func (self *AutoCompleteContext) Status() string {
+func (c *AutoCompleteContext) Status() string {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	fmt.Fprintf(buf, "Server's GOMAXPROCS == %d\n", runtime.GOMAXPROCS(0))
-	fmt.Fprintf(buf, "\nPackage cache contains %d entries\n", len(self.mcache))
+	fmt.Fprintf(buf, "\nPackage cache contains %d entries\n", len(c.mcache))
 	fmt.Fprintf(buf, "\nListing these entries:\n")
-	for _, mod := range self.mcache {
+	for _, mod := range c.mcache {
 		fmt.Fprintf(buf, "\tname: %s (default alias: %s)\n", mod.name, mod.defalias)
 		fmt.Fprintf(buf, "\timports %d declarations and %d modules\n", len(mod.main.Children), len(mod.others))
 		if mod.mtime == -1 {
@@ -475,12 +475,12 @@ func (self *AutoCompleteContext) Status() string {
 		}
 		fmt.Fprintf(buf, "\n")
 	}
-	if self.current.name != "" {
-		fmt.Fprintf(buf, "Last editted file: %s (package: %s)\n", self.current.name, self.current.packageName)
-		if len(self.others) > 0 {
+	if c.current.name != "" {
+		fmt.Fprintf(buf, "Last editted file: %s (package: %s)\n", c.current.name, c.current.packageName)
+		if len(c.others) > 0 {
 			fmt.Fprintf(buf, "\nOther files from the current package:\n")
 		}
-		for _, f := range self.others {
+		for _, f := range c.others {
 			fmt.Fprintf(buf, "\t%s\n", f.name)
 		}
 		fmt.Fprintf(buf, "\nListing declarations from files:\n")
@@ -490,10 +490,10 @@ func (self *AutoCompleteContext) Status() string {
 		var ds DeclSlice
 		var i int
 
-		fmt.Fprintf(buf, "\n%s:\n", self.current.name)
-		ds = make(DeclSlice, len(self.current.decls))
+		fmt.Fprintf(buf, "\n%s:\n", c.current.name)
+		ds = make(DeclSlice, len(c.current.decls))
 		i = 0
-		for _, d := range self.current.decls {
+		for _, d := range c.current.decls {
 			ds[i] = d
 			i++
 		}
@@ -512,7 +512,7 @@ func (self *AutoCompleteContext) Status() string {
 			}
 		}
 
-		for _, f := range self.others {
+		for _, f := range c.others {
 			fmt.Fprintf(buf, "\n%s:\n", f.name)
 			ds = make(DeclSlice, len(f.Decls))
 			i = 0

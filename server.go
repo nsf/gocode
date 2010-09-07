@@ -19,20 +19,20 @@ type AutoCompletionDaemon struct {
 }
 
 func NewAutoCompletionDaemon(path string) *AutoCompletionDaemon {
-	self := new(AutoCompletionDaemon)
-	self.acr = NewACRServer(path)
-	self.mcache = NewMCache()
-	self.declcache = NewDeclCache()
-	self.acc = NewAutoCompleteContext(self.mcache, self.declcache)
-	self.semantic = NewSemanticContext(self.mcache, self.declcache)
-	return self
+	d := new(AutoCompletionDaemon)
+	d.acr = NewACRServer(path)
+	d.mcache = NewMCache()
+	d.declcache = NewDeclCache()
+	d.acc = NewAutoCompleteContext(d.mcache, d.declcache)
+	d.semantic = NewSemanticContext(d.mcache, d.declcache)
+	return d
 }
 
-func (self *AutoCompletionDaemon) DropCache() {
-	self.mcache = NewMCache()
-	self.declcache = NewDeclCache()
-	self.acc = NewAutoCompleteContext(self.mcache, self.declcache)
-	self.semantic = NewSemanticContext(self.mcache, self.declcache)
+func (d *AutoCompletionDaemon) DropCache() {
+	d.mcache = NewMCache()
+	d.declcache = NewDeclCache()
+	d.acc = NewAutoCompleteContext(d.mcache, d.declcache)
+	d.semantic = NewSemanticContext(d.mcache, d.declcache)
 }
 
 var daemon *AutoCompletionDaemon
@@ -136,18 +136,18 @@ type ACRServer struct {
 }
 
 func NewACRServer(path string) *ACRServer {
-	self := new(ACRServer)
+	s := new(ACRServer)
 	addr, err := net.ResolveUnixAddr("unix", path)
 	if err != nil {
 		panic(err.String())
 	}
 
-	self.listener, err = net.ListenUnix("unix", addr)
+	s.listener, err = net.ListenUnix("unix", addr)
 	if err != nil {
 		panic(err.String())
 	}
-	self.cmd_in = make(chan int, 1)
-	return self
+	s.cmd_in = make(chan int, 1)
+	return s
 }
 
 func acceptConnections(in chan net.Conn, listener *net.UnixListener) {
@@ -160,16 +160,16 @@ func acceptConnections(in chan net.Conn, listener *net.UnixListener) {
 	}
 }
 
-func (self *ACRServer) Loop() {
+func (s *ACRServer) Loop() {
 	conn_in := make(chan net.Conn)
-	go acceptConnections(conn_in, self.listener)
+	go acceptConnections(conn_in, s.listener)
 	for {
 		// handle connections or server CMDs (currently one CMD)
 		select {
 		case c := <-conn_in:
 			rpc.ServeConn(c)
 			runtime.GC()
-		case cmd := <-self.cmd_in:
+		case cmd := <-s.cmd_in:
 			switch cmd {
 			case ACR_CLOSE:
 				return
@@ -186,6 +186,6 @@ func (self *ACRServer) Loop() {
 	}
 }
 
-func (self *ACRServer) Close() {
-	self.cmd_in <- ACR_CLOSE
+func (s *ACRServer) Close() {
+	s.cmd_in <- ACR_CLOSE
 }
