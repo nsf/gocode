@@ -262,6 +262,12 @@ func updateModules(ms map[string]*ModuleCache) {
 	done := make(chan bool)
 	for _, m := range ms {
 		go func(m *ModuleCache) {
+			defer func() {
+				if err := recover(); err != nil {
+					printBacktrace(err)
+					done <- false
+				}
+			}()
 			m.updateCache()
 			done <- true
 		}(m)
@@ -269,7 +275,9 @@ func updateModules(ms map[string]*ModuleCache) {
 
 	// wait for its completion
 	for _ = range ms {
-		<-done
+		if !<-done {
+			panic("One of the module cache updaters panicked")
+		}
 	}
 }
 
@@ -298,12 +306,21 @@ func getOtherPackageFiles(filename, packageName string, declcache *DeclCache) []
 
 	for _, nm := range others {
 		go func(name string) {
+			defer func() {
+				if err := recover(); err != nil {
+					printBacktrace(err)
+					done <- nil
+				}
+			}()
 			done <- declcache.Get(name)
 		}(nm)
 	}
 
 	for i := range others {
 		ret[i] = <-done
+		if ret[i] == nil {
+			panic("One of the decl cache updaters panicked")
+		}
 	}
 
 	return ret

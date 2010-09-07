@@ -717,13 +717,22 @@ func (s *SemanticContext) Collect(filename string) []*SemanticFile {
 	done := make(chan bool)
 	for _, f := range files {
 		go func(f *SemanticFile) {
+			defer func() {
+				if err := recover(); err != nil {
+					printBacktrace(err)
+					done <- false
+				}
+			}()
+
 			f.semantify()
 			done <- true
 		}(f)
 	}
 
 	for _ = range files {
-		<-done
+		if !<-done {
+			panic("One of the semantifying workers panicked")
+		}
 	}
 
 	return files

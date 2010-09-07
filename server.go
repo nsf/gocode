@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"fmt"
 	"runtime"
+	"sync"
 )
 
 //-------------------------------------------------------------------------
@@ -39,7 +40,12 @@ var daemon *AutoCompletionDaemon
 
 //-------------------------------------------------------------------------
 
-func printBacktrace() {
+var btSync sync.Mutex
+
+func printBacktrace(err interface{}) {
+	btSync.Lock()
+	defer btSync.Unlock()
+	fmt.Printf("panic: %v\n", err)
 	i := 2
 	for {
 		pc, file, line, ok := runtime.Caller(i)
@@ -55,9 +61,7 @@ func printBacktrace() {
 func Server_AutoComplete(file []byte, filename string, cursor int) (a, b, c []string, d int) {
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Printf("GOT PANIC!!!:\n")
-			fmt.Println(err)
-			printBacktrace()
+			printBacktrace(err)
 			a = []string{"PANIC"}
 			b = a
 			c = a
@@ -73,9 +77,7 @@ func Server_AutoComplete(file []byte, filename string, cursor int) (a, b, c []st
 func Server_SMap(filename string) []DeclDesc {
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Printf("GOT PANIC!!!:\n")
-			fmt.Println(err)
-			printBacktrace()
+			printBacktrace(err)
 
 			// drop cache
 			daemon.DropCache()
@@ -87,9 +89,7 @@ func Server_SMap(filename string) []DeclDesc {
 func Server_Rename(filename string, cursor int) []RenameDesc {
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Printf("GOT PANIC!!!:\n")
-			fmt.Println(err)
-			printBacktrace()
+			printBacktrace(err)
 
 			// drop cache
 			daemon.DropCache()
