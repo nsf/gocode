@@ -102,6 +102,27 @@ func (*VimFormatter) WriteSMap(decldescs []DeclDesc) {
 }
 
 func (*VimFormatter) WriteRename(renamedescs []RenameDesc) {
+	if renamedescs == nil {
+		fmt.Print("[]")
+		return
+	}
+	fmt.Print("[")
+	for i, r := range renamedescs {
+		fmt.Printf("{'filename':'%s','length':%d,'decls':", r.Filename, r.Length)
+		fmt.Print("[")
+		for j, d := range r.Decls {
+			fmt.Printf("[%d,%d]", d.Line, d.Col)
+			if j != len(r.Decls)-1 {
+				fmt.Print(",")
+			}
+		}
+		fmt.Print("]")
+		fmt.Print("}")
+		if i != len(renamedescs)-1 {
+			fmt.Print(",")
+		}
+	}
+	fmt.Print("]")
 }
 
 //-------------------------------------------------------------------------
