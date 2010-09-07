@@ -43,6 +43,12 @@ fu! s:gocodeAutocomplete()
 	return result
 endf
 
+fu! s:gocodeRename()
+	return s:gocodeCommand('rename',
+			     \ ['-f=vim'],
+			     \ [bufname('%'), s:gocodeCursor()])
+endf
+
 fu! gocomplete#Complete(findstart, base)
 	"findstart = 1 when we need to get the text length
 	if a:findstart == 1
@@ -52,4 +58,54 @@ fu! gocomplete#Complete(findstart, base)
 	else
 		return g:gocomplete_completions[1]
 	endif
+endf
+
+fu! s:gocodeDoForBuf(expr, funcref, argslist)
+	let [cur_bufnr, expr_bufnr] = [bufnr('%'), bufnr(a:expr)]
+	let [cur_bufhidden, expr_bufhidden] = [getbufvar('%', '&bufhidden'), getbufvar(a:expr, '&bufhidden')]
+	call setbufvar('%', '&bufhidden', 'hide')
+	call setbufvar(a:expr, '&bufhidden', 'hide')
+	try
+		if cur_bufnr != expr_bufnr
+			execute expr_bufnr . 'buffer'
+		endif
+		call call(a:funcref, a:argslist)
+	finally
+		execute cur_bufnr . 'buffer'
+		call setbufvar('%', '&bufhidden', cur_bufhidden)
+		call setbufvar(a:expr, '&bufhidden', expr_bufhidden)
+	endtry
+endf
+
+fu! s:gocodeRenameBuf(newname, length, rename_data)
+	" rename_data is: [[line,col],[line,col],...]
+	for renamer in a:rename_data
+		let break = renamer[1]-1
+		let line = getline(renamer[0])
+		call setline(renamer[0],
+			   \ strpart(line, 0, break) .
+			   \ a:newname .
+			   \ strpart(line, break + a:length))
+	endfor
+	write
+endf
+
+fu! gocomplete#Rename()
+	" Rename format is:
+	" [{'filename':...,'length':...,'decls':[[line,col],...]},...]
+	execute "silent let rename_data = " . s:gocodeRename()
+	if empty(rename_data)
+		echo "Nothing to rename"	
+		return
+	endif
+	let newname = input("New identifier name: ")
+	for fileinfo in rename_data
+		" Skip those files that are not in the buffer list
+		if !bufexists(fileinfo["filename"])
+			con
+		endif
+		call s:gocodeDoForBuf(fileinfo["filename"],
+				    \ function("s:gocodeRenameBuf"),
+				    \ [newname, fileinfo["length"], fileinfo["decls"]])
+	endfor
 endf
