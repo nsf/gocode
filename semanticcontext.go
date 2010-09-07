@@ -207,7 +207,11 @@ func (s *SemanticFile) semantifyFieldList(fieldList *ast.FieldList) {
 		for _, name := range f.Names {
 			d = s.semantifyIdent(name)
 		}
-		s.semantifyTypeFor(f.Type, d)
+		if d != nil {
+			s.semantifyTypeFor(f.Type, d)
+		} else {
+			s.semantifyExpr(f.Type)
+		}
 	}
 }
 
