@@ -3,6 +3,7 @@ package main
 import (
 	"go/ast"
 	"go/token"
+	"strings"
 	"sort"
 	"fmt"
 )
@@ -53,7 +54,7 @@ func (s *SemanticFile) appendEntry(offset, length, line, col int, decl *Decl) {
 	s.entries[n] = SemanticEntry{offset, length, line, col, decl}
 }
 
-func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) *Decl {
+func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
 	c := d.FindChildAndInEmbedded(e.Name)
 	if c == nil {
 		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
@@ -61,15 +62,11 @@ func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) *Decl {
 		panic(msg)
 	}
 	s.appendEntry(e.Offset, len(e.Name), e.Line, e.Column, c)
-	return c
 }
 
+// used for 'type <blabla> struct | interface' declarations
+// and of course for anonymous types
 func (s *SemanticFile) semantifyTypeFor(e ast.Expr, d *Decl) {
-	if d.Class == DECL_VAR {
-		// vars don't have children, find its type
-		typ, scope := d.InferType()
-		d = typeToDecl(typ, scope)
-	}
 	switch t := e.(type) {
 	case *ast.StructType:
 		s.semantifyFieldListFor(t.Fields, d)
@@ -78,21 +75,6 @@ func (s *SemanticFile) semantifyTypeFor(e ast.Expr, d *Decl) {
 	default:
 		s.semantifyExpr(e)
 	}
-}
-
-func (s *SemanticFile) semantifyValueFor(e ast.Expr, d *Decl, scope *Scope) {
-	savescope := s.scope
-	s.scope = scope
-	switch t := e.(type) {
-	case *ast.CompositeLit:
-		s.semantifyTypeFor(t.Type, d)
-		for _, e := range t.Elts {
-			s.semantifyExpr(e)
-		}
-	default:
-		s.semantifyExpr(e)
-	}
-	s.scope = savescope
 }
 
 func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
@@ -104,6 +86,10 @@ func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
 		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
 				   t.Name, s.name, t.Line)
 		panic(msg)
+	}
+	if strings.HasPrefix(d.Name, "$") {
+		// anonymous type
+		s.semantifyTypeFor(d.Type, d)
 	}
 	s.appendEntry(t.Offset, len(t.Name), t.Line, t.Column, d)
 	return d
@@ -180,15 +166,10 @@ func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 
 func (s *SemanticFile) semantifyFieldListFor(fieldList *ast.FieldList, d *Decl) {
 	for _, f := range fieldList.List {
-		var c *Decl
 		for _, name := range f.Names {
-			c = s.semantifyIdentFor(name, d)
+			s.semantifyIdentFor(name, d)
 		}
-		if c == nil {
-			s.semantifyExpr(f.Type)
-		} else {
-			s.semantifyTypeFor(f.Type, c)
-		}
+		s.semantifyExpr(f.Type)
 	}
 }
 
@@ -203,24 +184,22 @@ func (s *SemanticFile) semantifyFieldListTypes(fieldList *ast.FieldList) {
 
 func (s *SemanticFile) semantifyFieldList(fieldList *ast.FieldList) {
 	for _, f := range fieldList.List {
-		var d *Decl
 		for _, name := range f.Names {
-			d = s.semantifyIdent(name)
+			s.semantifyIdent(name)
 		}
-		if d != nil {
-			s.semantifyTypeFor(f.Type, d)
-		} else {
-			s.semantifyExpr(f.Type)
-		}
+		s.semantifyExpr(f.Type)
 	}
 }
 
 func (s *SemanticFile) processDecl(decl ast.Decl) {
-	valuescope := s.scope
 	foreachDecl(decl, func(data *foreachDeclStruct) {
-		valuesSemantified := make(map[ast.Expr]bool, len(data.values))
 		class := astDeclClass(data.decl)
-		data.tryMakeAnonType(class, 0, s.scope)
+		if class != DECL_TYPE {
+			s.semantifyExpr(data.typ)
+		}
+		for _, v := range data.values {
+			s.semantifyExpr(v)
+		}
 		for i, name := range data.names {
 			typ, v, vi := data.typeValueIndex(i, 0, s.scope)
 
@@ -229,18 +208,11 @@ func (s *SemanticFile) processDecl(decl ast.Decl) {
 				return
 			}
 
-			v = data.value(i)
-			if _, ok := valuesSemantified[v]; !ok && v != nil {
-				valuesSemantified[v] = true
-				s.semantifyValueFor(v, d, valuescope)
-			}
-
 			if d.Class == DECL_TYPE {
 				s.scope = NewScope(s.scope)
 				s.addToBlockAndScope(d)
 				s.semantifyTypeFor(astDeclType(data.decl), d)
 			} else {
-				s.semantifyTypeFor(astDeclType(data.decl), d)
 				s.scope = NewScope(s.scope)
 				s.addToBlockAndScope(d)
 			}
@@ -321,8 +293,7 @@ func (s *SemanticFile) processSelectStmt(a *ast.SelectStmt) {
 		if cc.Tok == token.DEFINE {
 			name := cc.Lhs.(*ast.Ident)
 			d := NewDeclVar(name.Name, nil, cc.Rhs, -1, s.scope)
-			s.semantifyTypeFor(d.Type, d)
-			s.semantifyValueFor(cc.Rhs, d, s.scope)
+			s.semantifyExpr(cc.Rhs)
 
 			s.scope = NewScope(s.scope)
 			s.addToBlockAndScope(d)
@@ -467,31 +438,21 @@ func (s *SemanticFile) processAssignStmt(a *ast.AssignStmt) {
 			names[i] = id
 		}
 
-		valuescope := s.scope
 		pack := declPack{names, nil, a.Rhs}
-		valuesSemantified := make(map[ast.Expr]bool, len(pack.values))
+		for _, v := range pack.values {
+			s.semantifyExpr(v)
+		}
 		for i, name := range pack.names {
 			if s.isInBlock(name.Name) {
 				// it's a shortcut, the variable was already introduced,
 				// we only need to semantify it
 				s.semantifyExpr(name)
-				v, _ := pack.valueIndex(i)
-				if _, ok := valuesSemantified[v]; !ok && v != nil {
-					valuesSemantified[v] = true
-					s.semantifyValueFor(v, s.block.lookup(name.Name), valuescope)
-				}
 				continue
 			}
 			typ, v, vi := pack.typeValueIndex(i, 0, s.scope)
 			d := NewDeclVar(name.Name, typ, v, vi, s.scope)
 			if d == nil {
 				continue
-			}
-
-			v = pack.value(i)
-			if _, ok := valuesSemantified[v]; !ok && v != nil {
-				valuesSemantified[v] = true
-				s.semantifyValueFor(v, d, valuescope)
 			}
 
 			s.scope = NewScope(s.scope)
@@ -613,16 +574,12 @@ func (s *SemanticFile) processDeclLocals(decl ast.Decl) {
 					decls[i] = d
 				}
 				if len(v.Values) != 0 {
-					if len(decls) > len(v.Values) {
-						s.semantifyExpr(v.Values[0])
-					} else {
-						for i, value := range v.Values {
-							s.semantifyValueFor(value, decls[i], s.scope)
-						}
+					for _, v := range v.Values {
+						s.semantifyExpr(v)
 					}
 				}
 				if v.Type != nil {
-					s.semantifyTypeFor(v.Type, decls[0])
+					s.semantifyExpr(v.Type)
 				}
 			}
 		}

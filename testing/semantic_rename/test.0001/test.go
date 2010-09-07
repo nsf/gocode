@@ -1,50 +1,76 @@
-// This demo shows you upcoming gocode features, which will allow it to 
-// understand semantics of each identifier in the code. This kind of thing
-// leads to features like precise renaming of a language entity.
-//
-// Take a look.. I've written a vim plugin that highlights these language
-// entities.
+// Anonymous structs and interfaces
 package main
 
-type Dummy struct {
+var a = struct{a int}{31337}
+var b, c = struct{b int}{31337}, struct{c int}{31337}
+var d struct {
+	a, b, c int
+}
+var e, f struct {
 	a, b, c int
 }
 
-var a, b = struct{a int}{31337}, struct{b int}{666}
-var z, y struct {
-	a, b, c int
+var g interface {
+	Test() bool
 }
+var h, i interface {
+	Test() bool
+}
+
+var j = interface{Test() bool}(nil)
+var k, l = interface{Test() bool}(nil),interface{Test() bool}(nil)
 
 func main() {
-	type Dummy *Dummy
-	a.a = 10
-	b.b = 20
-	var A, B = struct{A int}{31337}, struct{B int}{666}
-	C, D := struct{ABC int}{1}, struct{DEF int}{2}
-	A.A = 10
-	B.B = 20
-
-	C.ABC = 30
-	D.DEF = 40
-
-	z.a = 1
-	z.b = 2
-	z.c = 3
-
-	y.a = 1
-	y.b = 2
-	y.c = 3
-
-	var T, Y, U int
-	if T == 0 {
-		Y, U := U, Y
-		_, _ = Y, U
-	}
+	a.a = b.b
+	c.c = a.a
+	e.a = b.b
+	f.a = b.b
+	g.Test()
+	h.Test()
+	i.Test()
+	j.Test()
+	k.Test()
+	l.Test()
 }
 
+var X map[string]struct{a,b,c int}
+var Y, Z map[string]struct{d,e,f int}
+
 func test() {
-	var A struct {a, b, c int} = struct {a, b, c int}{1,2,3}
-	A.a = 3
-	A.b = 2
-	A.c = 1
+	a := struct{a int}{31337}
+	b, c := struct{b int}{31337}, struct{c int}{31337}
+	var d = struct{d int}{31337}
+	var e, f = struct{e int}{31337}, struct{f int}{31337}
+	var g struct {
+		a, b, c int
+	}
+	var h, i struct {
+		a, b, c int
+	}
+	a.a = b.b
+	b.b = c.c
+	d.d = e.e
+	f.f = d.d
+	g.a = h.a
+	i.c = g.c
+
+	j := interface{Test() bool}(nil)
+	j.Test()
+
+	var k, l = interface{Test() bool}(nil),interface{Test() bool}(nil)
+	var m, n interface {
+		Test() bool
+	}
+	k.Test()
+	l.Test()
+	m.Test()
+	n.Test()
+
+	A := X["0"].a
+	D := Y["0"].d
+	E := Z["0"].e
+
+	i.c = A
+	i.c = D
+	i.c = E
 }

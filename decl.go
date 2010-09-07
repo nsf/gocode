@@ -128,14 +128,13 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 
 	decls := make(map[string]*Decl, count)
 	for _, field := range f.List {
-		typ := checkForAnonType(field.Type, flags, scope)
 		for _, name := range field.Names {
 			if flags&DECL_FOREIGN != 0 && !ast.IsExported(name.Name) {
 				continue
 			}
 			d := new(Decl)
 			d.Name = name.Name
-			d.Type = typ
+			d.Type = field.Type
 			d.Class = int16(class)
 			d.Flags = int16(flags)
 			d.Scope = scope
@@ -151,7 +150,7 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 			}
 			d := new(Decl)
 			d.Name = tp.name
-			d.Type = typ
+			d.Type = field.Type
 			d.Class = int16(class)
 			d.Flags = int16(flags)
 			d.Scope = scope
@@ -229,6 +228,9 @@ var anonGen AnonymousIDGen
 //-------------------------------------------------------------------------
 
 func checkForAnonType(t ast.Expr, flags int, s *Scope) ast.Expr {
+	if t == nil {
+		return nil
+	}
 	var name string
 
 	switch t.(type) {
@@ -239,19 +241,12 @@ func checkForAnonType(t ast.Expr, flags int, s *Scope) ast.Expr {
 	}
 
 	if name != "" {
+		anonymifyAst(t, flags, s)
 		d := NewDeclAnonType(name, flags, t, s)
 		s.addNamedDecl(d)
 		return ast.NewIdent(name)
 	}
 	return t
-}
-
-func checkValueForAnonType(v ast.Expr, flags int, s *Scope) ast.Expr {
-	switch t := v.(type) {
-	case *ast.CompositeLit:
-		return checkForAnonType(t.Type, flags, s)
-	}
-	return nil
 }
 
 //-------------------------------------------------------------------------
@@ -596,6 +591,45 @@ func rangePredicate(v ast.Expr) bool {
 	return false
 }
 
+type anonymousTyper struct {
+	flags int
+	scope *Scope
+}
+
+func (a *anonymousTyper) Visit(node interface{}) ast.Visitor {
+	switch t := node.(type) {
+	case *ast.CompositeLit:
+		t.Type = checkForAnonType(t.Type, a.flags, a.scope)
+	case *ast.MapType:
+		t.Key = checkForAnonType(t.Key, a.flags, a.scope)
+		t.Value = checkForAnonType(t.Value, a.flags, a.scope)
+	case *ast.ArrayType:
+		t.Elt = checkForAnonType(t.Elt, a.flags, a.scope)
+	case *ast.ChanType:
+		t.Value = checkForAnonType(t.Value, a.flags, a.scope)
+	case *ast.Field:
+		t.Type = checkForAnonType(t.Type, a.flags, a.scope)
+	case *ast.CallExpr:
+		t.Fun = checkForAnonType(t.Fun, a.flags, a.scope)
+	case *ast.ParenExpr:
+		t.X = checkForAnonType(t.X, a.flags, a.scope)
+	case *ast.GenDecl:
+		switch t.Tok {
+		case token.VAR:
+			for _, s := range t.Specs {
+				vs := s.(*ast.ValueSpec)
+				vs.Type = checkForAnonType(vs.Type, a.flags, a.scope)
+			}
+		}
+	}
+	return a
+}
+
+func anonymifyAst(node interface{}, flags int, scope *Scope) {
+	v := anonymousTyper{flags, scope}
+	ast.Walk(&v, node)
+}
+
 // RETURNS:
 // 	- type expression which represents a full name of a type
 //	- bool whether a type expression is actually a type (used internally)
@@ -753,7 +787,8 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 		case 1:
 			return ast.NewIdent("bool"), universeScope, false
 		}
-	case *ast.ArrayType, *ast.MapType, *ast.ChanType, *ast.FuncType:
+	case *ast.ArrayType, *ast.MapType, *ast.ChanType,
+	     *ast.FuncType, *ast.StructType, *ast.InterfaceType:
 		return t, scope, true
 	default:
 		_ = reflect.Typeof(v)
@@ -1090,31 +1125,11 @@ func (f *declPack) valueIndex(i int) (v ast.Expr, vi int) {
 	return
 }
 
-func (f *declPack) tryMakeAnonType(class, flags int, scope *Scope) {
-	if class == DECL_VAR && f.typ != nil {
-		f.typ = checkForAnonType(f.typ, flags, scope)
-	}
-}
-
-func (f *declPack) tryMakeAnonTypeFromValue(i, flags int, scope *Scope) ast.Expr {
-	v, vi := f.valueIndex(i)
-	if v != nil && vi == -1 {
-		return checkValueForAnonType(v, flags, scope)
-	}
-	return nil
-}
-
 func (f *declPack) typeValueIndex(i, flags int, scope *Scope) (ast.Expr, ast.Expr, int) {
 	if f.typ != nil {
 		// If there is a type, we don't care about value, just return the type
 		// and zero value.
 		return f.typ, nil, -1
-	}
-	// Otherwise the type is being introduced by the value and we need to check
-	// for anonymous type here. If value introduces anonymous type we use it.
-	typ := f.tryMakeAnonTypeFromValue(i, flags, scope)
-	if typ != nil {
-		return typ, nil, -1
 	}
 
 	// And otherwise we simply return nil type and a valid value for later inferring.

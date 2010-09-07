@@ -289,7 +289,6 @@ func addAstDeclsToModule(module *Decl, decls []ast.Decl, scope *Scope) {
 	for _, decl := range decls {
 		foreachDecl(decl, func(data *foreachDeclStruct) {
 			class := astDeclClass(data.decl)
-			data.tryMakeAnonType(class, DECL_FOREIGN, scope)
 			for i, name := range data.names {
 				typ, v, vi := data.typeValueIndex(i, DECL_FOREIGN, scope)
 

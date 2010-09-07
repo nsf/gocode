@@ -36,6 +36,8 @@ func (f *AutoCompleteFile) processData(data []byte) {
 	f.filescope = NewScope(nil)
 	f.scope = f.filescope
 
+	anonymifyAst(file.Decls, 0, f.filescope)
+
 	// process all top-level declarations
 	for _, decl := range file.Decls {
 		appendToTopDecls(f.decls, decl, f.scope)
@@ -43,6 +45,9 @@ func (f *AutoCompleteFile) processData(data []byte) {
 	if block != nil {
 		// process local function as top-level declaration
 		decls, _ := parser.ParseDeclList("", block)
+
+		anonymifyAst(decls, 0, f.filescope)
+
 		for _, decl := range decls {
 			appendToTopDecls(f.decls, decl, f.scope)
 		}
@@ -77,7 +82,6 @@ func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
 	}
 	foreachDecl(decl, func(data *foreachDeclStruct) {
 		class := astDeclClass(data.decl)
-		data.tryMakeAnonType(class, 0, f.scope)
 		for i, name := range data.names {
 			typ, v, vi := data.typeValueIndex(i, 0, f.scope)
 

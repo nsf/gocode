@@ -114,6 +114,7 @@ func (f *DeclFileCache) readFile(filename string) {
 
 	f.File, f.Error = parser.ParseFile("", f.Data, 0)
 	f.FileScope = NewScope(nil)
+	anonymifyAst(f.File.Decls, 0, f.FileScope)
 	f.Modules = NewModuleImports(f.name, f.File.Decls)
 	f.Decls = make(map[string]*Decl, len(f.File.Decls))
 	for _, decl := range f.File.Decls {
@@ -124,7 +125,6 @@ func (f *DeclFileCache) readFile(filename string) {
 func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
 	foreachDecl(decl, func(data *foreachDeclStruct) {
 		class := astDeclClass(data.decl)
-		data.tryMakeAnonType(class, 0, scope)
 		for i, name := range data.names {
 			typ, v, vi := data.typeValueIndex(i, 0, scope)
 
