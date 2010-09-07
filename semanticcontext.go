@@ -3,6 +3,7 @@ package main
 import (
 	"go/ast"
 	"go/token"
+	"sort"
 	"fmt"
 )
 
@@ -761,6 +762,11 @@ type RenameDesc struct {
 	Decls []RenameDeclDesc
 }
 
+// sort in a reverse order
+func (d *RenameDesc) Len() int { return len(d.Decls) }
+func (d *RenameDesc) Less(i, j int) bool { return !(d.Decls[i].Offset < d.Decls[j].Offset) }
+func (d *RenameDesc) Swap(i, j int) { d.Decls[i], d.Decls[j] = d.Decls[j], d.Decls[i] }
+
 func (d *RenameDesc) append(offset, line, col int) {
 	if d.Decls == nil {
 		d.Decls = make([]RenameDeclDesc, 0, 16)
@@ -815,6 +821,7 @@ func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
 				renames[i].Length = e.length
 			}
 		}
+		sort.Sort(&renames[i])
 	}
 
 	return renames
