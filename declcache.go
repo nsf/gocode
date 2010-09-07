@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"io/ioutil"
 	"go/token"
+	"runtime"
 	"path"
 	"fmt"
 	"sync"
@@ -173,13 +174,24 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 }
 
 func findGlobalFile(imp string) string {
-	goroot := os.Getenv("GOROOT")
-	goarch := os.Getenv("GOARCH")
-	goos := os.Getenv("GOOS")
-
-	pkgdir := fmt.Sprintf("%s_%s", goos, goarch)
 	pkgfile := fmt.Sprintf("%s.a", imp)
+	if Config.LibPath != "" {
+		return path.Join(Config.LibPath, pkgfile)
+	}
 
+	goroot := os.Getenv("GOROOT")
+	if goroot == "" {
+		goroot = runtime.GOROOT()
+	}
+	goarch := os.Getenv("GOARCH")
+	if goarch == "" {
+		goarch = runtime.GOARCH
+	}
+	goos := os.Getenv("GOOS")
+	if goos == "" {
+		goos = runtime.GOOS
+	}
+	pkgdir := fmt.Sprintf("%s_%s", goos, goarch)
 	return path.Join(goroot, "pkg", pkgdir, pkgfile)
 }
 
