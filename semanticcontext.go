@@ -413,20 +413,22 @@ func (s *SemanticFile) processRangeStmt(a *ast.RangeStmt) {
 	s.semantifyExpr(a.X)
 
 	if a.Tok == token.DEFINE {
-		if t, ok := a.Key.(*ast.Ident); ok && !s.isInBlock(t.Name) {
+		if t, ok := a.Key.(*ast.Ident); ok {
 			d := NewDeclVar(t.Name, nil, a.X, 0, s.scope)
 			if d != nil {
 				d.Flags |= DECL_RANGEVAR
+				s.scope = NewScope(s.scope)
 				s.addToBlockAndScope(d)
 				s.semantifyExpr(t)
 			}
 		}
 
 		if a.Value != nil {
-			if t, ok := a.Value.(*ast.Ident); ok && !s.isInBlock(t.Name) {
+			if t, ok := a.Value.(*ast.Ident); ok {
 				d := NewDeclVar(t.Name, nil, a.X, 1, s.scope)
 				if d != nil {
 					d.Flags |= DECL_RANGEVAR
+					s.scope = NewScope(s.scope)
 					s.addToBlockAndScope(d)
 					s.semantifyExpr(t)
 				}
