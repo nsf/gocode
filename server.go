@@ -56,6 +56,7 @@ func printBacktrace(err interface{}) {
 		fmt.Printf("%d(%s): %s:%d\n", i-1, f.Name(), file, line)
 		i++
 	}
+	fmt.Println("")
 }
 
 func Server_AutoComplete(file []byte, filename string, cursor int) (a, b, c []string, d int) {
