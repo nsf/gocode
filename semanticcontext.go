@@ -95,6 +95,20 @@ func (s *SemanticFile) semantifyValueFor(e ast.Expr, d *Decl, scope *Scope) {
 	s.scope = savescope
 }
 
+func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
+	if t.Name == "_" {
+		return nil
+	}
+	d := s.scope.lookup(t.Name);
+	if d == nil {
+		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
+				   t.Name, s.name, t.Line)
+		panic(msg)
+	}
+	s.appendEntry(t.Offset, len(t.Name), t.Line, t.Column, d)
+	return d
+}
+
 func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 	switch t := e.(type) {
 	case *ast.CompositeLit:
@@ -111,16 +125,7 @@ func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 
 		s.restoreScopeAndBlock(savescope, saveblock)
 	case *ast.Ident:
-		if t.Name == "_" {
-			return
-		}
-		d := s.scope.lookup(t.Name);
-		if d == nil {
-			msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
-					   t.Name, s.name, t.Line)
-			panic(msg)
-		}
-		s.appendEntry(t.Offset, len(t.Name), t.Line, t.Column, d)
+		s.semantifyIdent(t)
 	case *ast.UnaryExpr:
 		s.semantifyExpr(t.X)
 	case *ast.BinaryExpr:
@@ -198,10 +203,11 @@ func (s *SemanticFile) semantifyFieldListTypes(fieldList *ast.FieldList) {
 
 func (s *SemanticFile) semantifyFieldList(fieldList *ast.FieldList) {
 	for _, f := range fieldList.List {
+		var d *Decl
 		for _, name := range f.Names {
-			s.semantifyExpr(name)
+			d = s.semantifyIdent(name)
 		}
-		s.semantifyExpr(f.Type)
+		s.semantifyTypeFor(f.Type, d)
 	}
 }
 
