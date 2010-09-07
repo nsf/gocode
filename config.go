@@ -46,13 +46,13 @@ func setValue(v reflect.Value, name, value string) {
 func listValue(v reflect.Value, name string, w io.Writer) {
 	switch t := v.(type) {
 	case *reflect.BoolValue:
-		fmt.Fprintf(w, "boolean '%s': %v\n", name, t.Get())
+		fmt.Fprintf(w, "%s = %v\n", name, t.Get())
 	case *reflect.StringValue:
-		fmt.Fprintf(w, "string  '%s': %v\n", name, t.Get())
+		fmt.Fprintf(w, "%s = \"%v\"\n", name, t.Get())
 	case *reflect.IntValue:
-		fmt.Fprintf(w, "int     '%s': %v\n", name, t.Get())
+		fmt.Fprintf(w, "%s = %v\n", name, t.Get())
 	case *reflect.FloatValue:
-		fmt.Fprintf(w, "float   '%s': %v\n", name, t.Get())
+		fmt.Fprintf(w, "%s = %v\n", name, t.Get())
 	}
 }
 
