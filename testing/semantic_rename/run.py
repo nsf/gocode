@@ -83,6 +83,7 @@ def run_test(test):
 
 	# 1. Source code check
 	sys.stdout.write("Initial source code check... ")
+	sys.stdout.flush()
 	if check_source(src):
 		print OK
 	else:
@@ -92,6 +93,7 @@ def run_test(test):
 
 	# 2. SMap check
 	sys.stdout.write("Checking semantic map completeness... ")
+	sys.stdout.flush()
 	smap = gocode_smap(src)
 	idents = listidents(src)
 	if check_smap(idents, smap):
@@ -106,8 +108,9 @@ def run_test(test):
 
 	# 3. Rename each identifier and check compilation
 	sys.stdout.write("Renaming check... ")
+	sys.stdout.flush()
 	for n, i in enumerate(idents):
-		sys.stdout.write("%d... " % n)
+		sys.stdout.write("%d%%... " % (float(n)/len(idents) * 100))
 		sys.stdout.flush()
 		if os.system("../rename %s %s RenamedIdent123 > tmp.go" % (src, i["Offset"])) != 0:
 			print FAIL
