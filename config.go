@@ -14,9 +14,11 @@ import (
 var Config = struct {
 	ProposeBuiltins bool "propose-builtins"
 	DenyModuleRenames bool "deny-module-renames"
+	LibPath string "lib-path" // currently unused
 }{
 	false,
 	false,
+	"",
 }
 
 func setValue(v reflect.Value, name, value string) {
