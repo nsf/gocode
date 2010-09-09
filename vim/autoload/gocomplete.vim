@@ -104,6 +104,9 @@ fu! gocomplete#Rename()
 		if !bufexists(fileinfo["filename"])
 			con
 		endif
+		" If there is nothing to do, don't run DoForBuf, because
+		" it does screen flickering and we can avoid that in a lot of
+		" cases.
 		if empty(fileinfo['decls'])
 			con
 		endif
