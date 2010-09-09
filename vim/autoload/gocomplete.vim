@@ -104,6 +104,9 @@ fu! gocomplete#Rename()
 		if !bufexists(fileinfo["filename"])
 			con
 		endif
+		if empty(fileinfo['decls'])
+			con
+		endif
 		call s:gocodeDoForBuf(fileinfo["filename"],
 				    \ function("s:gocodeRenameBuf"),
 				    \ [newname, fileinfo["length"], fileinfo["decls"]])
