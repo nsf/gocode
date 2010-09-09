@@ -7,6 +7,7 @@ Currently available things:
  - type inference (more or less complete)
  - vim plugin (omnifunc autocompletion)
  - autocompletion
+ - renaming (semicomplete, not well tested)
 
 Screenshots:
  http://nsf.github.com/images/gocode1.png
@@ -16,6 +17,7 @@ Screenshots:
 
 Demo:
  http://nsf.110mb.com/gocode-demo.swf (3.6mb)
+ http://nsf.github.com/images/gocode-renaming-demo.swf
 
 Short usage guide:
 
@@ -36,12 +38,16 @@ to see a stack trace you may want to run it manually somewhere in the
 terminal using this command: 'gocode -s'. If the daemon was started
 previously, you can shut it down using this command: 'gocode close'.
 
-IMPORTANT!!!: One of the latest Go releases relaxed a requirement for
-having a bunch of environment variables in order to keep go compiler
-working. But gocode still requires you to have them. Gocode needs these
-environment variables in order to know where your libraries are:
-GOOS, GOARCH, GOROOT. Probably in future this requirement will be changed
-in favor of a config variable (like 'libpath' or something).
+In order to use renaming functionality simply type ":GocodeRename"
+when the cursor is on top of an identifier. Vim will ask you for a new
+name and do the job. But keep in mind that this feature is still in
+development and may contain bugs. Do backups or use source code
+management system (git, hg or whatever).
+
+NOTE: If you want to use a non-default Go compiler library path, use
+'lib-path' config variable (gocode set lib-path "<path">). The default
+is (in terms of previously existed environment variables):
+$GOROOT/pkg/$GOOS_$GOARCH
 
 NOTE: I'm trying to keep git master branch always in a working state.
 Therefore it's safe and a good idea to keep your app in sync with git
