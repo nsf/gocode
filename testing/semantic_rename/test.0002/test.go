@@ -49,4 +49,12 @@ func main() {
 			panic("Oh no!")
 		}
 	}
+
+	type Tree struct {
+		left *Tree
+		right *Tree
+	}
+
+	var tree *Tree
+	tree = tree.left.right
 }

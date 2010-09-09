@@ -215,16 +215,19 @@ func (s *SemanticFile) processDecl(decl ast.Decl) {
 		for i, name := range data.names {
 			typ, v, vi := data.typeValueIndex(i, 0)
 
-			d := NewDecl2(name.Name, class, 0, typ, v, vi, s.scope)
-			if d == nil {
-				return
-			}
-
-			if d.Class == DECL_TYPE {
+			if class == DECL_TYPE {
 				s.scope = NewScope(s.scope)
+				d := NewDecl2(name.Name, class, 0, typ, v, vi, s.scope)
+				if d == nil {
+					return
+				}
 				s.addToBlockAndScope(d)
 				s.semantifyTypeFor(astDeclType(data.decl), d)
 			} else {
+				d := NewDecl2(name.Name, class, 0, typ, v, vi, s.scope)
+				if d == nil {
+					return
+				}
 				s.scope = NewScope(s.scope)
 				s.addToBlockAndScope(d)
 			}
