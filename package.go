@@ -290,7 +290,7 @@ func addAstDeclsToPackage(pkg *Decl, decls []ast.Decl, scope *Scope) {
 		foreachDecl(decl, func(data *foreachDeclStruct) {
 			class := astDeclClass(data.decl)
 			for i, name := range data.names {
-				typ, v, vi := data.typeValueIndex(i, DECL_FOREIGN, scope)
+				typ, v, vi := data.typeValueIndex(i, DECL_FOREIGN)
 
 				d := NewDecl2(name.Name, class, DECL_FOREIGN, typ, v, vi, scope)
 				if d == nil {

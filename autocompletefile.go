@@ -84,7 +84,7 @@ func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
 	foreachDecl(decl, func(data *foreachDeclStruct) {
 		class := astDeclClass(data.decl)
 		for i, name := range data.names {
-			typ, v, vi := data.typeValueIndex(i, 0, f.scope)
+			typ, v, vi := data.typeValueIndex(i, 0)
 
 			d := NewDecl2(name.Name, class, 0, typ, v, vi, f.scope)
 			if d == nil {
@@ -301,7 +301,7 @@ func (f *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
 
 	pack := declPack{names, nil, a.Rhs}
 	for i, name := range pack.names {
-		typ, v, vi := pack.typeValueIndex(i, 0, f.scope)
+		typ, v, vi := pack.typeValueIndex(i, 0)
 		d := NewDeclVar(name.Name, typ, v, vi, f.scope)
 		if d == nil {
 			continue

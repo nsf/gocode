@@ -126,7 +126,7 @@ func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
 	foreachDecl(decl, func(data *foreachDeclStruct) {
 		class := astDeclClass(data.decl)
 		for i, name := range data.names {
-			typ, v, vi := data.typeValueIndex(i, 0, scope)
+			typ, v, vi := data.typeValueIndex(i, 0)
 
 			d := NewDecl2(name.Name, class, 0, typ, v, vi, scope)
 			if d == nil {

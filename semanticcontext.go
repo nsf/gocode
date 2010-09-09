@@ -213,7 +213,7 @@ func (s *SemanticFile) processDecl(decl ast.Decl) {
 			s.semantifyExpr(v)
 		}
 		for i, name := range data.names {
-			typ, v, vi := data.typeValueIndex(i, 0, s.scope)
+			typ, v, vi := data.typeValueIndex(i, 0)
 
 			d := NewDecl2(name.Name, class, 0, typ, v, vi, s.scope)
 			if d == nil {
@@ -461,7 +461,7 @@ func (s *SemanticFile) processAssignStmt(a *ast.AssignStmt) {
 				s.semantifyExpr(name)
 				continue
 			}
-			typ, v, vi := pack.typeValueIndex(i, 0, s.scope)
+			typ, v, vi := pack.typeValueIndex(i, 0)
 			d := NewDeclVar(name.Name, typ, v, vi, s.scope)
 			if d == nil {
 				continue

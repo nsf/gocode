@@ -1125,7 +1125,7 @@ func (f *declPack) valueIndex(i int) (v ast.Expr, vi int) {
 	return
 }
 
-func (f *declPack) typeValueIndex(i, flags int, scope *Scope) (ast.Expr, ast.Expr, int) {
+func (f *declPack) typeValueIndex(i, flags int) (ast.Expr, ast.Expr, int) {
 	if f.typ != nil {
 		// If there is a type, we don't care about value, just return the type
 		// and zero value.
