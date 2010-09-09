@@ -162,8 +162,6 @@ func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 	case *ast.KeyValueExpr:
 		s.semantifyExpr(t.Key)
 		s.semantifyExpr(t.Value)
-	default:
-		// TODO
 	}
 }
 
@@ -616,10 +614,7 @@ func (s *SemanticFile) semantify() {
 //-------------------------------------------------------------------------
 
 type SemanticContext struct {
-	pkg *Scope
-
-	// TODO: temporary, for testing purposes, should be shared with 
-	// AutoCompleteContext.
+	pkg       *Scope
 	declcache *DeclCache
 	pcache    PackageCache
 }
@@ -745,7 +740,6 @@ func (s *SemanticContext) GetSMap(filename string) []DeclDesc {
 // SemanticContext.Rename
 //-------------------------------------------------------------------------
 
-// TODO: length is always the same for a set of identifiers
 type RenameDeclDesc struct {
 	Offset int
 	Line   int
