@@ -91,9 +91,8 @@ func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
 				return
 			}
 
-			// the declaration itself has a scope which follows it's definition
-			// and it's false for type declarations
-			// TODO: WTF?
+			// TODO: The code here is incorrect, but I wasn't able to break
+			// it. Maybe it is correct for autocompletion case.
 			if d.Class != DECL_TYPE {
 				f.scope = NewScope(f.scope)
 			}
