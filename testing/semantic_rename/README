@@ -14,3 +14,8 @@ them and it should compile correctly after each change.
 
 And that's how I will test things. But I will include manual test cases
 too.
+
+In order to pass tests successfully, this testing framework requires
+you to set this option:
+
+	'gocode set deny-module-renames true'
