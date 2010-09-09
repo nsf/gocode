@@ -80,8 +80,8 @@ endf
 fu! s:gocodeRenameBuf(newname, length, rename_data)
 	" rename_data is: [[line,col],[line,col],...]
 	for renamer in a:rename_data
-		let break = renamer[1]-1
 		let line = getline(renamer[0])
+		let break = byteidx(line, renamer[1]-1)
 		call setline(renamer[0],
 			   \ strpart(line, 0, break) .
 			   \ a:newname .
