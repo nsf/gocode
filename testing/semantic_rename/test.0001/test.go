@@ -74,3 +74,12 @@ func test() {
 	i.c = D
 	i.c = E
 }
+
+func test2(x struct { a, b, c int }, y interface { Test() bool }) {
+	if y.Test() {
+		x.a = 10
+		x.b = x.a
+		x.c = x.a
+	}
+}
+

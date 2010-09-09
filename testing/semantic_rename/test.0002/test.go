@@ -17,6 +17,19 @@ type Test struct {
 	file *file
 }
 
+var X int
+
+func test() {
+	go func(){
+		var x int
+		x = X
+		_ = x
+	}()
+
+	X := "die"
+	_ = X
+}
+
 func main() {
 	files := [...]file{file{"1.txt"}, file{"2.txt"}}
 
