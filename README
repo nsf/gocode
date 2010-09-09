@@ -53,6 +53,8 @@ NOTE: I'm trying to keep git master branch always in a working state.
 Therefore it's safe and a good idea to keep your app in sync with git
 repo.
 
+NOTE: Gocode always requires the latest Go compiler version.
+
 Bug reports:
 
 If something doesn't work as expected, post your issues here:
