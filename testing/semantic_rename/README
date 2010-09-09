@@ -18,4 +18,4 @@ too.
 In order to pass tests successfully, this testing framework requires
 you to set this option:
 
-	'gocode set deny-module-renames true'
+	'gocode set deny-package-renames true'

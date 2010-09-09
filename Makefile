@@ -3,7 +3,7 @@ include $(GOROOT)/src/Make.inc
 TARG=gocode
 GOFILES=gocode.go\
 	autocompletefile.go\
-	module.go\
+	package.go\
 	autocompletecontext.go\
 	server.go\
 	rpc.go\

@@ -11,9 +11,9 @@ import (
 type SemanticEntry struct {
 	offset int
 	length int
-	line int
-	col int
-	decl *Decl
+	line   int
+	col    int
+	decl   *Decl
 }
 
 //-------------------------------------------------------------------------
@@ -21,10 +21,10 @@ type SemanticEntry struct {
 //-------------------------------------------------------------------------
 
 type SemanticFile struct {
-	name string
-	data []byte
-	entries []SemanticEntry
-	file *ast.File
+	name      string
+	data      []byte
+	entries   []SemanticEntry
+	file      *ast.File
 	filescope *Scope
 
 	scope *Scope
@@ -58,7 +58,7 @@ func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
 	c := d.FindChildAndInEmbedded(e.Name)
 	if c == nil {
 		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
-				   e.Name, s.name, e.Line)
+			e.Name, s.name, e.Line)
 		panic(msg)
 	}
 	s.appendEntry(e.Offset, len(e.Name), e.Line, e.Column, c)
@@ -81,10 +81,10 @@ func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
 	if t.Name == "_" {
 		return nil
 	}
-	d := s.scope.lookup(t.Name);
+	d := s.scope.lookup(t.Name)
 	if d == nil {
 		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
-				   t.Name, s.name, t.Line)
+			t.Name, s.name, t.Line)
 		panic(msg)
 	}
 	if strings.HasPrefix(d.Name, "$") {
@@ -133,10 +133,10 @@ func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 	case *ast.ParenExpr:
 		s.semantifyExpr(t.X)
 	case *ast.SelectorExpr:
-		d := exprToDecl(t.X, s.scope);
+		d := exprToDecl(t.X, s.scope)
 		if d == nil {
 			msg := fmt.Sprintf("Cannot resolve selector expr at %s:%d (%s)",
-					   s.name, t.Pos().Line, t.Sel.Name)
+				s.name, t.Pos().Line, t.Sel.Name)
 			panic(msg)
 		}
 		s.semantifyExpr(t.X)
@@ -534,7 +534,7 @@ func (s *SemanticFile) processDeclLocals(decl ast.Decl) {
 			d := s.scope.lookup(methodof)
 			if d == nil {
 				msg := fmt.Sprintf("Can't find a method owner called '%s'",
-						   methodof)
+					methodof)
 				panic(msg)
 			}
 			s.semantifyIdentFor(t.Name, d)
@@ -621,10 +621,10 @@ type SemanticContext struct {
 	// TODO: temporary, for testing purposes, should be shared with 
 	// AutoCompleteContext.
 	declcache *DeclCache
-	mcache MCache
+	mcache    PackageCache
 }
 
-func NewSemanticContext(mcache MCache, declcache *DeclCache) *SemanticContext {
+func NewSemanticContext(mcache PackageCache, declcache *DeclCache) *SemanticContext {
 	return &SemanticContext{
 		nil,
 		declcache,
@@ -634,7 +634,7 @@ func NewSemanticContext(mcache MCache, declcache *DeclCache) *SemanticContext {
 
 func (s *SemanticContext) Collect(filename string) []*SemanticFile {
 	// 1. Retrieve the file and all other files of the package from the cache.
-	// 2. Update modules cache, fixup modules.
+	// 2. Update packages cache, fixup packages.
 	// 3. Merge declarations to the package scope.
 	// 4. Infer types for all top-level declarations in each file.
 	// 5. Collect semantic information for all identifiers in each file..
@@ -656,18 +656,18 @@ func (s *SemanticContext) Collect(filename string) []*SemanticFile {
 	}
 
 	// 2
-	ms := make(map[string]*ModuleCache)
+	ms := make(map[string]*PackageFileCache)
 
-	s.mcache.AppendModules(ms, current.Modules)
+	s.mcache.AppendPackages(ms, current.Packages)
 	for _, f := range others {
-		s.mcache.AppendModules(ms, f.Modules)
+		s.mcache.AppendPackages(ms, f.Packages)
 	}
 
-	updateModules(ms)
+	updatePackages(ms)
 
-	fixupModules(current.FileScope, current.Modules, s.mcache)
+	fixupPackages(current.FileScope, current.Packages, s.mcache)
 	for _, f := range others {
-		fixupModules(f.FileScope, f.Modules, s.mcache)
+		fixupPackages(f.FileScope, f.Packages, s.mcache)
 	}
 
 	// 3
@@ -683,7 +683,7 @@ func (s *SemanticContext) Collect(filename string) []*SemanticFile {
 	}
 
 	// 5
-	files := make([]*SemanticFile, len(others) + 1)
+	files := make([]*SemanticFile, len(others)+1)
 	files[0] = NewSemanticFile(current)
 	for i, f := range others {
 		files[i+1] = NewSemanticFile(f)
@@ -748,20 +748,20 @@ func (s *SemanticContext) GetSMap(filename string) []DeclDesc {
 // TODO: length is always the same for a set of identifiers
 type RenameDeclDesc struct {
 	Offset int
-	Line int
-	Col int
+	Line   int
+	Col    int
 }
 
 type RenameDesc struct {
-	Length int
+	Length   int
 	Filename string
-	Decls []RenameDeclDesc
+	Decls    []RenameDeclDesc
 }
 
 // sort in a reverse order
-func (d *RenameDesc) Len() int { return len(d.Decls) }
+func (d *RenameDesc) Len() int           { return len(d.Decls) }
 func (d *RenameDesc) Less(i, j int) bool { return !(d.Decls[i].Offset < d.Decls[j].Offset) }
-func (d *RenameDesc) Swap(i, j int) { d.Decls[i], d.Decls[j] = d.Decls[j], d.Decls[i] }
+func (d *RenameDesc) Swap(i, j int)      { d.Decls[i], d.Decls[j] = d.Decls[j], d.Decls[i] }
 
 func (d *RenameDesc) append(offset, line, col int) {
 	if d.Decls == nil {
@@ -785,7 +785,7 @@ func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
 	var theDecl *Decl
 	// find the declaration under the cursor
 	for _, e := range files[0].entries {
-		if cursor >= e.offset && cursor < e.offset + e.length {
+		if cursor >= e.offset && cursor < e.offset+e.length {
 			theDecl = e.decl
 			break
 		}
@@ -803,7 +803,7 @@ func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
 
 	// I need that for testing currently, and maybe some people will want that
 	// too.
-	if Config.DenyModuleRenames && theDecl.Class == DECL_MODULE {
+	if Config.DenyPackageRenames && theDecl.Class == DECL_PACKAGE {
 		return nil
 	}
 

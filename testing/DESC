@@ -1,4 +1,4 @@
-test.0001 - basic module import (fmt)
+test.0001 - basic package import (fmt)
 test.0002 - range statement over map variable
 test.0003 - type switch statement valid type case
 test.0004 - type switch statement default type case

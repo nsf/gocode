@@ -12,9 +12,9 @@ import (
 )
 
 var Config = struct {
-	ProposeBuiltins bool "propose-builtins"
-	DenyModuleRenames bool "deny-module-renames"
-	LibPath string "lib-path"
+	ProposeBuiltins    bool   "propose-builtins"
+	DenyPackageRenames bool   "deny-package-renames"
+	LibPath            string "lib-path"
 }{
 	false,
 	false,

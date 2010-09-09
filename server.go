@@ -12,17 +12,17 @@ import (
 //-------------------------------------------------------------------------
 
 type AutoCompletionDaemon struct {
-	acr *ACRServer
-	acc *AutoCompleteContext
-	semantic *SemanticContext
-	mcache MCache
+	acr       *ACRServer
+	acc       *AutoCompleteContext
+	semantic  *SemanticContext
+	mcache    PackageCache
 	declcache *DeclCache
 }
 
 func NewAutoCompletionDaemon(path string) *AutoCompletionDaemon {
 	d := new(AutoCompletionDaemon)
 	d.acr = NewACRServer(path)
-	d.mcache = NewMCache()
+	d.mcache = NewPackageCache()
 	d.declcache = NewDeclCache()
 	d.acc = NewAutoCompleteContext(d.mcache, d.declcache)
 	d.semantic = NewSemanticContext(d.mcache, d.declcache)
@@ -30,7 +30,7 @@ func NewAutoCompletionDaemon(path string) *AutoCompletionDaemon {
 }
 
 func (d *AutoCompletionDaemon) DropCache() {
-	d.mcache = NewMCache()
+	d.mcache = NewPackageCache()
 	d.declcache = NewDeclCache()
 	d.acc = NewAutoCompleteContext(d.mcache, d.declcache)
 	d.semantic = NewSemanticContext(d.mcache, d.declcache)

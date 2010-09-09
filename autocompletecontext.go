@@ -122,45 +122,44 @@ func matchClass(declclass int, class int) bool {
 //-------------------------------------------------------------------------
 // AutoCompleteContext
 // Context that holds cache structures for autocompletion needs. It
-// includes cache for modules and for package files.
+// includes cache for packages and for main package files.
 //-------------------------------------------------------------------------
 
-// TODO: Move module cache outside of AutoCompleteContext.
 type AutoCompleteContext struct {
 	current *AutoCompleteFile // currently editted file
 	others  []*DeclFileCache  // other files of the current package
 	pkg     *Scope
 
-	mcache    MCache     // modules cache
-	declcache *DeclCache // top-level declarations cache
+	pcache    PackageCache // packages cache
+	declcache *DeclCache   // top-level declarations cache
 }
 
-func NewAutoCompleteContext(mcache MCache, declcache *DeclCache) *AutoCompleteContext {
+func NewAutoCompleteContext(pcache PackageCache, declcache *DeclCache) *AutoCompleteContext {
 	c := new(AutoCompleteContext)
 	c.current = NewPackageFile("")
-	c.mcache = mcache
+	c.pcache = pcache
 	c.declcache = declcache
 	return c
 }
 
 func (c *AutoCompleteContext) updateCaches() {
-	// temporary map for modules that we need to check for a cache expiration
+	// temporary map for packages that we need to check for a cache expiration
 	// map is used as a set of unique items to prevent double checks
-	ms := make(map[string]*ModuleCache)
+	ps := make(map[string]*PackageFileCache)
 
 	// collect import information from all of the files
-	c.mcache.AppendModules(ms, c.current.modules)
+	c.pcache.AppendPackages(ps, c.current.packages)
 	c.others = getOtherPackageFiles(c.current.name, c.current.packageName, c.declcache)
 	for _, other := range c.others {
-		c.mcache.AppendModules(ms, other.Modules)
+		c.pcache.AppendPackages(ps, other.Packages)
 	}
 
-	updateModules(ms)
+	updatePackages(ps)
 
 	// fix imports for all files
-	fixupModules(c.current.filescope, c.current.modules, c.mcache)
+	fixupPackages(c.current.filescope, c.current.packages, c.pcache)
 	for _, f := range c.others {
-		fixupModules(f.FileScope, f.Modules, c.mcache)
+		fixupPackages(f.FileScope, f.Packages, c.pcache)
 	}
 
 	// At this point we have collected all top level declarations, now we need to
@@ -200,7 +199,7 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 	// active function).
 	c.current.processData(file)
 
-	// Updates cache of other files and modules. See the function for details of
+	// Updates cache of other files and packages. See the function for details of
 	// the process. At the end merges all the top-level declarations into the package
 	// block.
 	c.updateCaches()
@@ -222,8 +221,8 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 			class = DECL_TYPE
 		case "func":
 			class = DECL_FUNC
-		case "module":
-			class = DECL_MODULE
+		case "package":
+			class = DECL_PACKAGE
 		}
 		if da.Decl == nil {
 			// In case if no declaraion is a subject of completion, propose all:
@@ -239,7 +238,7 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 			// propose all children of a subject declaration and
 			// propose all children of its embedded types
 			for _, decl := range da.Decl.Children {
-				if da.Decl.Class == DECL_MODULE && !ast.IsExported(decl.Name) {
+				if da.Decl.Class == DECL_PACKAGE && !ast.IsExported(decl.Name) {
 					continue
 				}
 				b.appendDecl(da.Partial, decl.Name, decl, class)
@@ -257,11 +256,11 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 	return b.names, b.types, b.classes, partial
 }
 
-func updateModules(ms map[string]*ModuleCache) {
-	// initiate module cache update
+func updatePackages(ms map[string]*PackageFileCache) {
+	// initiate package cache update
 	done := make(chan bool)
 	for _, m := range ms {
-		go func(m *ModuleCache) {
+		go func(m *PackageFileCache) {
 			defer func() {
 				if err := recover(); err != nil {
 					printBacktrace(err)
@@ -276,7 +275,7 @@ func updateModules(ms map[string]*ModuleCache) {
 	// wait for its completion
 	for _ = range ms {
 		if !<-done {
-			panic("One of the module cache updaters panicked")
+			panic("One of the package cache updaters panicked")
 		}
 	}
 }
@@ -288,8 +287,8 @@ func mergeDecls(filescope *Scope, pkg *Scope, decls map[string]*Decl) {
 	filescope.parent = pkg
 }
 
-func fixupModules(filescope *Scope, modules ModuleImports, mcache MCache) {
-	for _, m := range modules {
+func fixupPackages(filescope *Scope, pkgs PackageImports, mcache PackageCache) {
+	for _, m := range pkgs {
 		path, alias := m.Path, m.Alias
 		if alias == "" {
 			alias = mcache[path].defalias
@@ -463,27 +462,27 @@ var declClassToColor = [...]string{
 	DECL_VAR:          COLOR_magenta,
 	DECL_TYPE:         COLOR_cyan,
 	DECL_FUNC:         COLOR_green,
-	DECL_MODULE:       COLOR_red,
+	DECL_PACKAGE:      COLOR_red,
 	DECL_METHODS_STUB: COLOR_red,
 }
 
 var declClassToStringStatus = [...]string{
-	DECL_CONST:        " const",
-	DECL_VAR:          "   var",
-	DECL_TYPE:         "  type",
-	DECL_FUNC:         "  func",
-	DECL_MODULE:       "module",
-	DECL_METHODS_STUB: "  stub",
+	DECL_CONST:        "  const",
+	DECL_VAR:          "    var",
+	DECL_TYPE:         "   type",
+	DECL_FUNC:         "   func",
+	DECL_PACKAGE:      "package",
+	DECL_METHODS_STUB: "   stub",
 }
 
 func (c *AutoCompleteContext) Status() string {
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	fmt.Fprintf(buf, "Server's GOMAXPROCS == %d\n", runtime.GOMAXPROCS(0))
-	fmt.Fprintf(buf, "\nPackage cache contains %d entries\n", len(c.mcache))
+	fmt.Fprintf(buf, "\nPackage cache contains %d entries\n", len(c.pcache))
 	fmt.Fprintf(buf, "\nListing these entries:\n")
-	for _, mod := range c.mcache {
+	for _, mod := range c.pcache {
 		fmt.Fprintf(buf, "\tname: %s (default alias: %s)\n", mod.name, mod.defalias)
-		fmt.Fprintf(buf, "\timports %d declarations and %d modules\n", len(mod.main.Children), len(mod.others))
+		fmt.Fprintf(buf, "\timports %d declarations and %d packages\n", len(mod.main.Children), len(mod.others))
 		if mod.mtime == -1 {
 			fmt.Fprintf(buf, "\tthis package stays in cache forever (built-in package)\n")
 		} else {

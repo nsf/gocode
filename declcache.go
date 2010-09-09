@@ -13,30 +13,30 @@ import (
 )
 
 //-------------------------------------------------------------------------
-// ModuleImport
+// PackageImport
 // Contains import information from a single file
 //-------------------------------------------------------------------------
 
-type ModuleImport struct {
+type PackageImport struct {
 	Alias string
 	Path  string
 }
 
-type ModuleImports []ModuleImport
+type PackageImports []PackageImport
 
-func NewModuleImports(filename string, decls []ast.Decl) ModuleImports {
-	mi := make(ModuleImports, 0, 16)
+func NewPackageImports(filename string, decls []ast.Decl) PackageImports {
+	mi := make(PackageImports, 0, 16)
 	mi.appendImports(filename, decls)
 	return mi
 }
 
-func (mi *ModuleImports) appendImports(filename string, decls []ast.Decl) {
+func (mi *PackageImports) appendImports(filename string, decls []ast.Decl) {
 	for _, decl := range decls {
 		if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.IMPORT {
 			for _, spec := range gd.Specs {
 				imp := spec.(*ast.ImportSpec)
 				path, alias := pathAndAlias(imp)
-				path = absPathForModule(filename, path)
+				path = absPathForPackage(filename, path)
 				mi.appendImport(alias, path)
 			}
 		} else {
@@ -45,22 +45,22 @@ func (mi *ModuleImports) appendImports(filename string, decls []ast.Decl) {
 	}
 }
 
-func (mi *ModuleImports) appendImport(alias, path string) {
+func (mi *PackageImports) appendImport(alias, path string) {
 	v := *mi
 	if alias == "_" || alias == "." {
-		// TODO: support for modules imported in the current namespace
+		// TODO: support for packages imported in the current namespace
 		return
 	}
 
 	n := len(v)
 	if cap(v) < n+1 {
-		s := make(ModuleImports, n, n*2+1)
+		s := make(PackageImports, n, n*2+1)
 		copy(s, v)
 		v = s
 	}
 
 	v = v[0 : n+1]
-	v[n] = ModuleImport{alias, path}
+	v[n] = PackageImport{alias, path}
 	*mi = v
 }
 
@@ -78,7 +78,7 @@ type DeclFileCache struct {
 	File      *ast.File        // an AST tree
 	Decls     map[string]*Decl // top-level declarations
 	Error     os.Error         // last error
-	Modules   ModuleImports    // import information
+	Packages  PackageImports   // import information
 	FileScope *Scope
 }
 
@@ -115,7 +115,7 @@ func (f *DeclFileCache) readFile(filename string) {
 	f.File, f.Error = parser.ParseFile("", f.Data, 0)
 	f.FileScope = NewScope(nil)
 	anonymifyAst(f.File.Decls, 0, f.FileScope)
-	f.Modules = NewModuleImports(f.name, f.File.Decls)
+	f.Packages = NewPackageImports(f.name, f.File.Decls)
 	f.Decls = make(map[string]*Decl, len(f.File.Decls))
 	for _, decl := range f.File.Decls {
 		appendToTopDecls(f.Decls, decl, f.FileScope)
@@ -155,7 +155,7 @@ func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
 	})
 }
 
-func absPathForModule(filename, p string) string {
+func absPathForPackage(filename, p string) string {
 	if p[0] == '.' {
 		dir, _ := path.Split(filename)
 		return fmt.Sprintf("%s.a", path.Join(dir, p))

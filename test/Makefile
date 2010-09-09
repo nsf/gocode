@@ -7,7 +7,7 @@ GOFILES=gocodetest.go\
 	../autocompletefile.go\
 	../autocompletecontext.go\
 	../decl.go\
-	../module.go\
+	../package.go\
 	../scope.go\
 	../declcache.go
 

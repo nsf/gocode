@@ -13,44 +13,44 @@ import (
 )
 
 //-------------------------------------------------------------------------
-// ModuleCache (TODO: will be ModuleFileCache or something)
+// PackageFileCache
 //-------------------------------------------------------------------------
 
-type ModuleCache struct {
+type PackageFileCache struct {
 	name     string // file name
 	mtime    int64
 	defalias string
 
 	// used as a temporary for foreignifying package contents
 	scope  *Scope
-	main   *Decl // module declaration
+	main   *Decl // package declaration
 	others map[string]*Decl
 
 	// map which has that kind of entries:
 	// ast -> go/ast
 	// parser -> go/parser
 	// etc.
-	// used for replacing "" module names in .a files
+	// used for replacing "" package names in .a files
 	pathToAlias map[string]string
 }
 
-func NewModuleCache(name string) *ModuleCache {
-	m := new(ModuleCache)
+func NewPackageFileCache(name string) *PackageFileCache {
+	m := new(PackageFileCache)
 	m.name = name
 	m.mtime = 0
 	m.defalias = ""
 	return m
 }
 
-func NewModuleCacheForever(name, defalias string) *ModuleCache {
-	m := new(ModuleCache)
+func NewPackageFileCacheForever(name, defalias string) *PackageFileCache {
+	m := new(PackageFileCache)
 	m.name = name
 	m.mtime = -1
 	m.defalias = defalias
 	return m
 }
 
-func (m *ModuleCache) updateCache() {
+func (m *PackageFileCache) updateCache() {
 	if m.mtime == -1 {
 		return
 	}
@@ -72,7 +72,7 @@ func (m *ModuleCache) updateCache() {
 	}
 }
 
-func (m *ModuleCache) processPackageData(s string) {
+func (m *PackageFileCache) processPackageData(s string) {
 	m.scope = NewScope(nil)
 	i := strings.Index(s, "import\n$$\n")
 	if i == -1 {
@@ -94,8 +94,8 @@ func (m *ModuleCache) processPackageData(s string) {
 	s = s[i+1:]
 
 	m.pathToAlias = make(map[string]string)
-	// hack, add ourselves to the module scope
-	m.addFakeModuleToScope(m.defalias, m.name)
+	// hack, add ourselves to the package scope
+	m.addPackageToScope(m.defalias, m.name)
 	internalPackages := make(map[string]*bytes.Buffer)
 	for {
 		// for each line
@@ -134,22 +134,22 @@ func (m *ModuleCache) processPackageData(s string) {
 		} else {
 			if key == m.name {
 				// main package
-				m.main = NewDecl(m.name, DECL_MODULE, nil)
-				addAstDeclsToModule(m.main, decls, m.scope)
+				m.main = NewDecl(m.name, DECL_PACKAGE, nil)
+				addAstDeclsToPackage(m.main, decls, m.scope)
 			} else {
 				// others
-				m.others[key] = NewDecl(key, DECL_MODULE, nil)
-				addAstDeclsToModule(m.others[key], decls, m.scope)
+				m.others[key] = NewDecl(key, DECL_PACKAGE, nil)
+				addAstDeclsToPackage(m.others[key], decls, m.scope)
 			}
 		}
 	}
 	m.pathToAlias = nil
 	for key, value := range m.scope.entities {
-		module, ok := m.others[value.Name]
+		pkg, ok := m.others[value.Name]
 		if !ok && value.Name == m.name {
-			module = m.main
+			pkg = m.main
 		}
-		m.scope.replaceDecl(key, module)
+		m.scope.replaceDecl(key, pkg)
 	}
 }
 
@@ -157,7 +157,7 @@ func (m *ModuleCache) processPackageData(s string) {
 // returns:
 // 1. a go/parser parsable string representing one Go declaration
 // 2. and a package name this declaration belongs to
-func (m *ModuleCache) processExport(s string) (string, string) {
+func (m *PackageFileCache) processExport(s string) (string, string) {
 	i := 0
 	pkg := ""
 
@@ -207,7 +207,7 @@ func (m *ModuleCache) processExport(s string) (string, string) {
 	return s, pkg
 }
 
-func (m *ModuleCache) processImportStatement(s string) {
+func (m *PackageFileCache) processImportStatement(s string) {
 	var scan scanner.Scanner
 	scan.Init("", []byte(s), nil, 0)
 
@@ -227,10 +227,10 @@ func (m *ModuleCache) processImportStatement(s string) {
 		}
 	}
 	m.pathToAlias[path] = alias
-	m.addFakeModuleToScope(alias, path)
+	m.addPackageToScope(alias, path)
 }
 
-func (m *ModuleCache) expandPackages(s []byte) []byte {
+func (m *PackageFileCache) expandPackages(s []byte) []byte {
 	out := bytes.NewBuffer(make([]byte, 0, len(s)))
 	i := 0
 	for {
@@ -280,12 +280,12 @@ func (m *ModuleCache) expandPackages(s []byte) []byte {
 	panic("unreachable")
 }
 
-func (m *ModuleCache) addFakeModuleToScope(alias, realname string) {
-	d := NewDecl(realname, DECL_MODULE, nil)
+func (m *PackageFileCache) addPackageToScope(alias, realname string) {
+	d := NewDecl(realname, DECL_PACKAGE, nil)
 	m.scope.addDecl(alias, d)
 }
 
-func addAstDeclsToModule(module *Decl, decls []ast.Decl, scope *Scope) {
+func addAstDeclsToPackage(pkg *Decl, decls []ast.Decl, scope *Scope) {
 	for _, decl := range decls {
 		foreachDecl(decl, func(data *foreachDeclStruct) {
 			class := astDeclClass(data.decl)
@@ -303,20 +303,20 @@ func addAstDeclsToModule(module *Decl, decls []ast.Decl, scope *Scope) {
 
 				methodof := MethodOf(data.decl)
 				if methodof != "" {
-					decl := module.FindChild(methodof)
+					decl := pkg.FindChild(methodof)
 					if decl != nil {
 						decl.AddChild(d)
 					} else {
 						decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
 						decl.AddChild(d)
-						module.AddChild(decl)
+						pkg.AddChild(decl)
 					}
 				} else {
-					decl := module.FindChild(d.Name)
+					decl := pkg.FindChild(d.Name)
 					if decl != nil {
 						decl.ExpandOrReplace(d)
 					} else {
-						module.AddChild(d)
+						pkg.AddChild(d)
 					}
 				}
 			}
@@ -430,13 +430,13 @@ func preprocessConstDecl(s string) string {
 }
 
 //-------------------------------------------------------------------------
-// MCache (TODO: will be ModuleCache)
+// PackageCache
 //-------------------------------------------------------------------------
 
-type MCache map[string]*ModuleCache
+type PackageCache map[string]*PackageFileCache
 
-func NewMCache() MCache {
-	m := make(MCache)
+func NewPackageCache() PackageCache {
+	m := make(PackageCache)
 
 	// add built-in "unsafe" package
 	m.addBuiltinUnsafePackage()
@@ -444,19 +444,19 @@ func NewMCache() MCache {
 	return m
 }
 
-// Function fills 'ms' set with modules from 'modules' import information.
-// In case if module is not in the cache, it creates one and adds one to the cache.
-func (c MCache) AppendModules(ms map[string]*ModuleCache, modules ModuleImports) {
-	for _, m := range modules {
-		if _, ok := ms[m.Path]; ok {
+// Function fills 'ps' set with packages from 'packages' import information.
+// In case if package is not in the cache, it creates one and adds one to the cache.
+func (c PackageCache) AppendPackages(ps map[string]*PackageFileCache, pkgs PackageImports) {
+	for _, m := range pkgs {
+		if _, ok := ps[m.Path]; ok {
 			continue
 		}
 
 		if mod, ok := c[m.Path]; ok {
-			ms[m.Path] = mod
+			ps[m.Path] = mod
 		} else {
-			mod = NewModuleCache(m.Path)
-			ms[m.Path] = mod
+			mod = NewPackageFileCache(m.Path)
+			ps[m.Path] = mod
 			c[m.Path] = mod
 		}
 	}
@@ -479,9 +479,9 @@ package unsafe
 $$
 `
 
-func (c MCache) addBuiltinUnsafePackage() {
+func (c PackageCache) addBuiltinUnsafePackage() {
 	name := findGlobalFile("unsafe")
-	module := NewModuleCacheForever(name, "unsafe")
-	module.processPackageData(builtinUnsafePackage)
-	c[name] = module
+	pkg := NewPackageFileCacheForever(name, "unsafe")
+	pkg.processPackageData(builtinUnsafePackage)
+	c[name] = pkg
 }

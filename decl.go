@@ -17,7 +17,7 @@ const (
 	DECL_VAR
 	DECL_TYPE
 	DECL_FUNC
-	DECL_MODULE
+	DECL_PACKAGE
 
 	// this one serves as a temporary type for those methods that were
 	// declared before their actual owner
@@ -26,7 +26,7 @@ const (
 
 // Decl.Flags
 const (
-	DECL_FOREIGN = 1 << iota // imported from another module
+	DECL_FOREIGN = 1 << iota // imported from another package
 
 	// means that the decl is a part of the range statement
 	// its type is inferred in a special way
@@ -38,7 +38,7 @@ var declClassToString = [...]string{
 	DECL_VAR:          "var",
 	DECL_TYPE:         "type",
 	DECL_FUNC:         "func",
-	DECL_MODULE:       "module",
+	DECL_PACKAGE:      "package",
 	DECL_METHODS_STUB: "IF YOU SEE THIS, REPORT A BUG", // :D
 }
 
@@ -464,12 +464,12 @@ func funcReturnType(f *ast.FuncType, index int) ast.Expr {
 }
 
 type TypePath struct {
-	module string
-	name   string
+	pkg  string
+	name string
 }
 
 func (tp *TypePath) IsNil() bool {
-	return tp.module == "" && tp.name == ""
+	return tp.pkg == "" && tp.name == ""
 }
 
 // converts type expressions like:
@@ -489,7 +489,7 @@ func typePath(e ast.Expr) (r TypePath) {
 		r = typePath(t.X)
 	case *ast.SelectorExpr:
 		if ident, ok := t.X.(*ast.Ident); ok {
-			r.module = ident.Name
+			r.pkg = ident.Name
 		}
 		r.name = t.Sel.Name
 	}
@@ -501,8 +501,8 @@ func lookupPath(tp TypePath, scope *Scope) *Decl {
 		return nil
 	}
 	var decl *Decl
-	if tp.module != "" {
-		decl = scope.lookup(tp.module)
+	if tp.pkg != "" {
+		decl = scope.lookup(tp.pkg)
 	}
 
 	if decl != nil {
@@ -640,7 +640,7 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 		return t.Type, scope, true
 	case *ast.Ident:
 		if d := scope.lookup(t.Name); d != nil {
-			if d.Class == DECL_MODULE {
+			if d.Class == DECL_PACKAGE {
 				return ast.NewIdent(t.Name), scope, false
 			}
 			typ, scope := d.InferType()
@@ -788,7 +788,7 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 			return ast.NewIdent("bool"), universeScope, false
 		}
 	case *ast.ArrayType, *ast.MapType, *ast.ChanType,
-	     *ast.FuncType, *ast.StructType, *ast.InterfaceType:
+		*ast.FuncType, *ast.StructType, *ast.InterfaceType:
 		return t, scope, true
 	default:
 		_ = reflect.Typeof(v)
@@ -806,8 +806,8 @@ func (d *Decl) InferType() (ast.Expr, *Scope) {
 	}
 
 	switch d.Class {
-	case DECL_MODULE:
-		// module is handled specially in inferType
+	case DECL_PACKAGE:
+		// package is handled specially in inferType
 		return nil, nil
 	case DECL_TYPE:
 		return ast.NewIdent(d.Name), d.Scope
@@ -1080,8 +1080,8 @@ func astDeclSplit(d ast.Decl) []ast.Decl {
 }
 
 type declPack struct {
-	names []*ast.Ident
-	typ ast.Expr
+	names  []*ast.Ident
+	typ    ast.Expr
 	values []ast.Expr
 }
 

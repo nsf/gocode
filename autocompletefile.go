@@ -11,7 +11,7 @@ type AutoCompleteFile struct {
 	packageName string
 
 	decls     map[string]*Decl
-	modules   ModuleImports
+	packages  PackageImports
 	filescope *Scope
 	scope     *Scope
 
@@ -32,7 +32,7 @@ func (f *AutoCompleteFile) processData(data []byte) {
 	f.packageName = packageName(file)
 
 	f.decls = make(map[string]*Decl)
-	f.modules = NewModuleImports(f.name, file.Decls)
+	f.packages = NewPackageImports(f.name, file.Decls)
 	f.filescope = NewScope(nil)
 	f.scope = f.filescope
 
