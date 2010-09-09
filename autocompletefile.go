@@ -65,11 +65,12 @@ func (f *AutoCompleteFile) processDeclLocals(decl ast.Decl) {
 	switch t := decl.(type) {
 	case *ast.FuncDecl:
 		if f.cursorIn(t.Body) {
+			s := f.scope
 			f.scope = NewScope(f.scope)
 
-			f.processFieldList(t.Recv)
-			f.processFieldList(t.Type.Params)
-			f.processFieldList(t.Type.Results)
+			f.processFieldList(t.Recv, s)
+			f.processFieldList(t.Type.Params, s)
+			f.processFieldList(t.Type.Results, s)
 			f.processBlockStmt(t.Body)
 
 		}
@@ -122,10 +123,11 @@ type funcLitVisitor struct {
 
 func (v *funcLitVisitor) Visit(node interface{}) ast.Visitor {
 	if t, ok := node.(*ast.FuncLit); ok && v.ctx.cursorIn(t.Body) {
+		s := v.ctx.scope
 		v.ctx.scope = AdvanceScope(v.ctx.scope)
 
-		v.ctx.processFieldList(t.Type.Params)
-		v.ctx.processFieldList(t.Type.Results)
+		v.ctx.processFieldList(t.Type.Params, s)
+		v.ctx.processFieldList(t.Type.Results, s)
 		v.ctx.processBlockStmt(t.Body)
 
 		return nil
@@ -310,9 +312,9 @@ func (f *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
 	}
 }
 
-func (f *AutoCompleteFile) processFieldList(fieldList *ast.FieldList) {
+func (f *AutoCompleteFile) processFieldList(fieldList *ast.FieldList, s *Scope) {
 	if fieldList != nil {
-		decls := astFieldListToDecls(fieldList, DECL_VAR, 0, f.scope)
+		decls := astFieldListToDecls(fieldList, DECL_VAR, 0, s)
 		for _, d := range decls {
 			f.scope.addNamedDecl(d)
 		}
