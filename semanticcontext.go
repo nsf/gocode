@@ -103,10 +103,13 @@ func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 			s.semantifyExpr(e)
 		}
 	case *ast.FuncLit:
+		s.semantifyFieldListTypes(t.Type.Params)
+		s.semantifyFieldListTypes(t.Type.Results)
+
 		savescope, saveblock := s.advanceScopeAndBlock()
 
-		s.processFieldList(t.Type.Params)
-		s.processFieldList(t.Type.Results)
+		s.processFieldList(t.Type.Params, savescope)
+		s.processFieldList(t.Type.Results, savescope)
 		s.processBlockStmt(t.Body)
 
 		s.restoreScopeAndBlock(savescope, saveblock)
@@ -179,6 +182,17 @@ func (s *SemanticFile) semantifyFieldListTypes(fieldList *ast.FieldList) {
 	}
 	for _, f := range fieldList.List {
 		s.semantifyExpr(f.Type)
+	}
+}
+
+func (s *SemanticFile) semantifyFieldListNames(fieldList *ast.FieldList) {
+	if fieldList == nil {
+		return
+	}
+	for _, f := range fieldList.List {
+		for _, name := range f.Names {
+			s.semantifyIdent(name)
+		}
 	}
 }
 
@@ -501,15 +515,15 @@ func (s *SemanticFile) addToBlock(d *Decl) {
 	}
 }
 
-func (s *SemanticFile) processFieldList(fieldList *ast.FieldList) {
+func (s *SemanticFile) processFieldList(fieldList *ast.FieldList, scope *Scope) {
 	if fieldList == nil {
 		return
 	}
-	decls := astFieldListToDecls(fieldList, DECL_VAR, 0, s.scope)
+	decls := astFieldListToDecls(fieldList, DECL_VAR, 0, scope)
 	for _, d := range decls {
 		s.addToBlockAndScope(d)
 	}
-	s.semantifyFieldList(fieldList)
+	s.semantifyFieldListNames(fieldList)
 }
 
 func (s *SemanticFile) processDeclLocals(decl ast.Decl) {
@@ -528,11 +542,15 @@ func (s *SemanticFile) processDeclLocals(decl ast.Decl) {
 			s.semantifyExpr(t.Name)
 		}
 
+		s.semantifyFieldListTypes(t.Recv)
+		s.semantifyFieldListTypes(t.Type.Params)
+		s.semantifyFieldListTypes(t.Type.Results)
+
 		savescope, saveblock := s.advanceScopeAndBlock()
 
-		s.processFieldList(t.Recv)
-		s.processFieldList(t.Type.Params)
-		s.processFieldList(t.Type.Results)
+		s.processFieldList(t.Recv, savescope)
+		s.processFieldList(t.Type.Params, savescope)
+		s.processFieldList(t.Type.Results, savescope)
 		s.processBlockStmt(t.Body)
 
 		s.restoreScopeAndBlock(savescope, saveblock)
