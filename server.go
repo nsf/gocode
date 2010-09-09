@@ -15,25 +15,25 @@ type AutoCompletionDaemon struct {
 	acr       *ACRServer
 	acc       *AutoCompleteContext
 	semantic  *SemanticContext
-	mcache    PackageCache
+	pcache    PackageCache
 	declcache *DeclCache
 }
 
 func NewAutoCompletionDaemon(path string) *AutoCompletionDaemon {
 	d := new(AutoCompletionDaemon)
 	d.acr = NewACRServer(path)
-	d.mcache = NewPackageCache()
+	d.pcache = NewPackageCache()
 	d.declcache = NewDeclCache()
-	d.acc = NewAutoCompleteContext(d.mcache, d.declcache)
-	d.semantic = NewSemanticContext(d.mcache, d.declcache)
+	d.acc = NewAutoCompleteContext(d.pcache, d.declcache)
+	d.semantic = NewSemanticContext(d.pcache, d.declcache)
 	return d
 }
 
 func (d *AutoCompletionDaemon) DropCache() {
-	d.mcache = NewPackageCache()
+	d.pcache = NewPackageCache()
 	d.declcache = NewDeclCache()
-	d.acc = NewAutoCompleteContext(d.mcache, d.declcache)
-	d.semantic = NewSemanticContext(d.mcache, d.declcache)
+	d.acc = NewAutoCompleteContext(d.pcache, d.declcache)
+	d.semantic = NewSemanticContext(d.pcache, d.declcache)
 }
 
 var daemon *AutoCompletionDaemon

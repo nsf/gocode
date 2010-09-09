@@ -526,7 +526,7 @@ func (s *SemanticFile) processFieldList(fieldList *ast.FieldList, scope *Scope) 
 	s.semantifyFieldListNames(fieldList)
 }
 
-func (s *SemanticFile) processDeclLocals(decl ast.Decl) {
+func (s *SemanticFile) processTopDecls(decl ast.Decl) {
 	switch t := decl.(type) {
 	case *ast.FuncDecl:
 		methodof := MethodOf(t)
@@ -606,7 +606,7 @@ func (s *SemanticFile) processDeclLocals(decl ast.Decl) {
 
 func (s *SemanticFile) semantify() {
 	for _, decl := range s.file.Decls {
-		s.processDeclLocals(decl)
+		s.processTopDecls(decl)
 	}
 	s.block = nil
 }
@@ -621,14 +621,14 @@ type SemanticContext struct {
 	// TODO: temporary, for testing purposes, should be shared with 
 	// AutoCompleteContext.
 	declcache *DeclCache
-	mcache    PackageCache
+	pcache    PackageCache
 }
 
-func NewSemanticContext(mcache PackageCache, declcache *DeclCache) *SemanticContext {
+func NewSemanticContext(pcache PackageCache, declcache *DeclCache) *SemanticContext {
 	return &SemanticContext{
 		nil,
 		declcache,
-		mcache,
+		pcache,
 	}
 }
 
@@ -656,18 +656,18 @@ func (s *SemanticContext) Collect(filename string) []*SemanticFile {
 	}
 
 	// 2
-	ms := make(map[string]*PackageFileCache)
+	ps := make(map[string]*PackageFileCache)
 
-	s.mcache.AppendPackages(ms, current.Packages)
+	s.pcache.AppendPackages(ps, current.Packages)
 	for _, f := range others {
-		s.mcache.AppendPackages(ms, f.Packages)
+		s.pcache.AppendPackages(ps, f.Packages)
 	}
 
-	updatePackages(ms)
+	updatePackages(ps)
 
-	fixupPackages(current.FileScope, current.Packages, s.mcache)
+	fixupPackages(current.FileScope, current.Packages, s.pcache)
 	for _, f := range others {
-		fixupPackages(f.FileScope, f.Packages, s.mcache)
+		fixupPackages(f.FileScope, f.Packages, s.pcache)
 	}
 
 	// 3

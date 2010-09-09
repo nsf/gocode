@@ -256,24 +256,24 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 	return b.names, b.types, b.classes, partial
 }
 
-func updatePackages(ms map[string]*PackageFileCache) {
+func updatePackages(ps map[string]*PackageFileCache) {
 	// initiate package cache update
 	done := make(chan bool)
-	for _, m := range ms {
-		go func(m *PackageFileCache) {
+	for _, p := range ps {
+		go func(p *PackageFileCache) {
 			defer func() {
 				if err := recover(); err != nil {
 					printBacktrace(err)
 					done <- false
 				}
 			}()
-			m.updateCache()
+			p.updateCache()
 			done <- true
-		}(m)
+		}(p)
 	}
 
 	// wait for its completion
-	for _ = range ms {
+	for _ = range ps {
 		if !<-done {
 			panic("One of the package cache updaters panicked")
 		}
@@ -287,13 +287,13 @@ func mergeDecls(filescope *Scope, pkg *Scope, decls map[string]*Decl) {
 	filescope.parent = pkg
 }
 
-func fixupPackages(filescope *Scope, pkgs PackageImports, mcache PackageCache) {
+func fixupPackages(filescope *Scope, pkgs PackageImports, pcache PackageCache) {
 	for _, m := range pkgs {
 		path, alias := m.Path, m.Alias
 		if alias == "" {
-			alias = mcache[path].defalias
+			alias = pcache[path].defalias
 		}
-		filescope.replaceDecl(alias, mcache[path].main)
+		filescope.replaceDecl(alias, pcache[path].main)
 	}
 }
 
