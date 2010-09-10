@@ -98,6 +98,10 @@ fu! gocomplete#Rename()
 		echo "Nothing to rename"	
 		return
 	endif
+	if &modified
+		echo "Current buffer was modified, you should :w before using GocodeRename"
+		return
+	endif
 	let newname = input("New identifier name: ")
 	for fileinfo in rename_data
 		" Skip those files that are not in the buffer list
