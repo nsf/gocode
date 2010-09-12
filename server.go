@@ -97,16 +97,16 @@ func Server_SMap(filename string) []DeclDesc {
 	return daemon.semantic.GetSMap(filename)
 }
 
-func Server_Rename(filename string, cursor int) []RenameDesc {
-	defer func() {
-		if err := recover(); err != nil {
-			printBacktrace(err)
+func Server_Rename(filename string, cursor int) ([]RenameDesc, string) {
+	descs, err := daemon.semantic.Rename(filename, cursor)
+	serr := ""
+	if err != nil {
+		serr = err.String()
 
-			// drop cache
-			daemon.DropCache()
-		}
-	}()
-	return daemon.semantic.Rename(filename, cursor)
+		// drop cache, just in case
+		daemon.DropCache()
+	}
+	return descs, serr
 }
 
 func Server_Close(notused int) int {

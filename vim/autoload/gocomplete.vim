@@ -94,8 +94,10 @@ fu! gocomplete#Rename()
 	" Rename format is:
 	" [{'filename':...,'length':...,'decls':[[line,col],...]},...]
 	execute "silent let rename_data = " . s:gocodeRename()
-	if empty(rename_data)
-		echo "Nothing to rename"	
+	let status = rename_data[0]
+	let renames = rename_data[1]
+	if status != "OK"
+		echo status
 		return
 	endif
 	if &modified
@@ -103,7 +105,7 @@ fu! gocomplete#Rename()
 		return
 	endif
 	let newname = input("New identifier name: ")
-	for fileinfo in rename_data
+	for fileinfo in renames
 		" Skip those files that are not in the buffer list
 		if !bufexists(fileinfo["filename"])
 			con

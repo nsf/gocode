@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sort"
 	"fmt"
+	"os"
 )
 
 type SemanticEntry struct {
@@ -630,7 +631,7 @@ func NewSemanticContext(pcache PackageCache, declcache *DeclCache) *SemanticCont
 	}
 }
 
-func (s *SemanticContext) Collect(filename string) []*SemanticFile {
+func (s *SemanticContext) Collect(filename string) ([]*SemanticFile, os.Error) {
 	// 1. Retrieve the file and all other files of the package from the cache.
 	// 2. Update packages cache, fixup packages.
 	// 3. Merge declarations to the package scope.
@@ -642,14 +643,18 @@ func (s *SemanticContext) Collect(filename string) []*SemanticFile {
 	// NOTE: (5) can be done in parallel for each file
 
 	// 1
+	const errhead = "Unable to proceed, because of the following errors:\n"
+
 	current := s.declcache.Get(filename)
 	if current.Error != nil {
-		panic("Failed to parse current file")
+		err := fmt.Sprintf("%sFailed to parse '%s'", errhead, filename)
+		return nil, os.NewError(err)
 	}
 	others := getOtherPackageFiles(filename, packageName(current.File), s.declcache)
 	for _, f := range others {
 		if f.Error != nil {
-			panic("Failed to parse one of the other files")
+			err := fmt.Sprintf("%sFailed to parse '%s'", errhead, f.name)
+			return nil, os.NewError(err)
 		}
 	}
 
@@ -687,28 +692,38 @@ func (s *SemanticContext) Collect(filename string) []*SemanticFile {
 		files[i+1] = NewSemanticFile(f)
 	}
 
-	done := make(chan bool)
+	done := make(chan os.Error)
 	for _, f := range files {
 		go func(f *SemanticFile) {
 			defer func() {
 				if err := recover(); err != nil {
 					printBacktrace(err)
-					done <- false
+					serr, ok := err.(string)
+					if !ok {
+						serr = "Unknown error"
+					}
+					done <- os.NewError(serr)
 				}
 			}()
 
 			f.semantify()
-			done <- true
+			done <- nil
 		}(f)
 	}
 
+	errs := ""
 	for _ = range files {
-		if !<-done {
-			panic("One of the semantifying workers panicked")
+		err := <-done
+		if err != nil {
+			errs += err.String() + "\n"
 		}
 	}
 
-	return files
+	if errs == "" {
+		return files, nil
+	}
+	errs = "Unable to proceed, because of the following errors:\n" + errs[0:len(errs)-1]
+	return nil, os.NewError(errs)
 }
 
 //-------------------------------------------------------------------------
@@ -724,7 +739,10 @@ type DeclDesc struct {
 }
 
 func (s *SemanticContext) GetSMap(filename string) []DeclDesc {
-	files := s.Collect(filename)
+	files, err := s.Collect(filename)
+	if err != nil {
+		panic(err.String())
+	}
 
 	i := 0
 	f := files[0]
@@ -776,8 +794,11 @@ func (d *RenameDesc) append(offset, line, col int) {
 	d.Decls[n] = RenameDeclDesc{offset, line, col}
 }
 
-func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
-	files := s.Collect(filename)
+func (s *SemanticContext) Rename(filename string, cursor int) ([]RenameDesc, os.Error) {
+	files, err := s.Collect(filename)
+	if err != nil {
+		return nil, err
+	}
 
 	var theDecl *Decl
 	// find the declaration under the cursor
@@ -790,18 +811,18 @@ func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
 
 	// if there is no such declaration, return nil
 	if theDecl == nil {
-		return nil
+		return nil, os.NewError("Failed to find valid declaration under the cursor")
 	}
 
 	// foreign declarations and universe scope declarations are a no-no too
 	if theDecl.Flags&DECL_FOREIGN != 0 || theDecl.Scope == universeScope {
-		return nil
+		return nil, os.NewError("Can't rename foreign or built-in declaration")
 	}
 
 	// I need that for testing currently, and maybe some people will want that
 	// too.
 	if Config.DenyPackageRenames && theDecl.Class == DECL_PACKAGE {
-		return nil
+		return nil, os.NewError("Package rename operation is denied by the configuration")
 	}
 
 	// collect decldescs about this declaration in each file
@@ -817,5 +838,5 @@ func (s *SemanticContext) Rename(filename string, cursor int) []RenameDesc {
 		sort.Sort(&renames[i])
 	}
 
-	return renames
+	return renames, nil
 }

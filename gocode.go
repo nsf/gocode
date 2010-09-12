@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"strings"
 	"strconv"
 	"exec"
 	"rpc"
@@ -27,7 +28,7 @@ type Formatter interface {
 	WriteEmpty()
 	WriteCandidates(names, types, classes []string, num int)
 	WriteSMap(decldescs []DeclDesc)
-	WriteRename(renamedescs []RenameDesc)
+	WriteRename(renamedescs []RenameDesc, err string)
 }
 
 //-------------------------------------------------------------------------
@@ -59,10 +60,13 @@ func (*NiceFormatter) WriteSMap(decldescs []DeclDesc) {
 	os.Stdout.Write(data)
 }
 
-func (*NiceFormatter) WriteRename(renamedescs []RenameDesc) {
-	data, err := json.Marshal(renamedescs)
-	if err != nil {
-		panic(err.String())
+func (*NiceFormatter) WriteRename(renamedescs []RenameDesc, err string) {
+	if err != "" {
+		panic(err)
+	}
+	data, error := json.Marshal(renamedescs)
+	if error != nil {
+		panic(error.String())
 	}
 	os.Stdout.Write(data)
 }
@@ -101,12 +105,21 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 func (*VimFormatter) WriteSMap(decldescs []DeclDesc) {
 }
 
-func (*VimFormatter) WriteRename(renamedescs []RenameDesc) {
-	if renamedescs == nil {
-		fmt.Print("[]")
+func vimQuote(s string) string {
+	s = strings.Replace(s, "'", "''", -1)
+	return s
+}
+
+func (*VimFormatter) WriteRename(renamedescs []RenameDesc, err string) {
+	if err != "" {
+		fmt.Printf("['%s', []]", vimQuote(err))
 		return
 	}
-	fmt.Print("[")
+	if renamedescs == nil {
+		fmt.Print("['Nothing to rename', []]")
+		return
+	}
+	fmt.Print("['OK', [")
 	for i, r := range renamedescs {
 		fmt.Printf("{'filename':'%s','length':%d,'decls':", r.Filename, r.Length)
 		fmt.Print("[")
@@ -122,7 +135,7 @@ func (*VimFormatter) WriteRename(renamedescs []RenameDesc) {
 			fmt.Print(",")
 		}
 	}
-	fmt.Print("]")
+	fmt.Print("]]")
 }
 
 //-------------------------------------------------------------------------
@@ -148,7 +161,7 @@ func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) 
 func (*EmacsFormatter) WriteSMap(decldescs []DeclDesc) {
 }
 
-func (*EmacsFormatter) WriteRename(renamedescs []RenameDesc) {
+func (*EmacsFormatter) WriteRename(renamedescs []RenameDesc, err string) {
 }
 
 //-------------------------------------------------------------------------
@@ -274,9 +287,9 @@ func Cmd_Rename(c *rpc.Client) {
 	}
 
 	formatter := getFormatter()
-	renamedescs := Client_Rename(c, filename, cursor)
+	renamedescs, err := Client_Rename(c, filename, cursor)
 
-	formatter.WriteRename(renamedescs)
+	formatter.WriteRename(renamedescs, err)
 }
 
 func Cmd_Close(c *rpc.Client) {
