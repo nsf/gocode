@@ -16,6 +16,7 @@ import (
 
 //-------------------------------------------------------------------------
 // OutBuffers
+//
 // Temporary structure for writing autocomplete response.
 //-------------------------------------------------------------------------
 
@@ -121,6 +122,7 @@ func matchClass(declclass int, class int) bool {
 
 //-------------------------------------------------------------------------
 // AutoCompleteContext
+//
 // Context that holds cache structures for autocompletion needs. It
 // includes cache for packages and for main package files.
 //-------------------------------------------------------------------------

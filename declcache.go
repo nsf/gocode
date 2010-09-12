@@ -14,6 +14,7 @@ import (
 
 //-------------------------------------------------------------------------
 // PackageImport
+//
 // Contains import information from a single file
 //-------------------------------------------------------------------------
 
@@ -30,14 +31,16 @@ func NewPackageImports(filename string, decls []ast.Decl) PackageImports {
 	return mi
 }
 
-func (mi *PackageImports) appendImports(filename string, decls []ast.Decl) {
+// Parses import declarations until the first non-import declaration and fills
+// 'pi' array with import information.
+func (pi *PackageImports) appendImports(filename string, decls []ast.Decl) {
 	for _, decl := range decls {
 		if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.IMPORT {
 			for _, spec := range gd.Specs {
 				imp := spec.(*ast.ImportSpec)
 				path, alias := pathAndAlias(imp)
 				path = absPathForPackage(filename, path)
-				mi.appendImport(alias, path)
+				pi.appendImport(alias, path)
 			}
 		} else {
 			return
@@ -45,8 +48,9 @@ func (mi *PackageImports) appendImports(filename string, decls []ast.Decl) {
 	}
 }
 
-func (mi *PackageImports) appendImport(alias, path string) {
-	v := *mi
+// Simple vector-like append.
+func (pi *PackageImports) appendImport(alias, path string) {
+	v := *pi
 	if alias == "_" || alias == "." {
 		// TODO: support for packages imported in the current namespace
 		return
@@ -61,13 +65,15 @@ func (mi *PackageImports) appendImport(alias, path string) {
 
 	v = v[0 : n+1]
 	v[n] = PackageImport{alias, path}
-	*mi = v
+	*pi = v
 }
 
 //-------------------------------------------------------------------------
 // DeclFileCache
-// Contains cache for top-level declarations of a file. Used in both 
-// autocompletion and refactoring utilities.
+// 
+// Contains cache for top-level declarations of a file as well as its
+// contents, AST and import information. Used in both autocompletion
+// and refactoring utilities.
 //-------------------------------------------------------------------------
 
 type DeclFileCache struct {
@@ -112,6 +118,10 @@ func (f *DeclFileCache) readFile(filename string) {
 		return
 	}
 
+	f.processData()
+}
+
+func (f *DeclFileCache) processData() {
 	f.File, f.Error = parser.ParseFile("", f.Data, 0)
 	f.FileScope = NewScope(nil)
 	anonymifyAst(f.File.Decls, 0, f.FileScope)
@@ -120,6 +130,13 @@ func (f *DeclFileCache) readFile(filename string) {
 	for _, decl := range f.File.Decls {
 		appendToTopDecls(f.Decls, decl, f.FileScope)
 	}
+}
+
+func (f *DeclFileCache) reprocess() {
+	// drop mtime, because we're invalidating cache
+	f.mtime = 0
+
+	f.processData()
 }
 
 func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
@@ -204,6 +221,8 @@ func packageName(file *ast.File) string {
 
 //-------------------------------------------------------------------------
 // DeclCache
+//
+// Thread-safe collection of DeclFileCache entities.
 //-------------------------------------------------------------------------
 
 type DeclCache struct {

@@ -42,6 +42,13 @@ var declClassToString = [...]string{
 	DECL_METHODS_STUB: "IF YOU SEE THIS, REPORT A BUG", // :D
 }
 
+//-------------------------------------------------------------------------
+// Decl
+//
+// The most important data structure of the whole gocode project. It
+// describes a single declaration and its children.
+//-------------------------------------------------------------------------
+
 type Decl struct {
 	Name  string
 	Type  ast.Expr

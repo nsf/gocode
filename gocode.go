@@ -188,7 +188,7 @@ func serverFunc() int {
 		fmt.Printf("unix socket: '%s' already exists\n", socketfname)
 		return 1
 	}
-	daemon = NewAutoCompletionDaemon(socketfname)
+	daemon = NewDaemon(socketfname)
 	defer os.Remove(socketfname)
 
 	rpcremote := new(RPCRemote)

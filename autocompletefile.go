@@ -6,6 +6,10 @@ import (
 	"go/token"
 )
 
+//-------------------------------------------------------------------------
+// AutoCompleteFile
+//-------------------------------------------------------------------------
+
 type AutoCompleteFile struct {
 	name        string
 	packageName string
