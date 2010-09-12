@@ -317,7 +317,7 @@ func makeFDs() ([]*os.File, os.Error) {
 	// file descriptors on exit. But since that kind of error will result in
 	// a process shutdown anyway, I don't care much about that.
 
-	return &fds, nil
+	return fds[0:], nil
 }
 
 func tryRunServer() os.Error {
