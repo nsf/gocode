@@ -804,6 +804,9 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 	return nil, nil, false
 }
 
+// Uses Value, ValueIndex and Scope to infer the type of this
+// declaration. Returns the type itself and the scope where this type
+// makes sense.
 func (d *Decl) InferType() (ast.Expr, *Scope) {
 	// special case for range vars
 	if d.Flags&DECL_RANGEVAR != 0 {
@@ -854,6 +857,11 @@ func (d *Decl) FindChildAndInEmbedded(name string) *Decl {
 	return c
 }
 
+// Special type inference for range statements.
+// [int], [int] := range [string]
+// [int], [value] := range [slice or array]
+// [key], [value] := range [map]
+// [value], [nil] := range [chan]
 func inferRangeType(e ast.Expr, scope *Scope, valueindex int) (ast.Expr, *Scope) {
 	t, s, _ := inferType(e, scope, -1)
 	t, s = advanceToType(rangePredicate, t, s)
@@ -1085,6 +1093,10 @@ func astDeclSplit(d ast.Decl) []ast.Decl {
 	}
 	return decls
 }
+
+//-------------------------------------------------------------------------
+// declPack
+//-------------------------------------------------------------------------
 
 type declPack struct {
 	names  []*ast.Ident
