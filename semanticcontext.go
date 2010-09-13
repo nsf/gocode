@@ -96,13 +96,32 @@ func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
 	return d
 }
 
+func (s *SemanticFile) semantifyCompositeLit(c *ast.CompositeLit) {
+	s.semantifyExpr(c.Type)
+	d := exprToDecl(c.Type, s.scope)
+	for _, e := range c.Elts {
+		if d != nil {
+			switch t := e.(type) {
+			case *ast.KeyValueExpr:
+				if ident, ok := t.Key.(*ast.Ident); ok {
+					s.semantifyIdentFor(ident, d)
+				} else {
+					s.semantifyExpr(t.Key)
+				}
+				s.semantifyExpr(t.Value)
+			default:
+				s.semantifyExpr(e)
+			}
+		} else {
+			s.semantifyExpr(e)
+		}
+	}
+}
+
 func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 	switch t := e.(type) {
 	case *ast.CompositeLit:
-		s.semantifyExpr(t.Type)
-		for _, e := range t.Elts {
-			s.semantifyExpr(e)
-		}
+		s.semantifyCompositeLit(t)
 	case *ast.FuncLit:
 		s.semantifyFieldListTypes(t.Type.Params)
 		s.semantifyFieldListTypes(t.Type.Results)
