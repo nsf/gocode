@@ -324,9 +324,6 @@ func addAstDeclsToPackage(pkg *Decl, decls []ast.Decl, scope *Scope) {
 	}
 }
 
-// TODO: probably change hand-written string literals processing to a
-// "scanner"-based one
-
 func skipSpaces(i int, s string) int {
 	for i < len(s) && (s[i] == ' ' || s[i] == '\t') {
 		i++
