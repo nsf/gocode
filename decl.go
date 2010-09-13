@@ -139,13 +139,14 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 			if flags&DECL_FOREIGN != 0 && !ast.IsExported(name.Name) {
 				continue
 			}
-			d := new(Decl)
-			d.Name = name.Name
-			d.Type = field.Type
-			d.Class = int16(class)
-			d.Flags = int16(flags)
-			d.Scope = scope
-			d.ValueIndex = -1
+			d := &Decl{
+				Name: name.Name,
+				Type: field.Type,
+				Class: int16(class),
+				Flags: int16(flags),
+				Scope: scope,
+				ValueIndex: -1,
+			}
 			decls[d.Name] = d
 		}
 
@@ -155,13 +156,14 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 			if flags&DECL_FOREIGN != 0 && !ast.IsExported(tp.name) {
 				continue
 			}
-			d := new(Decl)
-			d.Name = tp.name
-			d.Type = field.Type
-			d.Class = int16(class)
-			d.Flags = int16(flags)
-			d.Scope = scope
-			d.ValueIndex = -1
+			d := &Decl{
+				Name: tp.name,
+				Type: field.Type,
+				Class: int16(class),
+				Flags: int16(flags),
+				Scope: scope,
+				ValueIndex: -1,
+			}
 			decls[d.Name] = d
 		}
 	}
