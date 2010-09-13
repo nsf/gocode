@@ -61,9 +61,6 @@ func (*NiceFormatter) WriteSMap(decldescs []DeclDesc) {
 }
 
 func (*NiceFormatter) WriteRename(renamedescs []RenameDesc, err string) {
-	if err != "" {
-		panic(err)
-	}
 	data, error := json.Marshal(renamedescs)
 	if error != nil {
 		panic(error.String())
