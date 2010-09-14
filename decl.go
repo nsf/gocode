@@ -140,11 +140,11 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 				continue
 			}
 			d := &Decl{
-				Name: name.Name,
-				Type: field.Type,
-				Class: int16(class),
-				Flags: int16(flags),
-				Scope: scope,
+				Name:       name.Name,
+				Type:       field.Type,
+				Class:      int16(class),
+				Flags:      int16(flags),
+				Scope:      scope,
 				ValueIndex: -1,
 			}
 			decls[d.Name] = d
@@ -157,11 +157,11 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 				continue
 			}
 			d := &Decl{
-				Name: tp.name,
-				Type: field.Type,
-				Class: int16(class),
-				Flags: int16(flags),
-				Scope: scope,
+				Name:       tp.name,
+				Type:       field.Type,
+				Class:      int16(class),
+				Flags:      int16(flags),
+				Scope:      scope,
 				ValueIndex: -1,
 			}
 			decls[d.Name] = d
