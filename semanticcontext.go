@@ -100,7 +100,7 @@ func (s *SemanticFile) semantifyCompositeLit(c *ast.CompositeLit) {
 	s.semantifyExpr(c.Type)
 	d := exprToDecl(c.Type, s.scope)
 	for _, e := range c.Elts {
-		if d != nil {
+		if d != nil && len(d.Children) != 0 {
 			switch t := e.(type) {
 			case *ast.KeyValueExpr:
 				if ident, ok := t.Key.(*ast.Ident); ok {
