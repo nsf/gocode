@@ -18,6 +18,9 @@ fu! s:gocodeCommand(cmd, preargs, args)
 	for i in range(0, len(a:args) - 1)
 		let a:args[i] = shellescape(a:args[i])
 	endfor
+	for i in range(0, len(a:preargs) - 1)
+		let a:preargs[i] = shellescape(a:preargs[i])
+	endfor
 	let result = s:system(printf('gocode %s %s %s', join(a:preargs), a:cmd, join(a:args)))
 	if v:shell_error != 0
 		return "[\"0\", []]"
