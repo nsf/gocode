@@ -236,14 +236,20 @@ func NewDeclCache() *DeclCache {
 	return c
 }
 
-func (c *DeclCache) Get(filename string) *DeclFileCache {
+func (c *DeclCache) get(filename string) *DeclFileCache {
 	c.Lock()
+	defer c.Unlock()
+
 	f, ok := c.cache[filename]
 	if !ok {
 		f = NewDeclFileCache(filename)
 		c.cache[filename] = f
 	}
-	c.Unlock()
+	return f
+}
+
+func (c *DeclCache) Get(filename string) *DeclFileCache {
+	f := c.get(filename)
 	f.update()
 	return f
 }

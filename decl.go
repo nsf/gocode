@@ -226,9 +226,9 @@ type AnonymousIDGen struct {
 
 func (a *AnonymousIDGen) Gen() (id int) {
 	a.Lock()
+	defer a.Unlock()
 	id = a.i
 	a.i++
-	a.Unlock()
 	return
 }
 
