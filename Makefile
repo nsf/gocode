@@ -18,7 +18,7 @@ GOFILES=gocode.go\
 include $(GOROOT)/src/Make.cmd
 
 rpc.go: server.go goremote/goremote
-	./goremote/goremote server.go > rpc.go
+	./goremote/goremote server.go | gofmt > rpc.go
 
 goremote/goremote: goremote/goremote.go
 	gomake -C goremote
