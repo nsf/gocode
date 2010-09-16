@@ -682,6 +682,12 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 				// it is always the last infer operation
 				return ast.NewIdent("bool"), universeScope, false
 			}
+		case token.ADD, token.NOT, token.SUB, token.XOR:
+			it, s, _ := inferType(t.X, scope, -1)
+			if it == nil {
+				break
+			}
+			return it, s, false
 		}
 	case *ast.BinaryExpr:
 		switch t.Op {

@@ -19,7 +19,6 @@ EXPECTED = YELLOW + "EXPECTED: " + NC
 
 # name of the test + commentary (why it is expected to fail)
 expected_to_fail = {
-	"test.0015" : "Not implemented (unary ops)"
 }
 
 def run_test(t):
