@@ -683,6 +683,31 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 				return ast.NewIdent("bool"), universeScope, false
 			}
 		}
+	case *ast.BinaryExpr:
+		switch t.Op {
+		case token.EQL, token.NEQ, token.LSS, token.LEQ,
+			token.GTR, token.GEQ, token.LOR, token.LAND:
+			// logic operations, the result is a bool, always
+			return ast.NewIdent("bool"), universeScope, false
+		case token.ADD, token.SUB, token.MUL, token.QUO, token.OR,
+			token.XOR, token.REM, token.AND, token.AND_NOT:
+			// try X, then Y, they should be the same anyway
+			it, s, _ := inferType(t.X, scope, -1)
+			if it == nil {
+				it, s, _ = inferType(t.Y, scope, -1)
+				if it == nil {
+					break
+				}
+			}
+			return it, s, false
+		case token.SHL, token.SHR:
+			// try only X for shifts, Y is always uint
+			it, s, _ := inferType(t.X, scope, -1)
+			if it == nil {
+				break
+			}
+			return it, s, false
+		}
 	case *ast.IndexExpr:
 		// something[another] always returns a value and it works on a value too
 		it, s, _ := inferType(t.X, scope, -1)
