@@ -51,7 +51,7 @@ func (s *SemanticFile) appendEntry(offset, length, line, col int, decl *Decl) {
 		s.entries = e
 	}
 
-	s.entries = s.entries[0 : n+1]
+	s.entries = s.entries[:n+1]
 	s.entries[n] = SemanticEntry{offset, length, line, col, decl}
 }
 
@@ -741,7 +741,7 @@ func (s *SemanticContext) Collect(filename string) ([]*SemanticFile, os.Error) {
 	if errs == "" {
 		return files, nil
 	}
-	errs = "Unable to proceed, because of the following errors:\n" + errs[0:len(errs)-1]
+	errs = "Unable to proceed, because of the following errors:\n" + errs[:len(errs)-1]
 	return nil, os.NewError(errs)
 }
 
@@ -809,7 +809,7 @@ func (d *RenameDesc) append(offset, line, col int) {
 		d.Decls = s
 	}
 
-	d.Decls = d.Decls[0 : n+1]
+	d.Decls = d.Decls[:n+1]
 	d.Decls[n] = RenameDeclDesc{offset, line, col}
 }
 

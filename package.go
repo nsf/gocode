@@ -83,7 +83,7 @@ func (m *PackageFileCache) processPackageData(s string) {
 	if i == -1 {
 		panic("Can't find the end of the import section in the archive file")
 	}
-	s = s[0:i] // leave only import section
+	s = s[:i] // leave only import section
 
 	i = strings.Index(s, "\n")
 	if i == -1 {
@@ -103,7 +103,7 @@ func (m *PackageFileCache) processPackageData(s string) {
 		if i == -1 {
 			break
 		}
-		decl := strings.TrimSpace(s[0:i])
+		decl := strings.TrimSpace(s[:i])
 		if len(decl) == 0 {
 			s = s[i+1:]
 			continue
@@ -358,8 +358,8 @@ func extractPackage(i int, s string) (string, string) {
 		pkg = s[b+1 : e]
 	}
 
-	i += 2             // skip to a first symbol after dot
-	s = s[0:b] + s[i:] // strip package clause completely
+	i += 2            // skip to a first symbol after dot
+	s = s[:b] + s[i:] // strip package clause completely
 
 	return s, pkg
 }
@@ -393,8 +393,8 @@ func extractPackageFromMethod(i int, s string) (string, string) {
 			pkg = s[b+1 : e]
 		}
 
-		i += 2             // skip to a first symbol after dot
-		s = s[0:b] + s[i:] // strip package clause completely
+		i += 2            // skip to a first symbol after dot
+		s = s[:b] + s[i:] // strip package clause completely
 
 		i = b
 	}
@@ -423,7 +423,7 @@ func preprocessConstDecl(s string) string {
 	}
 	e := i
 
-	return s[0:b] + "0" + s[e:]
+	return s[:b] + "0" + s[e:]
 }
 
 //-------------------------------------------------------------------------

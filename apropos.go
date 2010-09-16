@@ -130,7 +130,7 @@ func (c *AutoCompleteContext) deduceDecl(file []byte, cursor int) *DeclApropos {
 	if file[cursor] == '.' {
 		// we're '<whatever>.'
 		// figure out decl, Parital is ""
-		return c.deduceExpr(file[0:cursor], "")
+		return c.deduceExpr(file[:cursor], "")
 	} else {
 		letter, _ := utf8.DecodeRune(file[cursor:])
 		if isIdent(letter) {
@@ -139,7 +139,7 @@ func (c *AutoCompleteContext) deduceDecl(file []byte, cursor int) *DeclApropos {
 			cursor = skipIdent(file, cursor)
 			partial := string(file[cursor+1 : orig])
 			if file[cursor] == '.' {
-				return c.deduceExpr(file[0:cursor], partial)
+				return c.deduceExpr(file[:cursor], partial)
 			} else {
 				return &DeclApropos{nil, partial}
 			}

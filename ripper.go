@@ -26,7 +26,7 @@ func (t *TokCollection) appendToken(pos token.Position, tok token.Token) {
 		t.tokens = s
 	}
 
-	t.tokens = t.tokens[0 : n+1]
+	t.tokens = t.tokens[:n+1]
 	t.tokens[n] = TokPos{tok, pos}
 }
 
@@ -128,7 +128,7 @@ func (t *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []byte
 	copy(ripped, file[beg:end+1])
 
 	newfile := make([]byte, len(file)-len(ripped))
-	copy(newfile, file[0:beg])
+	copy(newfile, file[:beg])
 	copy(newfile[beg:], file[end+1:])
 
 	return cursor - beg, newfile, ripped

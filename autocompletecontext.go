@@ -357,7 +357,7 @@ func findOtherPackageFiles(filename, packageName string) []string {
 		abspath := path.Join(dir, stat.Name)
 		if filePackageName(abspath) == packageName {
 			n := len(out)
-			out = out[0 : n+1]
+			out = out[:n+1]
 			out[n] = abspath
 		}
 	}

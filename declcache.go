@@ -63,7 +63,7 @@ func (pi *PackageImports) appendImport(alias, path string) {
 		v = s
 	}
 
-	v = v[0 : n+1]
+	v = v[:n+1]
 	v[n] = PackageImport{alias, path}
 	*pi = v
 }
