@@ -95,7 +95,7 @@ endf
 
 fu! gocomplete#Rename()
 	" Rename format is:
-	" [{'filename':...,'length':...,'decls':[[line,col],...]},...]
+	" [status, [{'filename':...,'length':...,'decls':[[line,col],...]},...]]
 	execute "silent let rename_data = " . s:gocodeRename()
 	let status = rename_data[0]
 	let renames = rename_data[1]
