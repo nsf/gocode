@@ -695,8 +695,10 @@ func (s *SemanticContext) Collect(filename string) ([]*SemanticFile, os.Error) {
 	// 3
 	s.pkg = NewScope(universeScope)
 	mergeDecls(current.FileScope, s.pkg, current.Decls)
+	mergeDeclsFromPackages(s.pkg, current.Packages, s.pcache)
 	for _, f := range others {
 		mergeDecls(f.FileScope, s.pkg, f.Decls)
+		mergeDeclsFromPackages(s.pkg, f.Packages, s.pcache)
 	}
 
 	// 4

@@ -1,0 +1,28 @@
+Found 27 candidates:
+  const EOF 
+  func Fprint(w io.Writer, a ...interface{}) (n int, error os.Error)
+  func Fprintf(w io.Writer, format string, a ...interface{}) (n int, error os.Error)
+  func Fprintln(w io.Writer, a ...interface{}) (n int, error os.Error)
+  func Fscan(r io.Reader, a ...interface{}) (n int, err os.Error)
+  func Fscanf(r io.Reader, format string, a ...interface{}) (n int, err os.Error)
+  func Fscanln(r io.Reader, a ...interface{}) (n int, err os.Error)
+  func Print(a ...interface{}) (n int, errno os.Error)
+  func Printf(format string, a ...interface{}) (n int, errno os.Error)
+  func Println(a ...interface{}) (n int, errno os.Error)
+  func Scan(a ...interface{}) (n int, err os.Error)
+  func Scanf(format string, a ...interface{}) (n int, err os.Error)
+  func Scanln(a ...interface{}) (n int, err os.Error)
+  func Sprint(a ...interface{}) string
+  func Sprintf(format string, a ...interface{}) string
+  func Sprintln(a ...interface{}) string
+  func Sscan(str string, a ...interface{}) (n int, err os.Error)
+  func Sscanf(str string, format string, a ...interface{}) (n int, err os.Error)
+  func Sscanln(str string, a ...interface{}) (n int, err os.Error)
+  func main()
+  type Formatter interface
+  type GoStringer interface
+  type ScanState interface
+  type Scanner interface
+  type State interface
+  type Stringer interface
+  var a Formatter

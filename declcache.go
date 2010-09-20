@@ -51,8 +51,7 @@ func (pi *PackageImports) appendImports(filename string, decls []ast.Decl) {
 // Simple vector-like append.
 func (pi *PackageImports) appendImport(alias, path string) {
 	v := *pi
-	if alias == "_" || alias == "." {
-		// TODO: support for packages imported in the current namespace
+	if alias == "_" {
 		return
 	}
 

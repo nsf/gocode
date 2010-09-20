@@ -172,8 +172,10 @@ func (c *AutoCompleteContext) updateCaches() {
 func (c *AutoCompleteContext) mergeDecls() {
 	c.pkg = NewScope(universeScope)
 	mergeDecls(c.current.filescope, c.pkg, c.current.decls)
+	mergeDeclsFromPackages(c.pkg, c.current.packages, c.pcache)
 	for _, f := range c.others {
 		mergeDecls(f.FileScope, c.pkg, f.Decls)
+		mergeDeclsFromPackages(c.pkg, f.Packages, c.pcache)
 	}
 }
 
@@ -289,11 +291,30 @@ func mergeDecls(filescope *Scope, pkg *Scope, decls map[string]*Decl) {
 	filescope.parent = pkg
 }
 
+func mergeDeclsFromPackages(pkgscope *Scope, pkgs PackageImports, pcache PackageCache) {
+	for _, p := range pkgs {
+		path, alias := p.Path, p.Alias
+		if alias != "." {
+			continue
+		}
+		p := pcache[path].main
+		for _, d := range p.Children {
+			if ast.IsExported(d.Name) {
+				pkgscope.mergeDecl(d)
+			}
+		}
+	}
+}
+
 func fixupPackages(filescope *Scope, pkgs PackageImports, pcache PackageCache) {
-	for _, m := range pkgs {
-		path, alias := m.Path, m.Alias
+	for _, p := range pkgs {
+		path, alias := p.Path, p.Alias
 		if alias == "" {
 			alias = pcache[path].defalias
+		}
+		// skip packages that will be merged to the package scope
+		if alias == "." {
+			continue
 		}
 		filescope.replaceDecl(alias, pcache[path].main)
 	}

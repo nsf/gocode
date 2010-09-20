@@ -1,6 +1,8 @@
 // scope testing
 package main
 
+import . "io"
+
 type file struct {
 	file string
 }
@@ -28,6 +30,8 @@ func test() {
 
 	X := "die"
 	_ = X
+	var v Writer
+	_ = v
 }
 
 func main() {
