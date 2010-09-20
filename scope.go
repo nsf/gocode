@@ -1,5 +1,9 @@
 package main
 
+//-------------------------------------------------------------------------
+// Scope
+//-------------------------------------------------------------------------
+
 type Scope struct {
 	parent   *Scope // nil for universe scope
 	entities map[string]*Decl

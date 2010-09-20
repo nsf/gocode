@@ -14,6 +14,9 @@ import (
 
 //-------------------------------------------------------------------------
 // PackageFileCache
+//
+// Structure that represents a cache for an imported pacakge. In other words
+// these are the contents of an archive (*.a) file.
 //-------------------------------------------------------------------------
 
 type PackageFileCache struct {
@@ -21,7 +24,6 @@ type PackageFileCache struct {
 	mtime    int64
 	defalias string
 
-	// used as a temporary for foreignifying package contents
 	scope  *Scope
 	main   *Decl // package declaration
 	others map[string]*Decl
@@ -42,6 +44,7 @@ func NewPackageFileCache(name string) *PackageFileCache {
 	return m
 }
 
+// Creates a cache that stays in cache forever. Useful for built-in packages.
 func NewPackageFileCacheForever(name, defalias string) *PackageFileCache {
 	m := new(PackageFileCache)
 	m.name = name
@@ -60,10 +63,8 @@ func (m *PackageFileCache) updateCache() {
 	}
 
 	if m.mtime != stat.Mtime_ns {
-		// clear tmp scope
 		m.mtime = stat.Mtime_ns
 
-		// try load new
 		data, err := ioutil.ReadFile(m.name)
 		if err != nil {
 			return

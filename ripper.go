@@ -5,6 +5,11 @@ import (
 	"go/scanner"
 )
 
+// All the code in this file serves single purpose:
+// It separates a function with the cursor inside and the rest of the code. I'm
+// doing that, because sometimes parser is not able to recover itself from an
+// error and the autocompletion results become less complete.
+
 type TokPos struct {
 	Tok token.Token
 	Pos token.Position

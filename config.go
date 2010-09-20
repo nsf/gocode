@@ -11,6 +11,13 @@ import (
 	"io"
 )
 
+//-------------------------------------------------------------------------
+// Config
+//
+// Structure represents persistent config storage of the gocode daemon. Usually
+// the config is located somewhere in ~/.config/gocode directory.
+//-------------------------------------------------------------------------
+
 var Config = struct {
 	ProposeBuiltins    bool   "propose-builtins"
 	DenyPackageRenames bool   "deny-package-renames"
@@ -203,7 +210,7 @@ func readConfig(v interface{}) os.Error {
 	return nil
 }
 
-func XDGHomeDir() string {
+func xdgHomeDir() string {
 	xdghome := os.Getenv("XDG_CONFIG_HOME")
 	if xdghome == "" {
 		xdghome = path.Join(os.Getenv("HOME"), ".config")
@@ -212,12 +219,12 @@ func XDGHomeDir() string {
 }
 
 func makeSureConfigDirExists() {
-	dir := path.Join(XDGHomeDir(), "gocode")
+	dir := path.Join(xdgHomeDir(), "gocode")
 	if !fileExists(dir) {
 		os.MkdirAll(dir, 0755)
 	}
 }
 
 func configFile() string {
-	return path.Join(XDGHomeDir(), "gocode", "config.ini")
+	return path.Join(xdgHomeDir(), "gocode", "config.ini")
 }

@@ -50,13 +50,15 @@ var declClassToString = [...]string{
 //-------------------------------------------------------------------------
 
 type Decl struct {
+	// Name starts with '$' if the declaration describes an anonymous type.
+	// '$s_%d' for anonymous struct types
+	// '$i_%d' for anonymous interface types
 	Name  string
 	Type  ast.Expr
 	Class int16
 	Flags int16
 
 	// functions for interface type, fields+methods for struct type
-	// variables with anonymous struct/interface type may have children too
 	Children map[string]*Decl
 
 	// embedded types

@@ -192,10 +192,13 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 
 func findGlobalFile(imp string) string {
 	pkgfile := fmt.Sprintf("%s.a", imp)
+
+	// if lib-path is defined, use it
 	if Config.LibPath != "" {
 		return path.Join(Config.LibPath, pkgfile)
 	}
 
+	// otherwise figure out the default lib-path
 	goroot := os.Getenv("GOROOT")
 	if goroot == "" {
 		goroot = runtime.GOROOT()
