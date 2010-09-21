@@ -7,6 +7,14 @@ import (
 	"runtime"
 )
 
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 var Config = struct {
 	ProposeBuiltins bool "propose-builtins"
 	DenyPackageRenames bool "deny-package-renames"

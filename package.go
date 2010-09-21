@@ -53,11 +53,35 @@ func NewPackageFileCacheForever(name, defalias string) *PackageFileCache {
 	return m
 }
 
+func (m *PackageFileCache) findFile() string {
+	if fileExists(m.name) {
+		return m.name
+	}
+
+	n := len(m.name)
+	filename := m.name[:n-1] + "6"
+	if fileExists(filename) {
+		return filename
+	}
+
+	filename = m.name[:n-1] + "8"
+	if fileExists(filename) {
+		return filename
+	}
+
+	filename = m.name[:n-1] + "5"
+	if fileExists(filename) {
+		return filename
+	}
+	return m.name
+}
+
 func (m *PackageFileCache) updateCache() {
 	if m.mtime == -1 {
 		return
 	}
-	stat, err := os.Stat(m.name)
+	fname := m.findFile()
+	stat, err := os.Stat(fname)
 	if err != nil {
 		return
 	}
@@ -65,7 +89,7 @@ func (m *PackageFileCache) updateCache() {
 	if m.mtime != stat.Mtime_ns {
 		m.mtime = stat.Mtime_ns
 
-		data, err := ioutil.ReadFile(m.name)
+		data, err := ioutil.ReadFile(fname)
 		if err != nil {
 			return
 		}
@@ -75,12 +99,23 @@ func (m *PackageFileCache) updateCache() {
 
 func (m *PackageFileCache) processPackageData(s string) {
 	m.scope = NewScope(nil)
-	i := strings.Index(s, "import\n$$\n")
+
+	// Find first $$
+	i := strings.Index(s, "\n$$")
 	if i == -1 {
 		panic("Can't find the import section in the archive file")
 	}
-	s = s[i+len("import\n$$\n"):]
-	i = strings.Index(s, "$$\n")
+	s = s[i+len("\n$$"):]
+
+	// Skip to the beginning of the package statement
+	i = strings.Index(s, "package")
+	if i == -1 {
+		panic("Wrong file")
+	}
+	s = s[i:]
+
+	// Find second $$
+	i = strings.Index(s, "\n$$")
 	if i == -1 {
 		panic("Can't find the end of the import section in the archive file")
 	}
@@ -91,7 +126,7 @@ func (m *PackageFileCache) processPackageData(s string) {
 		panic("Wrong file")
 	}
 
-	m.defalias = s[len("package ") : i-1]
+	m.defalias = strings.TrimSpace(s[len("package "):i])
 	s = s[i+1:]
 
 	m.pathToAlias = make(map[string]string)
