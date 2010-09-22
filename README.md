@@ -22,6 +22,7 @@ It is called *daemon*, because it uses client/server architecture for caching pu
     Do these steps only if you know why do you need them:
 
     `export GOBIN=$HOME/bin`
+
     `export PATH=$PATH:$HOME/bin`
 
  4. Then you need to build the gocode and install it:
@@ -38,9 +39,9 @@ In order to install vim scripts, you need to fulfill the following steps:
 
  2. Install gocode vim scripts. Usually it's enough to do the following:
 
- `cd vim && ./update.bash`
+    `cd vim && ./update.bash`
 
- **update.bash** script does the following:
+    **update.bash** script does the following:
 
 		#!/usr/bin/env bash
 		mkdir -p ~/.vim/{autoload,ftplugin,plugin}
@@ -50,11 +51,11 @@ In order to install vim scripts, you need to fulfill the following steps:
 
  3. Make sure vim has filetype plugin enabled. Simply add that to your **.vimrc**:
 
- `filetype plugin on`
+    `filetype plugin on`
 
  4. Autocompletion and renaming should work now. Use `<C-x><C-o>` for autocompletion (omnifunc autocompletion). For identifier renaming simply type `:GocodeRename` when the cursor is on top of an identifier you want to rename. Vim will ask you for a new name and do the job.
 
- *NOTE*: Vim renames identifiers only in opened files. If you want to apply rename operation to multiple files of your package you have to open all the files at once (e.g. `vim *.go`).
+    *NOTE*: Vim renames identifiers only in opened files. If you want to apply rename operation to multiple files of your package you have to open all the files at once (e.g. `vim *.go`).
 
 ### Options
 
@@ -68,15 +69,15 @@ You can change all available options using `gocode set` command. The config file
 
  - *propose-builtins*
 
- A boolean option. If **true**, gocode will add built-in types, functions and constants to an autocompletion proposals. Default: **false**.
+   A boolean option. If **true**, gocode will add built-in types, functions and constants to an autocompletion proposals. Default: **false**.
 
  - *deny-package-renames*
 
- A boolean option. If **true**, gocode will deny renaming requests for package names. This option exists mainly for allowing simple implementation of the testing framework, which tests renaming facility. Default: **false**.
+   A boolean option. If **true**, gocode will deny renaming requests for package names. This option exists mainly for allowing simple implementation of the testing framework, which tests renaming facility. Default: **false**.
 
  - *lib-path*
 
- A string option. Allows you to override default location of the standard Go library. By default, it uses **$GOROOT/pkg/$GOOS_$GOARCH** in terms of previously existed environment variables.
+   A string option. Allows you to override default location of the standard Go library. By default, it uses **$GOROOT/pkg/$GOOS_$GOARCH** in terms of previously existed environment variables.
 
 ### Debugging
 
