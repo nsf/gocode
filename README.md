@@ -11,22 +11,22 @@ It is called *daemon*, because it uses client/server architecture for caching pu
 
  1. First of all, you need to get the latest git version of the gocode source code: 
     
- `git clone git://github.com/nsf/gocode.git`
+    `git clone git://github.com/nsf/gocode.git`
 
  2. Change the directory:
 
- `cd gocode`
+    `cd gocode`
 
  3. At this step, please make sure that your **$GOBIN** is available in your **$PATH**. By default **$GOBIN** points to **$GOROOT/bin**. This is important, because editors assume that **gocode** executable is available in one of the directories, specified by your **$PATH** environment variable. Usually you've done that already while installing the Go compiler suite.
 
- Do these steps only if you know why do you need them:
+    Do these steps only if you know why do you need them:
 
- `export GOBIN=$HOME/bin`
- `export PATH=$PATH:$HOME/bin`
+    `export GOBIN=$HOME/bin`
+    `export PATH=$PATH:$HOME/bin`
 
  4. Then you need to build the gocode and install it:
 
- `make install`
+    `make install`
 
  5. Next steps are editor specific. See below.
 
