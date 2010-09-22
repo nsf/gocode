@@ -83,14 +83,15 @@ You can change all available options using `gocode set` command. The config file
 
 If something went wrong, the first thing you may want to do is manually start the gocode daemon in a separate terminal window. It will show you all the stack traces and panics if any. Shutdown the daemon if it was already started and run a new one explicitly:
 
- `gocode close`
- `gocode -s`
+`gocode close`
+
+`gocode -s`
 
 Please, report bugs, feature suggestions and other rants to the [github issue tracker](http://github.com/nsf/gocode/issues) of this project.
 
 ### Developing
 
-If you want to integrate gocode in your editor, please, contact me and I will tell you exactly what do you need. You can send me a message via github or simply contact me via email: no.smile.face@gmail.com.
+If you want to integrate gocode in your editor, please, contact me and I will tell you exactly what do you need. You can send me a message via github or simply contact me via email. My email is no.smile.face@gmail.com.
 
 ### Misc
 
