@@ -91,7 +91,7 @@ Please, report bugs, feature suggestions and other rants to the [github issue tr
 
 ### Developing
 
-If you want to integrate gocode in your editor, please, contact me and I will tell you exactly what do you need. You can send me a message via github or simply contact me via email. My email is no.smile.face@gmail.com.
+If you want to integrate gocode in your editor, please, contact me and I will tell you exactly what do you need. You can send me a message via github or simply contact me via <a href="mailto:no.smile.face@gmail.com">email</a>.
 
 ### Misc
 
