@@ -28,3 +28,9 @@ _go_.$(O): configfile.a
 configfile.a: goconfig/configfile.go
 	gomake -C goconfig
 	cp goconfig/_obj/configfile.a .
+
+clean: cleandeps
+
+cleandeps:
+	gomake -C goremote clean
+	gomake -C goconfig clean
