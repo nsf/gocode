@@ -50,7 +50,7 @@ def run_test(t)
 	end
 end
 
-if ARGV.any?
+if ARGV.one?
 	run_test ARGV[0]
 else
 	Dir["test.*"].sort.each do |t| 
