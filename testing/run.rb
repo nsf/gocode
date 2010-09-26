@@ -7,18 +7,17 @@ NC  = "\033[0m"
 
 PASS = "#{GRN}PASS!#{NC}"
 FAIL = "#{RED}FAIL!#{NC}"
-LINE = "████████████████████████████████████████████████████████████████████"
 
 Stats = Struct.new :total, :ok, :fail
 $stats = Stats.new 0, 0, 0
 
 def print_fail_report(t, out, outexpected)
 	puts "#{t}: #{FAIL}"
-	puts "--------------------------------------------------------"
+	puts "-"*65
 	puts "Got:\n#{out}"
-	puts "--------------------------------------------------------"
+	puts "-"*65
 	puts "Expected:\n#{outexpected}"
-	puts "--------------------------------------------------------"
+	puts "-"*65
 end
 
 def print_pass_report(t)
@@ -29,7 +28,7 @@ def print_stats
 	puts "\nSummary (total: #{$stats.total})"
 	puts "#{GRN}  PASS#{NC}: #{$stats.ok}"
 	puts "#{RED}  FAIL#{NC}: #{$stats.fail}"
-	puts "#{$stats.fail == 0 ? GRN : RED}#{LINE}#{NC}"
+	puts "#{$stats.fail == 0 ? GRN : RED}#{"█"*72}#{NC}"
 end
 
 def run_test(t)
