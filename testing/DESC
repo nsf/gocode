@@ -27,3 +27,4 @@ test.0026 - more anonymous structs
 test.0027 - function specific variables scope issues (recv, args, results)
 test.0028 - the reason why I need to implement binary ops
 test.0029 - import to the current package scope (import . "whatever")
+test.0030 - typedef struct type and try to use its fields
