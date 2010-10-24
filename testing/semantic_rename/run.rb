@@ -79,18 +79,18 @@ def run_test(t)
 	print "Renaming check... "
 	STDOUT.flush
 	
-	idents.each_with_index do |i, n|
-		percents = (n.to_f / idents.length * 100).to_i
+	idents.each_with_index do |ident, i|
+		percents = (i.to_f / idents.length * 100).to_i
 		print "#{percents}%"
 		STDOUT.flush
 
-		out = %x[../rename #{src} #{i['Offset']} RenamedIdent123 > tmp.go]
+		out = %x[../rename #{src} #{ident['Offset']} RenamedIdent123 > tmp.go]
 		if not $?.success? then
 			puts FAIL
 			$stats.fail += 1
 			puts out
 			puts "─"*72
-			system "../showcursor #{src} #{i['Offset']}"
+			system "../showcursor #{src} #{ident['Offset']}"
 			puts "─"*72
 			return
 		end
@@ -98,7 +98,7 @@ def run_test(t)
 			puts FAIL
 			$stats.fail += 1
 			puts "─"*72
-			system "../showcursor #{src} #{i['Offset']}"
+			system "../showcursor #{src} #{ident['Offset']}"
 			puts "─"*72
 			system "cat tmp.go"
 			puts "─"*72
