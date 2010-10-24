@@ -23,13 +23,13 @@ def print_stats
 end
 
 $compiler = case ENV['GOARCH']
-	when '386' then '8g'
+	when '386'   then '8g'
 	when 'amd64' then '6g'
-	when 'arm' then '5g'
+	when 'arm'   then '5g'
 	else case RUBY_PLATFORM.split('-').first
 		when /i[3-6]86/ then '8g'
-		when 'x86_64' then '6g'
-		when 'arm' then '5g'
+		when 'x86_64'   then '6g'
+		when 'arm'      then '5g'
 	end
 end
 
