@@ -36,11 +36,11 @@ end
 def check_source?(filename)
 	# eat output here
 	%x[#{$compiler} -o tmp.obj #{filename}]
-	return $?.success?
+	$?.success?
 end
 
 def check_smap?(idents, smap)
-	return idents.all? {|i| smap.any? {|e| i['Offset'] == e['Offset']}}
+	idents.all? {|i| smap.any? {|e| i['Offset'] == e['Offset']}}
 end
 
 def run_test(t)
@@ -119,3 +119,6 @@ else
 end
 
 print_stats
+
+File.delete "tmp.go"  rescue nil
+File.delete "tmp.obj" rescue nil
