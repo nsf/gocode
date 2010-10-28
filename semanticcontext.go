@@ -43,18 +43,6 @@ func NewSemanticFile(dc *DeclFileCache) *SemanticFile {
 	return s
 }
 
-func (s *SemanticFile) appendEntry(offset, length, line, col int, decl *Decl) {
-	n := len(s.entries)
-	if cap(s.entries) < n+1 {
-		e := make([]SemanticEntry, n, n*2+1)
-		copy(e, s.entries)
-		s.entries = e
-	}
-
-	s.entries = s.entries[:n+1]
-	s.entries[n] = SemanticEntry{offset, length, line, col, decl}
-}
-
 func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
 	c := d.FindChildAndInEmbedded(e.Name)
 	if c == nil {
@@ -62,7 +50,13 @@ func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
 			e.Name, s.name, e.Line)
 		panic(msg)
 	}
-	s.appendEntry(e.Offset, len(e.Name), e.Line, e.Column, c)
+	s.entries = append(s.entries, SemanticEntry{
+		e.Offset,
+		len(e.Name),
+		e.Line,
+		e.Column,
+		c,
+	})
 }
 
 // used for 'type <blabla> struct | interface' declarations
@@ -92,7 +86,13 @@ func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
 		// anonymous type
 		s.semantifyTypeFor(d.Type, d)
 	}
-	s.appendEntry(t.Offset, len(t.Name), t.Line, t.Column, d)
+	s.entries = append(s.entries, SemanticEntry{
+		t.Offset,
+		len(t.Name),
+		t.Line,
+		t.Column,
+		d,
+	})
 	return d
 }
 
@@ -800,19 +800,7 @@ func (d *RenameDesc) Less(i, j int) bool { return !(d.Decls[i].Offset < d.Decls[
 func (d *RenameDesc) Swap(i, j int)      { d.Decls[i], d.Decls[j] = d.Decls[j], d.Decls[i] }
 
 func (d *RenameDesc) append(offset, line, col int) {
-	if d.Decls == nil {
-		d.Decls = make([]RenameDeclDesc, 0, 16)
-	}
-
-	n := len(d.Decls)
-	if cap(d.Decls) < n+1 {
-		s := make([]RenameDeclDesc, n, n*2+1)
-		copy(s, d.Decls)
-		d.Decls = s
-	}
-
-	d.Decls = d.Decls[:n+1]
-	d.Decls[n] = RenameDeclDesc{offset, line, col}
+	d.Decls = append(d.Decls, RenameDeclDesc{offset, line, col})
 }
 
 func (s *SemanticContext) Rename(filename string, cursor int) ([]RenameDesc, os.Error) {
