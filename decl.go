@@ -563,6 +563,32 @@ func advanceToType(pred TypePredicate, v ast.Expr, scope *Scope) (ast.Expr, *Sco
 	return v, scope
 }
 
+func advanceToStructOrInterface(decl *Decl) *Decl {
+	if structInterfacePredicate(decl.Type) {
+		return decl
+	}
+
+	for {
+		decl = typeToDecl(decl.Type, decl.Scope)
+		if decl == nil {
+			return nil
+		}
+
+		if structInterfacePredicate(decl.Type) {
+			break
+		}
+	}
+	return decl
+}
+
+func structInterfacePredicate(v ast.Expr) bool {
+	switch v.(type) {
+	case *ast.StructType, *ast.InterfaceType:
+		return true
+	}
+	return false
+}
+
 func chanPredicate(v ast.Expr) bool {
 	_, ok := v.(*ast.ChanType)
 	return ok
@@ -865,11 +891,15 @@ func (d *Decl) InferType() (ast.Expr, *Scope) {
 }
 
 func (d *Decl) FindChild(name string) *Decl {
-	if d.Children == nil {
-		return nil
+	if d.Children != nil {
+		if c, ok := d.Children[name]; ok {
+			return c
+		}
 	}
-	if c, ok := d.Children[name]; ok {
-		return c
+
+	decl := advanceToStructOrInterface(d)
+	if decl != nil && decl != d {
+		return decl.FindChild(name)
 	}
 	return nil
 }

@@ -240,13 +240,22 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 			}
 		} else {
 			// propose all children of a subject declaration and
-			// propose all children of its embedded types
 			for _, decl := range da.Decl.Children {
 				if da.Decl.Class == DECL_PACKAGE && !ast.IsExported(decl.Name) {
 					continue
 				}
 				b.appendDecl(da.Partial, decl.Name, decl, class)
 			}
+			// propose all children of an underlying struct/interface type
+			adecl := advanceToStructOrInterface(da.Decl)
+			if adecl != nil && adecl != da.Decl {
+				for _, decl := range adecl.Children {
+					if decl.Class == DECL_VAR {
+						b.appendDecl(da.Partial, decl.Name, decl, class)
+					}
+				}
+			}
+			// propose all children of its embedded types
 			b.appendEmbedded(da.Partial, da.Decl, class)
 		}
 		partial = len(da.Partial)
