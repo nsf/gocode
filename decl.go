@@ -441,6 +441,8 @@ func checkForBuiltinFuncs(typ *ast.Ident, c *ast.CallExpr, scope *Scope) (ast.Ex
 				return e, scope
 			case "make":
 				return c.Args[0], scope
+			case "append":
+				return c.Args[0], scope
 			case "cmplx":
 				return ast.NewIdent("complex"), universeScope
 			case "closed":
@@ -1270,6 +1272,7 @@ func init() {
 	u.addNamedDecl(NewDeclTyped("iota", DECL_CONST, t, u))
 	u.addNamedDecl(NewDeclTyped("nil", DECL_CONST, t, u))
 
+	u.addNamedDecl(NewDeclTypedNamed("append", DECL_FUNC, "func([]type, ...type) []type", u))
 	u.addNamedDecl(NewDeclTypedNamed("cap", DECL_FUNC, "func(container) int", u))
 	u.addNamedDecl(NewDeclTypedNamed("close", DECL_FUNC, "func(channel)", u))
 	u.addNamedDecl(NewDeclTypedNamed("closed", DECL_FUNC, "func(channel) bool", u))
