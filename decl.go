@@ -549,11 +549,7 @@ func advanceToType(pred TypePredicate, v ast.Expr, scope *Scope) (ast.Expr, *Sco
 	}
 
 	for {
-		tp := typePath(v)
-		if tp.IsNil() {
-			return nil, nil
-		}
-		decl := lookupPath(tp, scope)
+		decl := typeToDecl(v, scope)
 		if decl == nil {
 			return nil, nil
 		}
