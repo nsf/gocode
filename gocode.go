@@ -16,7 +16,7 @@ import (
 
 var (
 	server = flag.Bool("s", false, "run a server instead of a client")
-	format = flag.String("f", "nice", "output format (vim | emacs | nice)")
+	format = flag.String("f", "nice", "output format (vim | emacs | nice | csv)")
 	input  = flag.String("in", "", "use this file instead of stdin input")
 )
 
@@ -162,6 +162,27 @@ func (*EmacsFormatter) WriteRename(renamedescs []RenameDesc, err string) {
 }
 
 //-------------------------------------------------------------------------
+// CSVFormatter
+//-------------------------------------------------------------------------
+
+type CSVFormatter struct{}
+
+func (*CSVFormatter) WriteEmpty() {
+}
+
+func (*CSVFormatter) WriteCandidates(names, types, classes []string, num int) {
+	for i := 0; i < len(names); i++ {
+		fmt.Printf("%s,,%s,,%s\n", classes[i], names[i], types[i])
+	}
+}
+
+func (*CSVFormatter) WriteSMap(decldescs []DeclDesc) {
+}
+
+func (*CSVFormatter) WriteRename(renamedescs []RenameDesc, err string) {
+}
+
+//-------------------------------------------------------------------------
 
 func getFormatter() Formatter {
 	switch *format {
@@ -171,6 +192,8 @@ func getFormatter() Formatter {
 		return new(EmacsFormatter)
 	case "nice":
 		return new(NiceFormatter)
+	case "csv":
+		return new(CSVFormatter)
 	}
 	return new(VimFormatter)
 }
