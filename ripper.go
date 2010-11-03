@@ -19,29 +19,13 @@ type TokCollection struct {
 	tokens []TokPos
 }
 
-func (t *TokCollection) appendToken(pos token.Position, tok token.Token) {
-	if t.tokens == nil {
-		t.tokens = make([]TokPos, 0, 4)
-	}
-
-	n := len(t.tokens)
-	if cap(t.tokens) < n+1 {
-		s := make([]TokPos, n, n*2+1)
-		copy(s, t.tokens)
-		t.tokens = s
-	}
-
-	t.tokens = t.tokens[:n+1]
-	t.tokens[n] = TokPos{tok, pos}
-}
-
 func (t *TokCollection) next(s *scanner.Scanner) bool {
 	pos, tok, _ := s.Scan()
 	if tok == token.EOF {
 		return false
 	}
 
-	t.appendToken(pos, tok)
+	t.tokens = append(t.tokens, TokPos{tok, pos})
 	return true
 }
 

@@ -10,7 +10,6 @@ import (
 	"path"
 	"sort"
 	"time"
-	"container/vector"
 	"runtime"
 )
 
@@ -22,9 +21,9 @@ import (
 
 type OutBuffers struct {
 	tmpbuf  *bytes.Buffer
-	names   vector.StringVector
-	types   vector.StringVector
-	classes vector.StringVector
+	names   []string
+	types   []string
+	classes []string
 	ctx     *AutoCompleteContext
 	tmpns   map[string]bool
 }
@@ -32,15 +31,15 @@ type OutBuffers struct {
 func NewOutBuffers(ctx *AutoCompleteContext) *OutBuffers {
 	b := new(OutBuffers)
 	b.tmpbuf = bytes.NewBuffer(make([]byte, 0, 1024))
-	b.names = vector.StringVector(make([]string, 0, 1024))
-	b.types = vector.StringVector(make([]string, 0, 1024))
-	b.classes = vector.StringVector(make([]string, 0, 1024))
+	b.names = make([]string, 0, 1024)
+	b.types = make([]string, 0, 1024)
+	b.classes = make([]string, 0, 1024)
 	b.ctx = ctx
 	return b
 }
 
 func (b *OutBuffers) Len() int {
-	return b.names.Len()
+	return len(b.names)
 }
 
 func (b *OutBuffers) Less(i, j int) bool {
@@ -67,13 +66,13 @@ func (b *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
 		return
 	}
 
-	b.names.Push(name)
+	b.names = append(b.names, name)
 
 	decl.PrettyPrintType(b.tmpbuf)
-	b.types.Push(b.tmpbuf.String())
+	b.types = append(b.types, b.tmpbuf.String())
 	b.tmpbuf.Reset()
 
-	b.classes.Push(decl.ClassName())
+	b.classes = append(b.classes, decl.ClassName())
 }
 
 func (b *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
@@ -261,7 +260,7 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 		partial = len(da.Partial)
 	}
 
-	if b.names.Len() == 0 || b.types.Len() == 0 || b.classes.Len() == 0 {
+	if len(b.names) == 0 || len(b.types) == 0 || len(b.classes) == 0 {
 		return nil, nil, nil, 0
 	}
 

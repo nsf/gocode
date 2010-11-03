@@ -50,21 +50,11 @@ func (pi *PackageImports) appendImports(filename string, decls []ast.Decl) {
 
 // Simple vector-like append.
 func (pi *PackageImports) appendImport(alias, path string) {
-	v := *pi
 	if alias == "_" {
 		return
 	}
 
-	n := len(v)
-	if cap(v) < n+1 {
-		s := make(PackageImports, n, n*2+1)
-		copy(s, v)
-		v = s
-	}
-
-	v = v[:n+1]
-	v[n] = PackageImport{alias, path}
-	*pi = v
+	*pi = append(*pi, PackageImport{alias, path})
 }
 
 //-------------------------------------------------------------------------
