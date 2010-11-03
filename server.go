@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"rpc"
+	"os"
 	"os/signal"
 	"fmt"
 	"runtime"
@@ -21,9 +22,9 @@ type Daemon struct {
 	declcache *DeclCache
 }
 
-func NewDaemon(path string) *Daemon {
+func NewDaemon(network, address string) *Daemon {
 	d := new(Daemon)
-	d.acr = NewServer(path)
+	d.acr = NewServer(network, address)
 	d.pcache = NewPackageCache()
 	d.declcache = NewDeclCache()
 	d.acc = NewAutoCompleteContext(d.pcache, d.declcache)
@@ -142,18 +143,15 @@ const (
 )
 
 type Server struct {
-	listener *net.UnixListener
+	listener net.Listener
 	cmd_in   chan int
 }
 
-func NewServer(path string) *Server {
-	s := new(Server)
-	addr, err := net.ResolveUnixAddr("unix", path)
-	if err != nil {
-		panic(err.String())
-	}
+func NewServer(network, address string) *Server {
+	var err os.Error
 
-	s.listener, err = net.ListenUnix("unix", addr)
+	s := new(Server)
+	s.listener, err = net.Listen(network, address)
 	if err != nil {
 		panic(err.String())
 	}
@@ -161,7 +159,7 @@ func NewServer(path string) *Server {
 	return s
 }
 
-func acceptConnections(in chan net.Conn, listener *net.UnixListener) {
+func acceptConnections(in chan net.Conn, listener net.Listener) {
 	for {
 		c, err := listener.Accept()
 		if err != nil {

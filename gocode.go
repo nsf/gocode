@@ -18,6 +18,8 @@ var (
 	server = flag.Bool("s", false, "run a server instead of a client")
 	format = flag.String("f", "nice", "output format (vim | emacs | nice | csv)")
 	input  = flag.String("in", "", "use this file instead of stdin input")
+	sock = flag.String("sock", "unix", "socket type (unix | tcp)")
+	addr = flag.String("addr", ":37373", "address for tcp socket")
 )
 
 //-------------------------------------------------------------------------
@@ -216,13 +218,20 @@ func fileExists(filename string) bool {
 
 func serverFunc() int {
 	readConfig(&Config)
-	socketfname := getSocketFilename()
-	if fileExists(socketfname) {
-		fmt.Printf("unix socket: '%s' already exists\n", socketfname)
-		return 1
+
+	addr := *addr
+	if *sock == "unix" {
+		addr = getSocketFilename()
+		if fileExists(addr) {
+			fmt.Printf("unix socket: '%s' already exists\n", addr)
+			return 1
+		}
 	}
-	daemon = NewDaemon(socketfname)
-	defer os.Remove(socketfname)
+	daemon = NewDaemon(*sock, addr)
+	if *sock == "unix" {
+		// cleanup unix socket file
+		defer os.Remove(addr)
+	}
 
 	rpcremote := new(RPCRemote)
 	rpc.Register(rpcremote)
@@ -368,37 +377,44 @@ func tryRunServer() os.Error {
 		return err
 	}
 
-	_, err = os.ForkExec(path, []string{"gocode", "-s"}, os.Environ(), "", fds)
+	args := []string{"gocode", "-s", "-sock", *sock, "-addr", *addr}
+	_, err = os.ForkExec(path, args, os.Environ(), "", fds)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func waitForAFile(fname string) {
+func tryToConnect(network, address string) (client *rpc.Client, err os.Error) {
 	t := 0
-	for !fileExists(fname) {
-		time.Sleep(10000000) // 0.01
-		t += 10
-		if t > 1000 {
-			return
+	for {
+		client, err = rpc.Dial(network, address)
+		if err != nil && t < 1000 {
+			time.Sleep(10e6) // wait 10 milliseconds
+			t += 10
+			continue
 		}
+		break
 	}
+
+	return
 }
 
 func clientFunc() int {
-	socketfname := getSocketFilename()
+	addr := *addr
+	if *sock == "unix" {
+		addr = getSocketFilename()
+	}
 
 	// client
-	client, err := rpc.Dial("unix", socketfname)
+	client, err := rpc.Dial(*sock, addr)
 	if err != nil {
 		err = tryRunServer()
 		if err != nil {
 			fmt.Printf("%s\n", err.String())
 			return 1
 		}
-		waitForAFile(socketfname)
-		client, err = rpc.Dial("unix", socketfname)
+		client, err = tryToConnect(*sock, addr)
 		if err != nil {
 			fmt.Printf("%s\n", err.String())
 			return 1
