@@ -231,11 +231,11 @@ func serverFunc() int {
 	return 0
 }
 
-func Cmd_Status(c *rpc.Client) {
+func cmdStatus(c *rpc.Client) {
 	fmt.Printf("%s\n", Client_Status(c, 0))
 }
 
-func Cmd_AutoComplete(c *rpc.Client) {
+func cmdAutoComplete(c *rpc.Client) {
 	var file []byte
 	var err os.Error
 
@@ -275,7 +275,7 @@ func Cmd_AutoComplete(c *rpc.Client) {
 	formatter.WriteCandidates(names, types, classes, partial)
 }
 
-func Cmd_SMap(c *rpc.Client) {
+func cmdSMap(c *rpc.Client) {
 	if flag.NArg() != 2 {
 		return
 	}
@@ -292,7 +292,7 @@ func Cmd_SMap(c *rpc.Client) {
 	formatter.WriteSMap(decldescs)
 }
 
-func Cmd_Rename(c *rpc.Client) {
+func cmdRename(c *rpc.Client) {
 	if flag.NArg() != 3 {
 		return
 	}
@@ -312,15 +312,15 @@ func Cmd_Rename(c *rpc.Client) {
 	formatter.WriteRename(renamedescs, err)
 }
 
-func Cmd_Close(c *rpc.Client) {
+func cmdClose(c *rpc.Client) {
 	Client_Close(c, 0)
 }
 
-func Cmd_DropCache(c *rpc.Client) {
+func cmdDropCache(c *rpc.Client) {
 	Client_DropCache(c, 0)
 }
 
-func Cmd_Set(c *rpc.Client) {
+func cmdSet(c *rpc.Client) {
 	switch flag.NArg() {
 	case 1:
 		fmt.Print(Client_Set(c, "", ""))
@@ -409,19 +409,19 @@ func clientFunc() int {
 	if flag.NArg() > 0 {
 		switch flag.Arg(0) {
 		case "autocomplete":
-			Cmd_AutoComplete(client)
+			cmdAutoComplete(client)
 		case "close":
-			Cmd_Close(client)
+			cmdClose(client)
 		case "status":
-			Cmd_Status(client)
+			cmdStatus(client)
 		case "drop-cache":
-			Cmd_DropCache(client)
+			cmdDropCache(client)
 		case "set":
-			Cmd_Set(client)
+			cmdSet(client)
 		case "smap":
-			Cmd_SMap(client)
+			cmdSMap(client)
 		case "rename":
-			Cmd_Rename(client)
+			cmdRename(client)
 		}
 	}
 	return 0
