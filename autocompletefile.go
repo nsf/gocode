@@ -82,7 +82,7 @@ func (f *AutoCompleteFile) processDeclLocals(decl ast.Decl) {
 }
 
 func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
-	if t, ok := decl.(*ast.GenDecl); ok && t.Offset > f.cursor {
+	if t, ok := decl.(*ast.GenDecl); ok && t.TokPos.Offset > f.cursor {
 		return
 	}
 	foreachDecl(decl, func(data *foreachDeclStruct) {
@@ -329,7 +329,7 @@ func (f *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
 		return false
 	}
 
-	if f.cursor >= block.Offset && f.cursor <= block.Rbrace.Offset {
+	if f.cursor >= block.Lbrace.Offset && f.cursor <= block.Rbrace.Offset {
 		return true
 	}
 	return false

@@ -47,14 +47,14 @@ func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
 	c := d.FindChildAndInEmbedded(e.Name)
 	if c == nil {
 		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
-			e.Name, s.name, e.Line)
+			e.Name, s.name, e.NamePos.Line)
 		panic(msg)
 	}
 	s.entries = append(s.entries, SemanticEntry{
-		e.Offset,
+		e.NamePos.Offset,
 		len(e.Name),
-		e.Line,
-		e.Column,
+		e.NamePos.Line,
+		e.NamePos.Column,
 		c,
 	})
 }
@@ -79,7 +79,7 @@ func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
 	d := s.scope.lookup(t.Name)
 	if d == nil {
 		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
-			t.Name, s.name, t.Line)
+			t.Name, s.name, t.NamePos.Line)
 		panic(msg)
 	}
 	if strings.HasPrefix(d.Name, "$") {
@@ -87,10 +87,10 @@ func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
 		s.semantifyTypeFor(d.Type, d)
 	}
 	s.entries = append(s.entries, SemanticEntry{
-		t.Offset,
+		t.NamePos.Offset,
 		len(t.Name),
-		t.Line,
-		t.Column,
+		t.NamePos.Line,
+		t.NamePos.Column,
 		d,
 	})
 	return d
@@ -608,7 +608,7 @@ func (s *SemanticFile) processTopDecls(decl ast.Decl) {
 					s.semantifyExpr(name)
 					d := s.scope.lookup(name.Name)
 					if d == nil {
-						panic(fmt.Sprintf("Can't resolve symbol: '%s' at %s:%d", name.Name, s.name, name.Line))
+						panic(fmt.Sprintf("Can't resolve symbol: '%s' at %s:%d", name.Name, s.name, name.NamePos.Line))
 					}
 					decls[i] = d
 				}
