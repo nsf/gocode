@@ -23,13 +23,22 @@ var (
 )
 
 //-------------------------------------------------------------------------
-// Formatter interface
+// Formatter interfaces
 //-------------------------------------------------------------------------
 
-type Formatter interface {
+type FormatterEmpty interface {
 	WriteEmpty()
+}
+
+type FormatterCandidates interface {
 	WriteCandidates(names, types, classes []string, num int)
+}
+
+type FormatterSMap interface {
 	WriteSMap(decldescs []DeclDesc)
+}
+
+type FormatterRename interface {
 	WriteRename(renamedescs []RenameDesc, err string)
 }
 
@@ -101,9 +110,6 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 	fmt.Printf("]]")
 }
 
-func (*VimFormatter) WriteSMap(decldescs []DeclDesc) {
-}
-
 func vimQuote(s string) string {
 	s = strings.Replace(s, "'", "''", -1)
 	return s
@@ -143,9 +149,6 @@ func (*VimFormatter) WriteRename(renamedescs []RenameDesc, err string) {
 
 type EmacsFormatter struct{}
 
-func (*EmacsFormatter) WriteEmpty() {
-}
-
 func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) {
 	for i := 0; i < len(names); i++ {
 		name := names[i]
@@ -157,20 +160,11 @@ func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) 
 	}
 }
 
-func (*EmacsFormatter) WriteSMap(decldescs []DeclDesc) {
-}
-
-func (*EmacsFormatter) WriteRename(renamedescs []RenameDesc, err string) {
-}
-
 //-------------------------------------------------------------------------
 // CSVFormatter
 //-------------------------------------------------------------------------
 
 type CSVFormatter struct{}
-
-func (*CSVFormatter) WriteEmpty() {
-}
 
 func (*CSVFormatter) WriteCandidates(names, types, classes []string, num int) {
 	for i := 0; i < len(names); i++ {
@@ -178,15 +172,9 @@ func (*CSVFormatter) WriteCandidates(names, types, classes []string, num int) {
 	}
 }
 
-func (*CSVFormatter) WriteSMap(decldescs []DeclDesc) {
-}
-
-func (*CSVFormatter) WriteRename(renamedescs []RenameDesc, err string) {
-}
-
 //-------------------------------------------------------------------------
 
-func getFormatter() Formatter {
+func getFormatter() interface{} {
 	switch *format {
 	case "vim":
 		return new(VimFormatter)
@@ -277,11 +265,15 @@ func cmdAutoComplete(c *rpc.Client) {
 	formatter := getFormatter()
 	names, types, classes, partial := Client_AutoComplete(c, file, filename, cursor)
 	if names == nil {
-		formatter.WriteEmpty()
+		if f, ok := formatter.(FormatterEmpty); ok {
+			f.WriteEmpty()
+		}
 		return
 	}
 
-	formatter.WriteCandidates(names, types, classes, partial)
+	if f, ok := formatter.(FormatterCandidates); ok {
+		f.WriteCandidates(names, types, classes, partial)
+	}
 }
 
 func cmdSMap(c *rpc.Client) {
@@ -298,7 +290,9 @@ func cmdSMap(c *rpc.Client) {
 	formatter := getFormatter()
 	decldescs := Client_SMap(c, filename)
 
-	formatter.WriteSMap(decldescs)
+	if f, ok := formatter.(FormatterSMap); ok {
+		f.WriteSMap(decldescs)
+	}
 }
 
 func cmdRename(c *rpc.Client) {
@@ -318,7 +312,9 @@ func cmdRename(c *rpc.Client) {
 	formatter := getFormatter()
 	renamedescs, err := Client_Rename(c, filename, cursor)
 
-	formatter.WriteRename(renamedescs, err)
+	if f, ok := formatter.(FormatterRename); ok {
+		f.WriteRename(renamedescs, err)
+	}
 }
 
 func cmdClose(c *rpc.Client) {
