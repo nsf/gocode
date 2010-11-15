@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 gocode close
+sleep 1
 gocode set deny-package-renames true
 echo "--------------------------------------------------------------------"
 echo "Autocompletion tests..."
