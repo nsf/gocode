@@ -9,6 +9,8 @@ It is called *daemon*, because it uses client/server architecture for caching pu
 
 [Demo screencast](http://nsf.110mb.com/gocode-demo.swf)
 
+![Gocode in vim](http://nsf.github.com/images/gocode-screenshot.png)
+
 ### Setup
 
  1. First of all, you need to get the latest git version of the gocode source code: 
