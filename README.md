@@ -7,7 +7,7 @@ Gocode is a helper tool which is intended to be integraded with your source code
 
 It is called *daemon*, because it uses client/server architecture for caching purposes. In particular, it makes autocompletions very fast. Typical autocompletion time with warm cache is 30ms, which is barely noticeable.
 
-Demo screencast: http://nsf.110mb.com/gocode-demo.swf
+[Demo screencast](http://nsf.110mb.com/gocode-demo.swf)
 
 ### Setup
 
