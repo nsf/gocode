@@ -336,45 +336,14 @@ func cmdSet(c *rpc.Client) {
 	}
 }
 
-func makeFDs() ([]*os.File, os.Error) {
-	var fds [3]*os.File
-	var err os.Error
-	fds[0], err = os.Open("/dev/null", os.O_RDONLY, 0)
-	if err != nil {
-		return nil, err
-	}
-	fds[1], err = os.Open("/dev/null", os.O_WRONLY, 0)
-	if err != nil {
-		return nil, err
-	}
-	fds[2], err = os.Open("/dev/null", os.O_WRONLY, 0)
-	if err != nil {
-		return nil, err
-	}
-	// I know that technically it's possible here that there will be unclosed
-	// file descriptors on exit. But since that kind of error will result in
-	// a process shutdown anyway, I don't care much about that.
-
-	return fds[:], nil
-}
-
 func tryRunServer() os.Error {
-	fds, err := makeFDs()
-	if err != nil {
-		return err
-	}
-	defer fds[0].Close()
-	defer fds[1].Close()
-	defer fds[2].Close()
-
-	var path string
-	path, err = exec.LookPath("gocode")
+	path, err := exec.LookPath("gocode")
 	if err != nil {
 		return err
 	}
 
 	args := []string{"gocode", "-s", "-sock", *sock, "-addr", *addr}
-	_, err = os.ForkExec(path, args, os.Environ(), "", fds)
+	_, err = os.ForkExec(path, args, os.Environ(), "", []*os.File{nil, nil, nil})
 	if err != nil {
 		return err
 	}
