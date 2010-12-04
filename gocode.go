@@ -19,7 +19,7 @@ var (
 	format = flag.String("f", "nice", "output format (vim | emacs | nice | csv)")
 	input  = flag.String("in", "", "use this file instead of stdin input")
 	sock   = CreateSockFlag("sock", "socket type (unix | tcp)")
-	addr   = flag.String("addr", ":37373", "address for tcp socket")
+	addr   = flag.String("addr", "localhost:37373", "address for tcp socket")
 )
 
 //-------------------------------------------------------------------------
