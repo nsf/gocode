@@ -15,6 +15,12 @@ GOFILES=gocode.go\
 	declcache.go\
 	semanticcontext.go
 
+ifeq ($(GOOS),windows)
+GOFILES+=os_win32.go
+else
+GOFILES+=os_posix.go
+endif
+
 include $(GOROOT)/src/Make.cmd
 
 rpc.go: server.go goremote/goremote

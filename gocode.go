@@ -18,7 +18,7 @@ var (
 	server = flag.Bool("s", false, "run a server instead of a client")
 	format = flag.String("f", "nice", "output format (vim | emacs | nice | csv)")
 	input  = flag.String("in", "", "use this file instead of stdin input")
-	sock   = flag.String("sock", "unix", "socket type (unix | tcp)")
+	sock   = CreateSockFlag("sock", "socket type (unix | tcp)")
 	addr   = flag.String("addr", ":37373", "address for tcp socket")
 )
 

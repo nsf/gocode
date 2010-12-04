@@ -184,11 +184,7 @@ func (s *Server) Loop() {
 				return
 			}
 		case sig := <-signal.Incoming:
-			usig, ok := sig.(signal.UnixSignal)
-			if !ok {
-				break
-			}
-			if usig == signal.SIGINT || usig == signal.SIGTERM {
+			if IsTerminationSignal(sig) {
 				return
 			}
 		}
