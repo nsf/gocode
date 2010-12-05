@@ -19,3 +19,10 @@ func IsTerminationSignal(sig signal.Signal) bool {
 	}
 	return false
 }
+
+func IsAbsPath(p string) bool {
+	if p[0] == '/' {
+		return true
+	}
+	return false
+}

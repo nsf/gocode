@@ -257,7 +257,7 @@ func cmdAutoComplete(c *rpc.Client) {
 		cursor, _ = strconv.Atoi(flag.Arg(2))
 	}
 
-	if filename != "" && filename[0] != '/' {
+	if filename != "" && !IsAbsPath(filename) {
 		cwd, _ := os.Getwd()
 		filename = path.Join(cwd, filename)
 	}
@@ -282,7 +282,7 @@ func cmdSMap(c *rpc.Client) {
 	}
 
 	filename := flag.Arg(1)
-	if filename != "" && filename[0] != '/' {
+	if filename != "" && !IsAbsPath(filename) {
 		cwd, _ := os.Getwd()
 		filename = path.Join(cwd, filename)
 	}
@@ -304,7 +304,7 @@ func cmdRename(c *rpc.Client) {
 	filename := flag.Arg(1)
 	cursor, _ = strconv.Atoi(flag.Arg(2))
 
-	if filename != "" && filename[0] != '/' {
+	if filename != "" && !IsAbsPath(filename) {
 		cwd, _ := os.Getwd()
 		filename = path.Join(cwd, filename)
 	}

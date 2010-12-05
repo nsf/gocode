@@ -12,3 +12,10 @@ func CreateSockFlag(name, desc string) *string {
 func IsTerminationSignal(sig signal.Signal) bool {
 	return false
 }
+
+func IsAbsPath(p string) bool {
+	if p[0] == '\\' || (len(p) > 1 && p[1] == ':') {
+		return true
+	}
+	return false
+}
