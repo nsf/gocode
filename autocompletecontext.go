@@ -379,7 +379,7 @@ func findOtherPackageFiles(filename, packageName string) []string {
 	out := make([]string, 0, count)
 	for _, stat := range filesInDir {
 		ok, _ := path.Match("*.go", stat.Name)
-		if !ok || stat.Name == file {
+		if !ok || stat.Name == file || !stat.IsRegular() {
 			continue
 		}
 
