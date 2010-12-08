@@ -12,7 +12,6 @@ import (
 	"sort"
 	"time"
 	"runtime"
-	"runtime/pprof"
 	"os"
 )
 
@@ -261,14 +260,6 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 			b.appendEmbedded(da.Partial, da.Decl, class)
 		}
 		partial = len(da.Partial)
-	}
-	{
-		f, err := os.Open("gocode.prof", os.O_CREATE | os.O_WRONLY | os.O_APPEND, 0644)
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
-		pprof.WriteHeapProfile(f)
 	}
 
 	if len(b.names) == 0 || len(b.types) == 0 || len(b.classes) == 0 {
