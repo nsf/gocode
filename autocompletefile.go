@@ -20,19 +20,21 @@ type AutoCompleteFile struct {
 	scope     *Scope
 
 	cursor int // for current file buffer only
+	fset *token.FileSet
 }
 
 func NewPackageFile(name string) *AutoCompleteFile {
 	p := new(AutoCompleteFile)
 	p.name = name
 	p.cursor = -1
+	p.fset = token.NewFileSet()
 	return p
 }
 
 // this one is used for current file buffer exclusively
 func (f *AutoCompleteFile) processData(data []byte) {
 	cur, filedata, block := RipOffDecl(data, f.cursor)
-	file, _ := parser.ParseFile("", filedata, 0)
+	file, _ := parser.ParseFile(f.fset, "", filedata, 0)
 	f.packageName = packageName(file)
 
 	f.decls = make(map[string]*Decl)
@@ -48,7 +50,7 @@ func (f *AutoCompleteFile) processData(data []byte) {
 	}
 	if block != nil {
 		// process local function as top-level declaration
-		decls, _ := parser.ParseDeclList("", block)
+		decls, _ := parser.ParseDeclList(f.fset, "", block)
 
 		anonymifyAst(decls, 0, f.filescope)
 
@@ -82,7 +84,7 @@ func (f *AutoCompleteFile) processDeclLocals(decl ast.Decl) {
 }
 
 func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
-	if t, ok := decl.(*ast.GenDecl); ok && t.TokPos.Offset > f.cursor {
+	if t, ok := decl.(*ast.GenDecl); ok && f.fset.Position(t.TokPos).Offset > f.cursor {
 		return
 	}
 	foreachDecl(decl, func(data *foreachDeclStruct) {
@@ -182,7 +184,7 @@ func (f *AutoCompleteFile) processSelectStmt(a *ast.SelectStmt) {
 
 	var lastCursorAfter *ast.CommClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.CommClause); f.cursor > cc.Colon.Offset {
+		if cc := s.(*ast.CommClause); f.cursor > f.fset.Position(cc.Colon).Offset {
 			lastCursorAfter = cc
 		}
 	}
@@ -219,7 +221,7 @@ func (f *AutoCompleteFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 
 	var lastCursorAfter *ast.TypeCaseClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.TypeCaseClause); f.cursor > cc.Colon.Offset {
+		if cc := s.(*ast.TypeCaseClause); f.cursor > f.fset.Position(cc.Colon).Offset {
 			lastCursorAfter = cc
 		}
 	}
@@ -247,7 +249,7 @@ func (f *AutoCompleteFile) processSwitchStmt(a *ast.SwitchStmt) {
 	f.processStmt(a.Init)
 	var lastCursorAfter *ast.CaseClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.CaseClause); f.cursor > cc.Colon.Offset {
+		if cc := s.(*ast.CaseClause); f.cursor > f.fset.Position(cc.Colon).Offset {
 			lastCursorAfter = cc
 		}
 	}
@@ -288,7 +290,7 @@ func (f *AutoCompleteFile) processRangeStmt(a *ast.RangeStmt) {
 }
 
 func (f *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
-	if a.Tok != token.DEFINE || a.TokPos.Offset > f.cursor {
+	if a.Tok != token.DEFINE || f.fset.Position(a.TokPos).Offset > f.cursor {
 		return
 	}
 
@@ -329,7 +331,7 @@ func (f *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
 		return false
 	}
 
-	if f.cursor >= block.Lbrace.Offset && f.cursor <= block.Rbrace.Offset {
+	if f.cursor >= f.fset.Position(block.Lbrace).Offset && f.cursor <= f.fset.Position(block.Rbrace).Offset {
 		return true
 	}
 	return false

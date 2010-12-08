@@ -4,6 +4,7 @@ import (
 	"utf8"
 	"unicode"
 	"go/parser"
+	"go/token"
 )
 
 type DeclApropos struct {
@@ -104,7 +105,7 @@ loop:
 
 func (c *AutoCompleteContext) deduceExpr(file []byte, partial string) *DeclApropos {
 	e := findExpr(file)
-	expr, err := parser.ParseExpr("", e)
+	expr, err := parser.ParseExpr(token.NewFileSet(), "", e)
 	if err != nil {
 		return nil
 	}

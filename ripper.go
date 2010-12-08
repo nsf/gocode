@@ -12,11 +12,12 @@ import (
 
 type TokPos struct {
 	Tok token.Token
-	Pos token.Position
+	Pos token.Pos
 }
 
 type TokCollection struct {
 	tokens []TokPos
+	fset *token.FileSet
 }
 
 func (t *TokCollection) next(s *scanner.Scanner) bool {
@@ -44,14 +45,14 @@ func (t *TokCollection) findDeclBeg(pos int) int {
 
 		if cur < lowest {
 			lowest = cur
-			lowpos = t.tokens[i].Pos.Offset
+			lowpos = t.fset.Position(t.tokens[i].Pos).Offset
 			lowi = i
 		}
 	}
 
 	for i := lowi; i >= 0; i-- {
 		if t.tokens[i].Tok == token.SEMICOLON {
-			lowpos = t.tokens[i+1].Pos.Offset
+			lowpos = t.fset.Position(t.tokens[i+1].Pos).Offset
 			break
 		}
 	}
@@ -78,7 +79,7 @@ func (t *TokCollection) findDeclEnd(pos int) int {
 
 		if cur > highest {
 			highest = cur
-			highpos = t.tokens[i].Pos.Offset
+			highpos = t.fset.Position(t.tokens[i].Pos).Offset
 		}
 	}
 
@@ -89,7 +90,7 @@ func (t *TokCollection) findOutermostScope(cursor int) (int, int) {
 	pos := 0
 
 	for i, tok := range t.tokens {
-		if cursor <= tok.Pos.Offset {
+		if cursor <= t.fset.Position(tok.Pos).Offset {
 			break
 		}
 		pos = i
@@ -103,8 +104,9 @@ func (t *TokCollection) findOutermostScope(cursor int) (int, int) {
 //   new-cursor, file-without-ripped-part, ripped-part
 //   old-cursor, file, nil
 func (t *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []byte) {
+	t.fset = token.NewFileSet()
 	s := new(scanner.Scanner)
-	s.Init("", file, nil, scanner.ScanComments|scanner.InsertSemis)
+	s.Init(t.fset, "", file, nil, scanner.ScanComments|scanner.InsertSemis)
 	for t.next(s) {
 	}
 

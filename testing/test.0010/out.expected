@@ -1,5 +1,5 @@
 Found 6 candidates:
-  func Pos() token.Position
+  func Pos() token.Pos
   var Comment *ast.CommentGroup
   var Doc *ast.CommentGroup
   var Names []*ast.Ident

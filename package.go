@@ -162,7 +162,7 @@ func (m *PackageFileCache) processPackageData(s string) {
 	m.others = make(map[string]*Decl)
 	for key, value := range internalPackages {
 		tmp := m.expandPackages(value.Bytes())
-		decls, err := parser.ParseDeclList("", tmp)
+		decls, err := parser.ParseDeclList(token.NewFileSet(), "", tmp)
 		tmp = nil
 
 		if err != nil {
@@ -245,7 +245,7 @@ func (m *PackageFileCache) processExport(s string) (string, string) {
 
 func (m *PackageFileCache) processImportStatement(s string) {
 	var scan scanner.Scanner
-	scan.Init("", []byte(s), nil, 0)
+	scan.Init(token.NewFileSet(), "", []byte(s), nil, 0)
 
 	var alias, path string
 	for i := 0; i < 3; i++ {

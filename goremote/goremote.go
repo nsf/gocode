@@ -2,6 +2,7 @@ package main
 
 import (
 	"go/parser"
+	"go/token"
 	"strings"
 	"reflect"
 	"flag"
@@ -217,7 +218,8 @@ func wrapFunction(out io.Writer, fun *ast.FuncDecl) {
 }
 
 func processFile(out io.Writer, filename string) {
-	file, err := parser.ParseFile(filename, nil, 0)
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, filename, nil, 0)
 	if err != nil {
 		panic(err.String())
 	}

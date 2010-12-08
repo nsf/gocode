@@ -75,6 +75,8 @@ type DeclFileCache struct {
 	Error     os.Error         // last error
 	Packages  PackageImports   // import information
 	FileScope *Scope
+
+	fset *token.FileSet
 }
 
 func NewDeclFileCache(name string) *DeclFileCache {
@@ -90,6 +92,7 @@ func (f *DeclFileCache) update() {
 		f.Data = nil
 		f.Decls = nil
 		f.Error = err
+		f.fset = nil
 		return
 	}
 
@@ -111,7 +114,8 @@ func (f *DeclFileCache) readFile(filename string) {
 }
 
 func (f *DeclFileCache) processData() {
-	f.File, f.Error = parser.ParseFile("", f.Data, 0)
+	f.fset = token.NewFileSet()
+	f.File, f.Error = parser.ParseFile(f.fset, "", f.Data, 0)
 	f.FileScope = NewScope(nil)
 	anonymifyAst(f.File.Decls, 0, f.FileScope)
 	f.Packages = NewPackageImports(f.name, f.File.Decls)

@@ -30,6 +30,8 @@ type SemanticFile struct {
 
 	scope *Scope
 	block *Scope // that one is used temporary for 'redeclarations' case
+
+	fset *token.FileSet
 }
 
 func NewSemanticFile(dc *DeclFileCache) *SemanticFile {
@@ -40,6 +42,7 @@ func NewSemanticFile(dc *DeclFileCache) *SemanticFile {
 	s.file = dc.File
 	s.filescope = dc.FileScope
 	s.scope = s.filescope
+	s.fset = dc.fset
 	return s
 }
 
@@ -47,14 +50,14 @@ func (s *SemanticFile) semantifyIdentFor(e *ast.Ident, d *Decl) {
 	c := d.FindChildAndInEmbedded(e.Name)
 	if c == nil {
 		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
-			e.Name, s.name, e.NamePos.Line)
+			e.Name, s.name, s.fset.Position(e.NamePos).Line)
 		panic(msg)
 	}
 	s.entries = append(s.entries, SemanticEntry{
-		e.NamePos.Offset,
+		s.fset.Position(e.NamePos).Offset,
 		len(e.Name),
-		e.NamePos.Line,
-		e.NamePos.Column,
+		s.fset.Position(e.NamePos).Line,
+		s.fset.Position(e.NamePos).Column,
 		c,
 	})
 }
@@ -79,7 +82,7 @@ func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
 	d := s.scope.lookup(t.Name)
 	if d == nil {
 		msg := fmt.Sprintf("Cannot resolve '%s' symbol at %s:%d",
-			t.Name, s.name, t.NamePos.Line)
+			t.Name, s.name, s.fset.Position(t.NamePos).Line)
 		panic(msg)
 	}
 	if strings.HasPrefix(d.Name, "$") {
@@ -87,10 +90,10 @@ func (s *SemanticFile) semantifyIdent(t *ast.Ident) *Decl {
 		s.semantifyTypeFor(d.Type, d)
 	}
 	s.entries = append(s.entries, SemanticEntry{
-		t.NamePos.Offset,
+		s.fset.Position(t.NamePos).Offset,
 		len(t.Name),
-		t.NamePos.Line,
-		t.NamePos.Column,
+		s.fset.Position(t.NamePos).Line,
+		s.fset.Position(t.NamePos).Column,
 		d,
 	})
 	return d
@@ -156,7 +159,7 @@ func (s *SemanticFile) semantifyExpr(e ast.Expr) {
 		d := exprToDecl(t.X, s.scope)
 		if d == nil {
 			msg := fmt.Sprintf("Cannot resolve selector expr at %s:%d (%s)",
-				s.name, t.Pos().Line, t.Sel.Name)
+				s.name, s.fset.Position(t.Pos()).Line, t.Sel.Name)
 			panic(msg)
 		}
 		s.semantifyExpr(t.X)
@@ -608,7 +611,7 @@ func (s *SemanticFile) processTopDecls(decl ast.Decl) {
 					s.semantifyExpr(name)
 					d := s.scope.lookup(name.Name)
 					if d == nil {
-						panic(fmt.Sprintf("Can't resolve symbol: '%s' at %s:%d", name.Name, s.name, name.NamePos.Line))
+						panic(fmt.Sprintf("Can't resolve symbol: '%s' at %s:%d", name.Name, s.name, s.fset.Position(name.NamePos).Line))
 					}
 					decls[i] = d
 				}

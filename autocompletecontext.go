@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"bytes"
 	"go/parser"
+	"go/token"
 	"go/ast"
 	"io/ioutil"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"sort"
 	"time"
 	"runtime"
+	"runtime/pprof"
+	"os"
 )
 
 //-------------------------------------------------------------------------
@@ -259,6 +262,14 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 		}
 		partial = len(da.Partial)
 	}
+	{
+		f, err := os.Open("gocode.prof", os.O_CREATE | os.O_WRONLY | os.O_APPEND, 0644)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close()
+		pprof.WriteHeapProfile(f)
+	}
 
 	if len(b.names) == 0 || len(b.types) == 0 || len(b.classes) == 0 {
 		return nil, nil, nil, 0
@@ -395,7 +406,7 @@ func findOtherPackageFiles(filename, packageName string) []string {
 }
 
 func filePackageName(filename string) string {
-	file, _ := parser.ParseFile(filename, nil, parser.PackageClauseOnly)
+	file, _ := parser.ParseFile(token.NewFileSet(), filename, nil, parser.PackageClauseOnly)
 	return file.Name.Name
 }
 
@@ -507,6 +518,7 @@ var declClassToStringStatus = [...]string{
 }
 
 func (c *AutoCompleteContext) Status() string {
+
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	fmt.Fprintf(buf, "Server's GOMAXPROCS == %d\n", runtime.GOMAXPROCS(0))
 	fmt.Fprintf(buf, "\nPackage cache contains %d entries\n", len(c.pcache))

@@ -1,7 +1,7 @@
 Found 6 candidates:
   func IsExported() bool
-  func Pos() token.Position
+  func Pos() token.Pos
   func String() string
   var Name string
-  var NamePos token.Position
+  var NamePos token.Pos
   var Obj *ast.Object
