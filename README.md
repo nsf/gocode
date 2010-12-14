@@ -1,9 +1,8 @@
-## An autocompletion/refactoring daemon for the Go programming language
+## An autocompletion daemon for the Go programming language
 
 Gocode is a helper tool which is intended to be integraded with your source code editor, like vim and emacs. It provides several advanced capabilities, which currently includes:
 
  - Context-sensitive autocompletion
- - Semantically-preserving renaming of an identifier
 
 It is called *daemon*, because it uses client/server architecture for caching purposes. In particular, it makes autocompletions very fast. Typical autocompletion time with warm cache is 30ms, which is barely noticeable.
 
@@ -57,9 +56,7 @@ In order to install vim scripts, you need to fulfill the following steps:
 
     `filetype plugin on`
 
- 4. Autocompletion and renaming should work now. Use `<C-x><C-o>` for autocompletion (omnifunc autocompletion). For identifier renaming simply type `:GocodeRename` when the cursor is on top of an identifier you want to rename. Vim will ask you for a new name and do the job.
-
-    *NOTE*: Vim renames identifiers only in opened files. If you want to apply rename operation to multiple files of your package you have to open all the files at once (e.g. `vim *.go`).
+ 4. Autocompletion should work now. Use `<C-x><C-o>` for autocompletion (omnifunc autocompletion). 
 
 ### Options
 
@@ -74,10 +71,6 @@ You can change all available options using `gocode set` command. The config file
  - *propose-builtins*
 
    A boolean option. If **true**, gocode will add built-in types, functions and constants to an autocompletion proposals. Default: **false**.
-
- - *deny-package-renames*
-
-   A boolean option. If **true**, gocode will deny renaming requests for package names. This option exists mainly for allowing simple implementation of the testing framework, which tests renaming facility. Default: **false**.
 
  - *lib-path*
 

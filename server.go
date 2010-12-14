@@ -17,7 +17,6 @@ import (
 type Daemon struct {
 	acr       *Server
 	acc       *AutoCompleteContext
-	semantic  *SemanticContext
 	pcache    PackageCache
 	declcache *DeclCache
 }
@@ -28,7 +27,6 @@ func NewDaemon(network, address string) *Daemon {
 	d.pcache = NewPackageCache()
 	d.declcache = NewDeclCache()
 	d.acc = NewAutoCompleteContext(d.pcache, d.declcache)
-	d.semantic = NewSemanticContext(d.pcache, d.declcache)
 	return d
 }
 
@@ -36,7 +34,6 @@ func (d *Daemon) DropCache() {
 	d.pcache = NewPackageCache()
 	d.declcache = NewDeclCache()
 	d.acc = NewAutoCompleteContext(d.pcache, d.declcache)
-	d.semantic = NewSemanticContext(d.pcache, d.declcache)
 }
 
 var daemon *Daemon
@@ -84,30 +81,6 @@ func Server_AutoComplete(file []byte, filename string, cursor int) (a, b, c []st
 	}()
 	a, b, c, d = daemon.acc.Apropos(file, filename, cursor)
 	return
-}
-
-func Server_SMap(filename string) []DeclDesc {
-	defer func() {
-		if err := recover(); err != nil {
-			printBacktrace(err)
-
-			// drop cache
-			daemon.DropCache()
-		}
-	}()
-	return daemon.semantic.GetSMap(filename)
-}
-
-func Server_Rename(filename string, cursor int) ([]RenameDesc, string) {
-	descs, err := daemon.semantic.Rename(filename, cursor)
-	serr := ""
-	if err != nil {
-		serr = err.String()
-
-		// drop cache, just in case
-		daemon.DropCache()
-	}
-	return descs, serr
 }
 
 func Server_Close(notused int) int {

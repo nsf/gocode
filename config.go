@@ -20,10 +20,8 @@ import (
 
 var Config = struct {
 	ProposeBuiltins    bool   "propose-builtins"
-	DenyPackageRenames bool   "deny-package-renames"
 	LibPath            string "lib-path"
 }{
-	false,
 	false,
 	"",
 }

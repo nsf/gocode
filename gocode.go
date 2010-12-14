@@ -2,7 +2,6 @@ package main
 
 import (
 	"io/ioutil"
-	"strings"
 	"strconv"
 	"exec"
 	"rpc"
@@ -11,7 +10,6 @@ import (
 	"path"
 	"fmt"
 	"os"
-	"json"
 )
 
 var (
@@ -34,14 +32,6 @@ type FormatterCandidates interface {
 	WriteCandidates(names, types, classes []string, num int)
 }
 
-type FormatterSMap interface {
-	WriteSMap(decldescs []DeclDesc)
-}
-
-type FormatterRename interface {
-	WriteRename(renamedescs []RenameDesc, err string)
-}
-
 //-------------------------------------------------------------------------
 // NiceFormatter (just for testing, simple textual output)
 //-------------------------------------------------------------------------
@@ -61,22 +51,6 @@ func (*NiceFormatter) WriteCandidates(names, types, classes []string, num int) {
 		}
 		fmt.Printf("  %s\n", abbr)
 	}
-}
-
-func (*NiceFormatter) WriteSMap(decldescs []DeclDesc) {
-	data, err := json.Marshal(decldescs)
-	if err != nil {
-		panic(err.String())
-	}
-	os.Stdout.Write(data)
-}
-
-func (*NiceFormatter) WriteRename(renamedescs []RenameDesc, err string) {
-	data, error := json.Marshal(renamedescs)
-	if error != nil {
-		panic(error.String())
-	}
-	os.Stdout.Write(data)
 }
 
 //-------------------------------------------------------------------------
@@ -108,39 +82,6 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 
 	}
 	fmt.Printf("]]")
-}
-
-func vimQuote(s string) string {
-	s = strings.Replace(s, "'", "''", -1)
-	return s
-}
-
-func (*VimFormatter) WriteRename(renamedescs []RenameDesc, err string) {
-	if err != "" {
-		fmt.Printf("['%s', []]", vimQuote(err))
-		return
-	}
-	if renamedescs == nil {
-		fmt.Print("['Nothing to rename', []]")
-		return
-	}
-	fmt.Print("['OK', [")
-	for i, r := range renamedescs {
-		fmt.Printf("{'filename':'%s','length':%d,'decls':", r.Filename, r.Length)
-		fmt.Print("[")
-		for j, d := range r.Decls {
-			fmt.Printf("[%d,%d]", d.Line, d.Col)
-			if j != len(r.Decls)-1 {
-				fmt.Print(",")
-			}
-		}
-		fmt.Print("]")
-		fmt.Print("}")
-		if i != len(renamedescs)-1 {
-			fmt.Print(",")
-		}
-	}
-	fmt.Print("]]")
 }
 
 //-------------------------------------------------------------------------
@@ -276,47 +217,6 @@ func cmdAutoComplete(c *rpc.Client) {
 	}
 }
 
-func cmdSMap(c *rpc.Client) {
-	if flag.NArg() != 2 {
-		return
-	}
-
-	filename := flag.Arg(1)
-	if filename != "" && !IsAbsPath(filename) {
-		cwd, _ := os.Getwd()
-		filename = path.Join(cwd, filename)
-	}
-
-	formatter := getFormatter()
-	decldescs := Client_SMap(c, filename)
-
-	if f, ok := formatter.(FormatterSMap); ok {
-		f.WriteSMap(decldescs)
-	}
-}
-
-func cmdRename(c *rpc.Client) {
-	if flag.NArg() != 3 {
-		return
-	}
-
-	cursor := 0
-	filename := flag.Arg(1)
-	cursor, _ = strconv.Atoi(flag.Arg(2))
-
-	if filename != "" && !IsAbsPath(filename) {
-		cwd, _ := os.Getwd()
-		filename = path.Join(cwd, filename)
-	}
-
-	formatter := getFormatter()
-	renamedescs, err := Client_Rename(c, filename, cursor)
-
-	if f, ok := formatter.(FormatterRename); ok {
-		f.WriteRename(renamedescs, err)
-	}
-}
-
 func cmdClose(c *rpc.Client) {
 	Client_Close(c, 0)
 }
@@ -399,10 +299,6 @@ func clientFunc() int {
 			cmdDropCache(client)
 		case "set":
 			cmdSet(client)
-		case "smap":
-			cmdSMap(client)
-		case "rename":
-			cmdRename(client)
 		}
 	}
 	return 0

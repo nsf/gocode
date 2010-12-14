@@ -12,8 +12,7 @@ GOFILES=gocode.go\
 	scope.go\
 	ripper.go\
 	config.go\
-	declcache.go\
-	semanticcontext.go
+	declcache.go
 
 ifeq ($(GOOS),windows)
 GOFILES+=os_win32.go

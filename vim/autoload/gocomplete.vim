@@ -46,12 +46,6 @@ fu! s:gocodeAutocomplete()
 	return result
 endf
 
-fu! s:gocodeRename()
-	return s:gocodeCommand('rename',
-			     \ ['-f=vim'],
-			     \ [bufname('%'), s:gocodeCursor()])
-endf
-
 fu! gocomplete#Complete(findstart, base)
 	"findstart = 1 when we need to get the text length
 	if a:findstart == 1
@@ -61,66 +55,4 @@ fu! gocomplete#Complete(findstart, base)
 	else
 		return g:gocomplete_completions[1]
 	endif
-endf
-
-fu! s:gocodeDoForBuf(expr, funcref, argslist)
-	let [cur_bufnr, expr_bufnr] = [bufnr('%'), bufnr(a:expr)]
-	let [cur_bufhidden, expr_bufhidden] = [getbufvar('%', '&bufhidden'), getbufvar(a:expr, '&bufhidden')]
-	call setbufvar('%', '&bufhidden', 'hide')
-	call setbufvar(a:expr, '&bufhidden', 'hide')
-	try
-		if cur_bufnr != expr_bufnr
-			execute expr_bufnr . 'buffer'
-		endif
-		call call(a:funcref, a:argslist)
-	finally
-		execute cur_bufnr . 'buffer'
-		call setbufvar('%', '&bufhidden', cur_bufhidden)
-		call setbufvar(a:expr, '&bufhidden', expr_bufhidden)
-	endtry
-endf
-
-fu! s:gocodeRenameBuf(newname, length, rename_data)
-	" rename_data is: [[line,col],[line,col],...]
-	for renamer in a:rename_data
-		let line = getline(renamer[0])
-		let break = byteidx(line, renamer[1]-1)
-		call setline(renamer[0],
-			   \ strpart(line, 0, break) .
-			   \ a:newname .
-			   \ strpart(line, break + a:length))
-	endfor
-	write
-endf
-
-fu! gocomplete#Rename()
-	" Rename format is:
-	" [status, [{'filename':...,'length':...,'decls':[[line,col],...]},...]]
-	execute "silent let rename_data = " . s:gocodeRename()
-	let status = rename_data[0]
-	let renames = rename_data[1]
-	if status != "OK"
-		echo status
-		return
-	endif
-	if &modified
-		echo "Current buffer was modified, you should :w before using GocodeRename"
-		return
-	endif
-	let newname = input("New identifier name: ")
-	for fileinfo in renames
-		" Skip those files that are not in the buffer list
-		if !bufexists(fileinfo["filename"])
-			con
-		endif
-		" If there is nothing to do, don't run DoForBuf, because
-		" it does screen flickering and we can avoid that in a lot of
-		" cases.
-		if empty(fileinfo['decls'])
-			con
-		endif
-		call s:gocodeDoForBuf(fileinfo["filename"],
-				    \ function("s:gocodeRenameBuf"),
-				    \ [newname, fileinfo["length"], fileinfo["decls"]])
-	endfor
 endf

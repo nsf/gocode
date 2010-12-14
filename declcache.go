@@ -69,8 +69,6 @@ type DeclFileCache struct {
 	name  string // file name
 	mtime int64  // last modification time
 
-	Data      []byte           // file contents
-	File      *ast.File        // an AST tree
 	Decls     map[string]*Decl // top-level declarations
 	Error     os.Error         // last error
 	Packages  PackageImports   // import information
@@ -88,8 +86,6 @@ func NewDeclFileCache(name string) *DeclFileCache {
 func (f *DeclFileCache) update() {
 	stat, err := os.Stat(f.name)
 	if err != nil {
-		f.File = nil
-		f.Data = nil
 		f.Decls = nil
 		f.Error = err
 		f.fset = nil
@@ -105,31 +101,26 @@ func (f *DeclFileCache) update() {
 }
 
 func (f *DeclFileCache) readFile(filename string) {
-	f.Data, f.Error = ioutil.ReadFile(f.name)
+	var data []byte
+	data, f.Error = ioutil.ReadFile(f.name)
 	if f.Error != nil {
 		return
 	}
 
-	f.processData()
+	f.processData(data)
 }
 
-func (f *DeclFileCache) processData() {
+func (f *DeclFileCache) processData(data []byte) {
+	var file *ast.File
 	f.fset = token.NewFileSet()
-	f.File, f.Error = parser.ParseFile(f.fset, "", f.Data, 0)
+	file, f.Error = parser.ParseFile(f.fset, "", data, 0)
 	f.FileScope = NewScope(nil)
-	anonymifyAst(f.File.Decls, 0, f.FileScope)
-	f.Packages = NewPackageImports(f.name, f.File.Decls)
-	f.Decls = make(map[string]*Decl, len(f.File.Decls))
-	for _, decl := range f.File.Decls {
+	anonymifyAst(file.Decls, 0, f.FileScope)
+	f.Packages = NewPackageImports(f.name, file.Decls)
+	f.Decls = make(map[string]*Decl, len(file.Decls))
+	for _, decl := range file.Decls {
 		appendToTopDecls(f.Decls, decl, f.FileScope)
 	}
-}
-
-func (f *DeclFileCache) reprocess() {
-	// drop mtime, because we're invalidating cache
-	f.mtime = 0
-
-	f.processData()
 }
 
 func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
