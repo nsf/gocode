@@ -1,5 +1,6 @@
 include $(GOROOT)/src/Make.inc
 
+PREREQ+=configfile.a
 TARG=gocode
 GOFILES=gocode.go\
 	autocompletefile.go\
@@ -27,8 +28,6 @@ rpc.go: server.go goremote/goremote
 
 goremote/goremote: goremote/goremote.go
 	gomake -C goremote
-
-_go_.$(O): configfile.a
 
 configfile.a: goconfig/configfile.go
 	gomake -C goconfig
