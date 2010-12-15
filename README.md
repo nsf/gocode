@@ -47,10 +47,9 @@ In order to install vim scripts, you need to fulfill the following steps:
     **update.bash** script does the following:
 
 		#!/usr/bin/env bash
-		mkdir -p ~/.vim/{autoload,ftplugin,plugin}
+		mkdir -p ~/.vim/{autoload,ftplugin}
 		cp autoload/gocomplete.vim ~/.vim/autoload
 		cp ftplugin/go.vim ~/.vim/ftplugin
-		cp plugin/gocode.vim ~/.vim/plugin
 
  3. Make sure vim has filetype plugin enabled. Simply add that to your **.vimrc**:
 
