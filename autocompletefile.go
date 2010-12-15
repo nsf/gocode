@@ -23,7 +23,7 @@ type AutoCompleteFile struct {
 	fset *token.FileSet
 }
 
-func NewPackageFile(name string) *AutoCompleteFile {
+func NewAutoCompleteFile(name string) *AutoCompleteFile {
 	p := new(AutoCompleteFile)
 	p.name = name
 	p.cursor = -1

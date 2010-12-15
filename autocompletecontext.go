@@ -138,7 +138,7 @@ type AutoCompleteContext struct {
 
 func NewAutoCompleteContext(pcache PackageCache, declcache *DeclCache) *AutoCompleteContext {
 	c := new(AutoCompleteContext)
-	c.current = NewPackageFile("")
+	c.current = NewAutoCompleteFile("")
 	c.pcache = pcache
 	c.declcache = declcache
 	return c
