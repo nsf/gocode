@@ -631,7 +631,7 @@ type anonymousTyper struct {
 	scope *Scope
 }
 
-func (a *anonymousTyper) Visit(node interface{}) ast.Visitor {
+func (a *anonymousTyper) Visit(node ast.Node) ast.Visitor {
 	switch t := node.(type) {
 	case *ast.CompositeLit:
 		t.Type = checkForAnonType(t.Type, a.flags, a.scope)
@@ -660,7 +660,7 @@ func (a *anonymousTyper) Visit(node interface{}) ast.Visitor {
 	return a
 }
 
-func anonymifyAst(node interface{}, flags int, scope *Scope) {
+func anonymifyAst(node ast.Node, flags int, scope *Scope) {
 	v := anonymousTyper{flags, scope}
 	ast.Walk(&v, node)
 }

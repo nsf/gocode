@@ -115,7 +115,9 @@ func (f *DeclFileCache) processData(data []byte) {
 	f.fset = token.NewFileSet()
 	file, f.Error = parser.ParseFile(f.fset, "", data, 0)
 	f.FileScope = NewScope(nil)
-	anonymifyAst(file.Decls, 0, f.FileScope)
+	for _, d := range file.Decls {
+		anonymifyAst(d, 0, f.FileScope)
+	}
 	f.Packages = NewPackageImports(f.name, file.Decls)
 	f.Decls = make(map[string]*Decl, len(file.Decls))
 	for _, decl := range file.Decls {

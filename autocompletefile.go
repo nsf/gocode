@@ -42,7 +42,9 @@ func (f *AutoCompleteFile) processData(data []byte) {
 	f.filescope = NewScope(nil)
 	f.scope = f.filescope
 
-	anonymifyAst(file.Decls, 0, f.filescope)
+	for _, d := range file.Decls {
+		anonymifyAst(d, 0, f.filescope)
+	}
 
 	// process all top-level declarations
 	for _, decl := range file.Decls {
@@ -52,7 +54,9 @@ func (f *AutoCompleteFile) processData(data []byte) {
 		// process local function as top-level declaration
 		decls, _ := parser.ParseDeclList(f.fset, "", block)
 
-		anonymifyAst(decls, 0, f.filescope)
+		for _, d := range decls {
+			anonymifyAst(d, 0, f.filescope)
+		}
 
 		for _, decl := range decls {
 			appendToTopDecls(f.decls, decl, f.scope)
@@ -126,7 +130,7 @@ type funcLitVisitor struct {
 	ctx *AutoCompleteFile
 }
 
-func (v *funcLitVisitor) Visit(node interface{}) ast.Visitor {
+func (v *funcLitVisitor) Visit(node ast.Node) ast.Visitor {
 	if t, ok := node.(*ast.FuncLit); ok && v.ctx.cursorIn(t.Body) {
 		s := v.ctx.scope
 		v.ctx.scope = AdvanceScope(v.ctx.scope)
