@@ -16,11 +16,12 @@ func NewScope(outer *Scope) *Scope {
 	return s
 }
 
-func AdvanceScope(s *Scope) *Scope {
+// returns: new, prev
+func AdvanceScope(s *Scope) (*Scope, *Scope) {
 	if len(s.entities) == 0 {
-		return s
+		return s, s.parent
 	}
-	return NewScope(s)
+	return NewScope(s), s
 }
 
 // adds declaration or returns an existing one

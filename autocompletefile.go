@@ -91,21 +91,20 @@ func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
 	if t, ok := decl.(*ast.GenDecl); ok && f.fset.Position(t.TokPos).Offset > f.cursor {
 		return
 	}
+	prevscope := f.scope
 	foreachDecl(decl, func(data *foreachDeclStruct) {
 		class := astDeclClass(data.decl)
+		if class != DECL_TYPE {
+			f.scope, prevscope = AdvanceScope(f.scope)
+		}
 		for i, name := range data.names {
 			typ, v, vi := data.typeValueIndex(i, 0)
 
-			d := NewDecl2(name.Name, class, 0, typ, v, vi, f.scope)
+			d := NewDecl2(name.Name, class, 0, typ, v, vi, prevscope)
 			if d == nil {
 				return
 			}
 
-			// TODO: The code here is incorrect, but I wasn't able to break
-			// it. Maybe it is correct for autocompletion case.
-			if d.Class != DECL_TYPE {
-				f.scope = NewScope(f.scope)
-			}
 			f.scope.addNamedDecl(d)
 		}
 	})
@@ -113,7 +112,7 @@ func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
 
 func (f *AutoCompleteFile) processBlockStmt(block *ast.BlockStmt) {
 	if block != nil && f.cursorIn(block) {
-		f.scope = AdvanceScope(f.scope)
+		f.scope, _ = AdvanceScope(f.scope)
 
 		for _, stmt := range block.List {
 			f.processStmt(stmt)
@@ -133,7 +132,7 @@ type funcLitVisitor struct {
 func (v *funcLitVisitor) Visit(node ast.Node) ast.Visitor {
 	if t, ok := node.(*ast.FuncLit); ok && v.ctx.cursorIn(t.Body) {
 		s := v.ctx.scope
-		v.ctx.scope = AdvanceScope(v.ctx.scope)
+		v.ctx.scope, _ = AdvanceScope(v.ctx.scope)
 
 		v.ctx.processFieldList(t.Type.Params, s)
 		v.ctx.processFieldList(t.Type.Results, s)
@@ -152,7 +151,7 @@ func (f *AutoCompleteFile) processStmt(stmt ast.Stmt) {
 		f.processAssignStmt(t)
 	case *ast.IfStmt:
 		if f.cursorIn(t.Body) {
-			f.scope = AdvanceScope(f.scope)
+			f.scope, _ = AdvanceScope(f.scope)
 
 			f.processStmt(t.Init)
 			f.processBlockStmt(t.Body)
@@ -164,7 +163,7 @@ func (f *AutoCompleteFile) processStmt(stmt ast.Stmt) {
 		f.processRangeStmt(t)
 	case *ast.ForStmt:
 		if f.cursorIn(t.Body) {
-			f.scope = AdvanceScope(f.scope)
+			f.scope, _ = AdvanceScope(f.scope)
 
 			f.processStmt(t.Init)
 			f.processBlockStmt(t.Body)
@@ -184,7 +183,8 @@ func (f *AutoCompleteFile) processSelectStmt(a *ast.SelectStmt) {
 	if !f.cursorIn(a.Body) {
 		return
 	}
-	f.scope = AdvanceScope(f.scope)
+	var prevscope *Scope
+	f.scope, prevscope = AdvanceScope(f.scope)
 
 	var lastCursorAfter *ast.CommClause
 	for _, s := range a.Body.List {
@@ -196,7 +196,7 @@ func (f *AutoCompleteFile) processSelectStmt(a *ast.SelectStmt) {
 	if lastCursorAfter != nil {
 		if lastCursorAfter.Lhs != nil && lastCursorAfter.Tok == token.DEFINE {
 			vname := lastCursorAfter.Lhs.(*ast.Ident).Name
-			v := NewDeclVar(vname, nil, lastCursorAfter.Rhs, -1, f.scope)
+			v := NewDeclVar(vname, nil, lastCursorAfter.Rhs, -1, prevscope)
 			f.scope.addNamedDecl(v)
 		}
 		for _, s := range lastCursorAfter.Body {
@@ -209,7 +209,8 @@ func (f *AutoCompleteFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 	if !f.cursorIn(a.Body) {
 		return
 	}
-	f.scope = AdvanceScope(f.scope)
+	var prevscope *Scope
+	f.scope, prevscope = AdvanceScope(f.scope)
 
 	f.processStmt(a.Init)
 	// type var
@@ -219,7 +220,7 @@ func (f *AutoCompleteFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 		rhs := a.Rhs
 		if lhs != nil && len(lhs) == 1 {
 			tvname := lhs[0].(*ast.Ident).Name
-			tv = NewDeclVar(tvname, nil, rhs[0], -1, f.scope)
+			tv = NewDeclVar(tvname, nil, rhs[0], -1, prevscope)
 		}
 	}
 
@@ -248,7 +249,7 @@ func (f *AutoCompleteFile) processSwitchStmt(a *ast.SwitchStmt) {
 	if !f.cursorIn(a.Body) {
 		return
 	}
-	f.scope = AdvanceScope(f.scope)
+	f.scope, _ = AdvanceScope(f.scope)
 
 	f.processStmt(a.Init)
 	var lastCursorAfter *ast.CaseClause
@@ -268,11 +269,12 @@ func (f *AutoCompleteFile) processRangeStmt(a *ast.RangeStmt) {
 	if !f.cursorIn(a.Body) {
 		return
 	}
-	f.scope = AdvanceScope(f.scope)
+	var prevscope *Scope
+	f.scope, prevscope = AdvanceScope(f.scope)
 
 	if a.Tok == token.DEFINE {
 		if t, ok := a.Key.(*ast.Ident); ok {
-			d := NewDeclVar(t.Name, nil, a.X, 0, f.scope)
+			d := NewDeclVar(t.Name, nil, a.X, 0, prevscope)
 			if d != nil {
 				d.Flags |= DECL_RANGEVAR
 				f.scope.addNamedDecl(d)
@@ -281,7 +283,7 @@ func (f *AutoCompleteFile) processRangeStmt(a *ast.RangeStmt) {
 
 		if a.Value != nil {
 			if t, ok := a.Value.(*ast.Ident); ok {
-				d := NewDeclVar(t.Name, nil, a.X, 1, f.scope)
+				d := NewDeclVar(t.Name, nil, a.X, 1, prevscope)
 				if d != nil {
 					d.Flags |= DECL_RANGEVAR
 					f.scope.addNamedDecl(d)
@@ -308,15 +310,17 @@ func (f *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
 		names[i] = id
 	}
 
+	var prevscope *Scope
+	f.scope, prevscope = AdvanceScope(f.scope)
+
 	pack := declPack{names, nil, a.Rhs}
 	for i, name := range pack.names {
 		typ, v, vi := pack.typeValueIndex(i, 0)
-		d := NewDeclVar(name.Name, typ, v, vi, f.scope)
+		d := NewDeclVar(name.Name, typ, v, vi, prevscope)
 		if d == nil {
 			continue
 		}
 
-		f.scope = NewScope(f.scope)
 		f.scope.addNamedDecl(d)
 	}
 }
