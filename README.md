@@ -57,6 +57,19 @@ In order to install vim scripts, you need to fulfill the following steps:
 
  4. Autocompletion should work now. Use `<C-x><C-o>` for autocompletion (omnifunc autocompletion). 
 
+### Emacs setup
+
+In order to install emacs script, you need to fulfill the following steps:
+
+ 1. Install [auto-complete-mode](http://www.emacswiki.org/emacs/AutoComplete)
+
+ 2. Copy **emacs/go-autocomplete.el** file from the gocode source distribution to a directory which is in your 'load-path' in emacs.
+
+ 3. Add these lines to your **.emacs**:
+
+ 		(require 'go-autocomplete)
+		(require 'auto-complete-config)
+
 ### Options
 
 You can change all available options using `gocode set` command. The config file uses .ini-like format and usually stored somewhere in **~/.config/gocode** directory.
