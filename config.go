@@ -19,8 +19,8 @@ import (
 //-------------------------------------------------------------------------
 
 var Config = struct {
-	ProposeBuiltins    bool   "propose-builtins"
-	LibPath            string "lib-path"
+	ProposeBuiltins bool   "propose-builtins"
+	LibPath         string "lib-path"
 }{
 	false,
 	"",

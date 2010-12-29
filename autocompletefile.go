@@ -20,7 +20,7 @@ type AutoCompleteFile struct {
 	scope     *Scope
 
 	cursor int // for current file buffer only
-	fset *token.FileSet
+	fset   *token.FileSet
 }
 
 func NewAutoCompleteFile(name string) *AutoCompleteFile {

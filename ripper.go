@@ -17,7 +17,7 @@ type TokPos struct {
 
 type TokCollection struct {
 	tokens []TokPos
-	fset *token.FileSet
+	fset   *token.FileSet
 }
 
 func (t *TokCollection) next(s *scanner.Scanner) bool {
