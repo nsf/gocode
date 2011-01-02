@@ -14,7 +14,7 @@ import (
 
 var (
 	server = flag.Bool("s", false, "run a server instead of a client")
-	format = flag.String("f", "nice", "output format (vim | emacs | nice | csv)")
+	format = flag.String("f", "nice", "output format (vim | emacs | nice | csv | json)")
 	input  = flag.String("in", "", "use this file instead of stdin input")
 	sock   = CreateSockFlag("sock", "socket type (unix | tcp)")
 	addr   = flag.String("addr", "localhost:37373", "address for tcp socket")
@@ -114,6 +114,28 @@ func (*CSVFormatter) WriteCandidates(names, types, classes []string, num int) {
 }
 
 //-------------------------------------------------------------------------
+// JSONFormatter
+//-------------------------------------------------------------------------
+
+type JSONFormatter struct{}
+
+func (*JSONFormatter) WriteEmpty() {
+	fmt.Print("[]")
+}
+
+func (*JSONFormatter) WriteCandidates(names, types, classes []string, num int) {
+	fmt.Printf(`[%d, [`, num)
+	for i := 0; i < len(names); i++ {
+		fmt.Printf(`{"class": "%s", "name": "%s", "type": "%s"}`,
+			classes[i], names[i], types[i])
+		if i != len(names)-1 {
+			fmt.Printf(", ")
+		}
+	}
+	fmt.Print("]]")
+}
+
+//-------------------------------------------------------------------------
 
 func getFormatter() interface{} {
 	switch *format {
@@ -125,6 +147,8 @@ func getFormatter() interface{} {
 		return new(NiceFormatter)
 	case "csv":
 		return new(CSVFormatter)
+	case "json":
+		return new(JSONFormatter)
 	}
 	return new(VimFormatter)
 }
