@@ -163,11 +163,11 @@ func (m *PackageFileCache) processPackageData(s string) {
 	for key, value := range internalPackages {
 		tmp := m.expandPackages(value.Bytes())
 		decls, err := parser.ParseDeclList(token.NewFileSet(), "", tmp)
-		tmp = nil
 
 		if err != nil {
-			panic(fmt.Sprintf("failure in:\n%s\n%s\n", value, err.String()))
+			panic(fmt.Sprintf("failure in:\n%s\n%s\n", tmp, err.String()))
 		} else {
+			tmp = nil
 			if key == m.name {
 				// main package
 				m.main = NewDecl(m.name, DECL_PACKAGE, nil)
@@ -178,6 +178,7 @@ func (m *PackageFileCache) processPackageData(s string) {
 				addAstDeclsToPackage(m.others[key], decls, m.scope)
 			}
 		}
+
 	}
 	m.pathToAlias = nil
 	for key, value := range m.scope.entities {
@@ -228,7 +229,7 @@ func (m *PackageFileCache) processExport(s string) (string, string) {
 	}
 
 	// make everything parser friendly
-	s = strings.Replace(s, "?", "", -1)
+	s = strings.Replace(s, "?", "__", -1)
 
 	// skip system functions (Init, etc.)
 	i = strings.Index(s, "·")
