@@ -1,4 +1,5 @@
-Found 6 candidates:
+Found 7 candidates:
+  func End() token.Pos
   func Pos() token.Pos
   var Comment *ast.CommentGroup
   var Doc *ast.CommentGroup

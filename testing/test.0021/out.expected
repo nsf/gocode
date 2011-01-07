@@ -1,4 +1,5 @@
-Found 6 candidates:
+Found 7 candidates:
+  func End() token.Pos
   func IsExported() bool
   func Pos() token.Pos
   func String() string
