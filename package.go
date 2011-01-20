@@ -246,7 +246,8 @@ func (m *PackageFileCache) processExport(s string) (string, string) {
 
 func (m *PackageFileCache) processImportStatement(s string) {
 	var scan scanner.Scanner
-	scan.Init(token.NewFileSet(), "", []byte(s), nil, 0)
+	set := token.NewFileSet()
+	scan.Init(set.AddFile("", set.Base(), len(s)), []byte(s), nil, 0)
 
 	var alias, path string
 	for i := 0; i < 3; i++ {
