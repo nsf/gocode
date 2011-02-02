@@ -194,10 +194,13 @@ func (f *AutoCompleteFile) processSelectStmt(a *ast.SelectStmt) {
 	}
 
 	if lastCursorAfter != nil {
-		if lastCursorAfter.Lhs != nil && lastCursorAfter.Tok == token.DEFINE {
-			vname := lastCursorAfter.Lhs.(*ast.Ident).Name
-			v := NewDeclVar(vname, nil, lastCursorAfter.Rhs, -1, prevscope)
-			f.scope.addNamedDecl(v)
+		if lastCursorAfter.Comm != nil {
+		//if lastCursorAfter.Lhs != nil && lastCursorAfter.Tok == token.DEFINE {
+			if astmt, ok := lastCursorAfter.Comm.(*ast.AssignStmt); ok && astmt.Tok == token.DEFINE {
+				vname := astmt.Lhs[0].(*ast.Ident).Name
+				v := NewDeclVar(vname, nil, astmt.Rhs[0], -1, prevscope)
+				f.scope.addNamedDecl(v)
+			}
 		}
 		for _, s := range lastCursorAfter.Body {
 			f.processStmt(s)
