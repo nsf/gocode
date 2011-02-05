@@ -308,7 +308,7 @@ func mergeDeclsFromPackages(pkgscope *Scope, pkgs PackageImports, pcache Package
 		}
 		p := pcache[path].main
 		if p == nil {
-			break
+			continue
 		}
 		for _, d := range p.Children {
 			if ast.IsExported(d.Name) {
