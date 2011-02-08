@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 	"go/ast"
 	"go/parser"
 	"io/ioutil"
@@ -39,8 +40,8 @@ func (pi *PackageImports) appendImports(filename string, decls []ast.Decl) {
 			for _, spec := range gd.Specs {
 				imp := spec.(*ast.ImportSpec)
 				path, alias := pathAndAlias(imp)
-				path = absPathForPackage(filename, path)
-				pi.appendImport(alias, path)
+				path,ok := absPathForPackage(filename, path)
+				if ok {pi.appendImport(alias, path)}
 			}
 		} else {
 			return
@@ -158,11 +159,13 @@ func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
 	})
 }
 
-func absPathForPackage(filename, p string) string {
+func absPathForPackage(filename, p string) (string,bool) {
+	dir, _ := path.Split(filename)
 	if p[0] == '.' {
-		dir, _ := path.Split(filename)
-		return fmt.Sprintf("%s.a", path.Join(dir, p))
+		return fmt.Sprintf("%s.a", path.Join(dir, p)),true
 	}
+	pkg,ok := findGoDagPackage(p,dir)
+	if ok {return pkg,true}
 	return findGlobalFile(p)
 }
 
@@ -176,12 +179,24 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 	return path, alias
 }
 
-func findGlobalFile(imp string) string {
+func findGoDagPackage(imp,filedir string) (string,bool) {
+	  // Support godag directory structure
+		dir,pkg := path.Split(imp)
+		godag_pkg := path.Join(filedir,"..",dir,"_obj",pkg+".a")
+		if fileExists(godag_pkg) {return godag_pkg,true}
+		return "",false
+}
+
+func findGlobalFile(imp string) (string,bool) {
 	pkgfile := fmt.Sprintf("%s.a", imp)
 
 	// if lib-path is defined, use it
 	if Config.LibPath != "" {
-		return path.Join(Config.LibPath, pkgfile)
+		for _,p := range strings.Split(Config.LibPath,":",-1) {
+			pkg_path := path.Join(p, pkgfile)
+			if fileExists(pkg_path) {return pkg_path,true}
+		}
+		return "",false
 	}
 
 	// otherwise figure out the default lib-path
@@ -198,7 +213,8 @@ func findGlobalFile(imp string) string {
 		goos = runtime.GOOS
 	}
 	pkgdir := fmt.Sprintf("%s_%s", goos, goarch)
-	return path.Join(goroot, "pkg", pkgdir, pkgfile)
+	pkg_path := path.Join(goroot, "pkg", pkgdir, pkgfile)
+	return pkg_path,fileExists(pkg_path)
 }
 
 func packageName(file *ast.File) string {

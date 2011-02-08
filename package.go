@@ -515,7 +515,7 @@ $$
 `
 
 func (c PackageCache) addBuiltinUnsafePackage() {
-	name := findGlobalFile("unsafe")
+	name,_ := findGlobalFile("unsafe")
 	pkg := NewPackageFileCacheForever(name, "unsafe")
 	pkg.processPackageData(builtinUnsafePackage)
 	c[name] = pkg
