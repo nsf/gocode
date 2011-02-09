@@ -188,6 +188,13 @@ func findGoDagPackage(imp,filedir string) (string,bool) {
 }
 
 func findGlobalFile(imp string) (string,bool) {
+	// gocode synthetically generates the builtin package
+	// "unsafe", since the "unsafe.a" package doesn't really exist.
+	// Thus, when the user request for the package "unsafe" we
+	// would return synthetic global file that would be used
+	// just as a key name to find this synthetic package
+	if imp == "unsafe" {return "unsafe",true}
+
 	pkgfile := fmt.Sprintf("%s.a", imp)
 
 	// if lib-path is defined, use it
