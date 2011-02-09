@@ -40,8 +40,10 @@ func (pi *PackageImports) appendImports(filename string, decls []ast.Decl) {
 			for _, spec := range gd.Specs {
 				imp := spec.(*ast.ImportSpec)
 				path, alias := pathAndAlias(imp)
-				path,ok := absPathForPackage(filename, path)
-				if ok {pi.appendImport(alias, path)}
+				path, ok := absPathForPackage(filename, path)
+				if ok {
+					pi.appendImport(alias, path)
+				}
 			}
 		} else {
 			return
@@ -159,13 +161,15 @@ func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
 	})
 }
 
-func absPathForPackage(filename, p string) (string,bool) {
+func absPathForPackage(filename, p string) (string, bool) {
 	dir, _ := path.Split(filename)
 	if p[0] == '.' {
-		return fmt.Sprintf("%s.a", path.Join(dir, p)),true
+		return fmt.Sprintf("%s.a", path.Join(dir, p)), true
 	}
-	pkg,ok := findGoDagPackage(p,dir)
-	if ok {return pkg,true}
+	pkg, ok := findGoDagPackage(p, dir)
+	if ok {
+		return pkg, true
+	}
 	return findGlobalFile(p)
 }
 
@@ -179,31 +183,37 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 	return path, alias
 }
 
-func findGoDagPackage(imp,filedir string) (string,bool) {
-	  // Support godag directory structure
-		dir,pkg := path.Split(imp)
-		godag_pkg := path.Join(filedir,"..",dir,"_obj",pkg+".a")
-		if fileExists(godag_pkg) {return godag_pkg,true}
-		return "",false
+func findGoDagPackage(imp, filedir string) (string, bool) {
+	// Support godag directory structure
+	dir, pkg := path.Split(imp)
+	godag_pkg := path.Join(filedir, "..", dir, "_obj", pkg+".a")
+	if fileExists(godag_pkg) {
+		return godag_pkg, true
+	}
+	return "", false
 }
 
-func findGlobalFile(imp string) (string,bool) {
+func findGlobalFile(imp string) (string, bool) {
 	// gocode synthetically generates the builtin package
 	// "unsafe", since the "unsafe.a" package doesn't really exist.
 	// Thus, when the user request for the package "unsafe" we
 	// would return synthetic global file that would be used
 	// just as a key name to find this synthetic package
-	if imp == "unsafe" {return "unsafe",true}
+	if imp == "unsafe" {
+		return "unsafe", true
+	}
 
 	pkgfile := fmt.Sprintf("%s.a", imp)
 
 	// if lib-path is defined, use it
 	if Config.LibPath != "" {
-		for _,p := range strings.Split(Config.LibPath,":",-1) {
+		for _, p := range strings.Split(Config.LibPath, ":", -1) {
 			pkg_path := path.Join(p, pkgfile)
-			if fileExists(pkg_path) {return pkg_path,true}
+			if fileExists(pkg_path) {
+				return pkg_path, true
+			}
 		}
-		return "",false
+		return "", false
 	}
 
 	// otherwise figure out the default lib-path
@@ -221,7 +231,7 @@ func findGlobalFile(imp string) (string,bool) {
 	}
 	pkgdir := fmt.Sprintf("%s_%s", goos, goarch)
 	pkg_path := path.Join(goroot, "pkg", pkgdir, pkgfile)
-	return pkg_path,fileExists(pkg_path)
+	return pkg_path, fileExists(pkg_path)
 }
 
 func packageName(file *ast.File) string {
