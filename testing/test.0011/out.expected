@@ -1,5 +1,6 @@
-Found 12 candidates:
-  func Addr() uintptr
+Found 14 candidates:
+  func Addr() *reflect.PtrValue
+  func CanAddr() bool
   func CanSet() bool
   func Field(i int) reflect.Value
   func FieldByIndex(index []int) reflect.Value
@@ -11,3 +12,4 @@ Found 12 candidates:
   func Set(x *reflect.StructValue)
   func SetValue(x reflect.Value)
   func Type() reflect.Type
+  func UnsafeAddr() uintptr
