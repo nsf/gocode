@@ -267,7 +267,8 @@ func tryRunServer() os.Error {
 	}
 
 	args := []string{"gocode", "-s", "-sock", *sock, "-addr", *addr}
-	_, err = os.StartProcess(path, args, os.Environ(), "", []*os.File{nil, nil, nil})
+	procattr := os.ProcAttr{"", os.Environ(), []*os.File{nil, nil, nil}}
+	_, err = os.StartProcess(path, args, &procattr)
 
 	if err != nil {
 		return err

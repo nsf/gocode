@@ -1,5 +1,4 @@
-Found 26 candidates:
-  const EOF 
+Found 25 candidates:
   func Errorf(format string, a ...interface{}) os.Error
   func Fprint(w io.Writer, a ...interface{}) (n int, error os.Error)
   func Fprintf(w io.Writer, format string, a ...interface{}) (n int, error os.Error)

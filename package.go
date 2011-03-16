@@ -132,6 +132,8 @@ func (m *PackageFileCache) processPackageData(s string) {
 	m.pathToAlias = make(map[string]string)
 	// hack, add ourselves to the package scope
 	m.addPackageToScope(m.defalias, m.name)
+	// and the built-in "unsafe" package to the pathToAlias map
+	m.pathToAlias["unsafe"] = "unsafe"
 	internalPackages := make(map[string]*bytes.Buffer)
 	for {
 		// for each line
