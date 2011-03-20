@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"strconv"
+	"bytes"
 	"exec"
 	"rpc"
 	"flag"
@@ -19,6 +20,18 @@ var (
 	sock   = CreateSockFlag("sock", "socket type (unix | tcp)")
 	addr   = flag.String("addr", "localhost:37373", "address for tcp socket")
 )
+
+// TODO: find a better place for this function
+// returns truncated 'data' and amount of bytes skipped (for cursor pos adjustment)
+func filterOutShebang(data []byte) ([]byte, int) {
+	if len(data) > 2 && data[0] == '#' && data[1] == '!' {
+		newline := bytes.Index(data, []byte("\n"))
+		if newline != -1 && len(data) > newline+1 {
+			return data[newline+1:], newline+1
+		}
+	}
+	return data, 0
+}
 
 //-------------------------------------------------------------------------
 // Formatter interfaces
@@ -211,6 +224,9 @@ func cmdAutoComplete(c *rpc.Client) {
 		panic(err.String())
 	}
 
+	var skipped int
+	file, skipped = filterOutShebang(file)
+
 	filename := ""
 	cursor := -1
 
@@ -221,6 +237,8 @@ func cmdAutoComplete(c *rpc.Client) {
 		filename = flag.Arg(1)
 		cursor, _ = strconv.Atoi(flag.Arg(2))
 	}
+
+	cursor -= skipped
 
 	if filename != "" && !IsAbsPath(filename) {
 		cwd, _ := os.Getwd()

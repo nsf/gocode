@@ -109,6 +109,7 @@ func (f *DeclFileCache) readFile(filename string) {
 	if f.Error != nil {
 		return
 	}
+	data, _ = filterOutShebang(data)
 
 	f.processData(data)
 }
