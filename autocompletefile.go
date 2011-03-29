@@ -227,17 +227,17 @@ func (f *AutoCompleteFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 		}
 	}
 
-	var lastCursorAfter *ast.TypeCaseClause
+	var lastCursorAfter *ast.CaseClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.TypeCaseClause); f.cursor > f.fset.Position(cc.Colon).Offset {
+		if cc := s.(*ast.CaseClause); f.cursor > f.fset.Position(cc.Colon).Offset {
 			lastCursorAfter = cc
 		}
 	}
 
 	if lastCursorAfter != nil {
 		if tv != nil {
-			if lastCursorAfter.Types != nil && len(lastCursorAfter.Types) == 1 {
-				tv.Type = lastCursorAfter.Types[0]
+			if lastCursorAfter.List != nil && len(lastCursorAfter.List) == 1 {
+				tv.Type = lastCursorAfter.List[0]
 				tv.Value = nil
 			}
 			f.scope.addNamedDecl(tv)
