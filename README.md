@@ -105,4 +105,4 @@ If you want to integrate gocode in your editor, please, contact me and I will te
 ### Misc
 
  - It's a good idea to use the latest git version always. I'm trying to keep it in a working state.
- - Gocode always requires the latest Go compiler suite version of the 'release' or 'weekly' branch. Use tags to see what version is required. For example tag compatible-with-go-weekly-XXXX-XX-XX says that you can use Go version weekly.XXXX-XX-XX.
+ - Gocode always requires the latest Go compiler suite version of the 'release' or 'weekly' branch. Use tags to see what version is required. For example tag compatible-with-go-weekly-XXXX-XX-XX says that you can use Go version weekly.XXXX-XX-XX. Use `git log --decorate` to see tags in the git log. Each commit that was commited after compatible tag requires the same version as specified by this tag. If commit has multiple version tags, the use of the latest version amongst these is strongly recommended.
