@@ -28,7 +28,7 @@ Also watch the [demo screencast](http://nsf.110mb.com/gocode-demo.swf).
 
     `export PATH=$PATH:$HOME/bin`
 
- 4. Then you need to build the gocode and install it:
+ 4. Then you need to build the gocode and install it (make sure you're using GNU make):
 
     `make install`
 
