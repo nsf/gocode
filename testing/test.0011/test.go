@@ -3,6 +3,6 @@ package main
 import "reflect"
 
 func main() {
-	var test *reflect.StructValue
+	var test reflect.Value
 	test.
 }

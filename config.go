@@ -27,37 +27,37 @@ var Config = struct {
 }
 
 func setValue(v reflect.Value, name, value string) {
-	switch t := v.(type) {
-	case *reflect.BoolValue:
+	switch t := v; t.Kind() {
+	case reflect.Bool:
 		v, ok := cfg.BoolStrings[value]
 		if ok {
-			t.Set(v)
+			t.SetBool(v)
 		}
-	case *reflect.StringValue:
-		t.Set(value)
-	case *reflect.IntValue:
+	case reflect.String:
+		t.SetString(value)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		v, err := strconv.Atoi64(value)
 		if err == nil {
-			t.Set(v)
+			t.SetInt(v)
 		}
-	case *reflect.FloatValue:
+	case reflect.Float32, reflect.Float64:
 		v, err := strconv.Atof64(value)
 		if err == nil {
-			t.Set(v)
+			t.SetFloat(v)
 		}
 	}
 }
 
 func listValue(v reflect.Value, name string, w io.Writer) {
-	switch t := v.(type) {
-	case *reflect.BoolValue:
-		fmt.Fprintf(w, "%s = %v\n", name, t.Get())
-	case *reflect.StringValue:
-		fmt.Fprintf(w, "%s = \"%v\"\n", name, t.Get())
-	case *reflect.IntValue:
-		fmt.Fprintf(w, "%s = %v\n", name, t.Get())
-	case *reflect.FloatValue:
-		fmt.Fprintf(w, "%s = %v\n", name, t.Get())
+	switch t := v; t.Kind() {
+	case reflect.Bool:
+		fmt.Fprintf(w, "%s = %v\n", name, t.Bool())
+	case reflect.String:
+		fmt.Fprintf(w, "%s = \"%v\"\n", name, t.String())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		fmt.Fprintf(w, "%s = %v\n", name, t.Int())
+	case reflect.Float32, reflect.Float64:
+		fmt.Fprintf(w, "%s = %v\n", name, t.Float())
 	}
 }
 
@@ -112,24 +112,25 @@ func setOption(v interface{}, name, value string) string {
 	return buf.String()
 }
 
-func interfaceIsPtrStruct(v interface{}) (*reflect.StructValue, *reflect.StructType, bool) {
-	ptr, ok := reflect.NewValue(v).(*reflect.PtrValue)
+func interfaceIsPtrStruct(v interface{}) (reflect.Value, reflect.Type, bool) {
+	ptr := reflect.NewValue(v)
+	ok := ptr.Kind() == reflect.Ptr
 	if !ok {
-		return nil, nil, false
+		return reflect.Value{}, nil, false
 	}
 
-	str, ok := ptr.Elem().(*reflect.StructValue)
-	if !ok {
-		return nil, nil, false
+	str := ptr.Elem()
+	if str.Kind() != reflect.Struct {
+		return reflect.Value{}, nil, false
 	}
-	typ := str.Type().(*reflect.StructType)
+	typ := str.Type()
 	return str, typ, true
 }
 
 func writeValue(v reflect.Value, name string, c *cfg.ConfigFile) {
-	switch v.(type) {
-	case *reflect.BoolValue, *reflect.StringValue,
-		*reflect.IntValue, *reflect.FloatValue:
+	switch v.Kind() {
+	case reflect.Bool, reflect.String,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Float32, reflect.Float64:
 		c.AddOption(cfg.DefaultSection, name, fmt.Sprint(v.Interface()))
 	}
 }
@@ -138,26 +139,26 @@ func readValue(v reflect.Value, name string, c *cfg.ConfigFile) {
 	if !c.HasOption(cfg.DefaultSection, name) {
 		return
 	}
-	switch t := v.(type) {
-	case *reflect.BoolValue:
+	switch t := v; t.Kind() {
+	case reflect.Bool:
 		v, err := c.GetBool(cfg.DefaultSection, name)
 		if err == nil {
-			t.Set(v)
+			t.SetBool(v)
 		}
-	case *reflect.StringValue:
+	case reflect.String:
 		v, err := c.GetString(cfg.DefaultSection, name)
 		if err == nil {
-			t.Set(v)
+			t.SetString(v)
 		}
-	case *reflect.IntValue:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		v, err := c.GetInt(cfg.DefaultSection, name)
 		if err == nil {
-			t.Set(int64(v))
+			t.SetInt(int64(v))
 		}
-	case *reflect.FloatValue:
+	case reflect.Float32, reflect.Float64:
 		v, err := c.GetFloat(cfg.DefaultSection, name)
 		if err == nil {
-			t.Set(float64(v))
+			t.SetFloat(float64(v))
 		}
 	}
 }
