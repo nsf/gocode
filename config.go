@@ -113,7 +113,7 @@ func setOption(v interface{}, name, value string) string {
 }
 
 func interfaceIsPtrStruct(v interface{}) (reflect.Value, reflect.Type, bool) {
-	ptr := reflect.NewValue(v)
+	ptr := reflect.ValueOf(v)
 	ok := ptr.Kind() == reflect.Ptr
 	if !ok {
 		return reflect.Value{}, nil, false

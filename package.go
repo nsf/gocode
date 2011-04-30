@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"io/ioutil"
+	"regexp"
 )
 
 //-------------------------------------------------------------------------
@@ -163,7 +164,7 @@ func (m *PackageFileCache) processPackageData(s string) {
 	}
 	m.others = make(map[string]*Decl)
 	for key, value := range internalPackages {
-		tmp := m.expandPackages(value.Bytes())
+		tmp := m.expandPackages(removeBadMethods(value.Bytes()))
 		decls, err := parser.ParseDeclList(token.NewFileSet(), "", tmp)
 
 		if err != nil {
@@ -464,6 +465,21 @@ func preprocessConstDecl(s string) string {
 	e := i
 
 	return s[:b] + "0" + s[e:]
+}
+
+var badMethodsRE = regexp.MustCompile(`"[^"]*"\.[A-Za-z]+\(`)
+
+func removePackagePart(data []byte) []byte {
+	i := bytes.LastIndex(data, []byte(`".`))
+	if i == -1 {
+		panic("shouldn't be -1")
+	}
+
+	return data[i+2:]
+}
+
+func removeBadMethods(data []byte) []byte {
+	return badMethodsRE.ReplaceAllFunc(data, removePackagePart)
 }
 
 //-------------------------------------------------------------------------

@@ -857,7 +857,7 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 		*ast.FuncType, *ast.StructType, *ast.InterfaceType:
 		return t, scope, true
 	default:
-		_ = reflect.Typeof(v)
+		_ = reflect.TypeOf(v)
 		//fmt.Println(ty)
 	}
 	return nil, nil, false
@@ -1056,7 +1056,7 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		// type
 	default:
 		// should never happen
-		ty := reflect.Typeof(t)
+		ty := reflect.TypeOf(t)
 		s := fmt.Sprintf("unknown type: %s\n", ty.String())
 		panic(s)
 	}

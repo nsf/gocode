@@ -1,11 +1,14 @@
-Found 10 candidates:
+Found 13 candidates:
   const BestCompression 
   const BestSpeed 
   const DefaultCompression 
   const NoCompression 
   func NewReader(r io.Reader) (io.ReadCloser, os.Error)
-  func NewWriter(w io.Writer) (io.WriteCloser, os.Error)
-  func NewWriterLevel(w io.Writer, level int) (io.WriteCloser, os.Error)
+  func NewReaderDict(r io.Reader, dict []uint8) (io.ReadCloser, os.Error)
+  func NewWriter(w io.Writer) (*zlib.Writer, os.Error)
+  func NewWriterDict(w io.Writer, level int, dict []uint8) (*zlib.Writer, os.Error)
+  func NewWriterLevel(w io.Writer, level int) (*zlib.Writer, os.Error)
+  type Writer struct
   var ChecksumError os.Error
+  var DictionaryError os.Error
   var HeaderError os.Error
-  var UnsupportedError os.Error
