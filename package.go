@@ -288,7 +288,10 @@ func (m *PackageFileCache) expandPackages(s []byte) []byte {
 		b := i // first '"'
 		i++
 
-		for i < len(s) && !(s[i] == '"' && s[i-1] != '\\') {
+		for i < len(s) && s[i] != '"' {
+			if s[i] == '\\' {
+				i++
+			}
 			i++
 		}
 
