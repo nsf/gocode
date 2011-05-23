@@ -32,8 +32,8 @@ def run_test(t):
 	except:
 		outexpected = "To be determined"
 	filename = t + "/test.go"
-	gocode = subprocess.Popen("gocode -in %s autocomplete %s %s" % (filename, filename, cursorpos),
-			shell=True, stdout=subprocess.PIPE)
+	gocode = subprocess.Popen(["gocode", "-in", filename, "autocomplete", filename, cursorpos],
+			shell=False, stdout=subprocess.PIPE)
 	out = gocode.communicate()[0]
 	if out != outexpected:
 		if t in expected_to_fail:
