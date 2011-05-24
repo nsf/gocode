@@ -4,11 +4,10 @@ import (
 	"io/ioutil"
 	"strconv"
 	"bytes"
-	"exec"
 	"rpc"
 	"flag"
 	"time"
-	"path"
+	"path/filepath"
 	"fmt"
 	"os"
 )
@@ -27,7 +26,7 @@ func filterOutShebang(data []byte) ([]byte, int) {
 	if len(data) > 2 && data[0] == '#' && data[1] == '!' {
 		newline := bytes.Index(data, []byte("\n"))
 		if newline != -1 && len(data) > newline+1 {
-			return data[newline+1:], newline+1
+			return data[newline+1:], newline + 1
 		}
 	}
 	return data, 0
@@ -227,22 +226,21 @@ func cmdAutoComplete(c *rpc.Client) {
 	var skipped int
 	file, skipped = filterOutShebang(file)
 
-	filename := ""
+	filename := *input
 	cursor := -1
 
 	switch flag.NArg() {
 	case 2:
 		cursor, _ = strconv.Atoi(flag.Arg(1))
 	case 3:
-		filename = flag.Arg(1)
+		filename = flag.Arg(1) // Override default filename
 		cursor, _ = strconv.Atoi(flag.Arg(2))
 	}
 
 	cursor -= skipped
-
-	if filename != "" && !IsAbsPath(filename) {
+	if filename != "" && !filepath.IsAbs(filename) {
 		cwd, _ := os.Getwd()
-		filename = path.Join(cwd, filename)
+		filename = filepath.Join(cwd, filename)
 	}
 
 	formatter := getFormatter()
@@ -279,19 +277,18 @@ func cmdSet(c *rpc.Client) {
 }
 
 func tryRunServer() os.Error {
-	path, err := exec.LookPath("gocode")
+	path := GetExecutableFileName()
+
+
+	args := []string{os.Args[0], "-s", "-sock", *sock, "-addr", *addr}
+	cwd, _ := os.Getwd()
+	procattr := os.ProcAttr{cwd, os.Environ(), []*os.File{nil, nil, nil}}
+	p, err := os.StartProcess(path, args, &procattr)
+
 	if err != nil {
 		return err
 	}
-
-	args := []string{"gocode", "-s", "-sock", *sock, "-addr", *addr}
-	procattr := os.ProcAttr{"", os.Environ(), []*os.File{nil, nil, nil}}
-	_, err = os.StartProcess(path, args, &procattr)
-
-	if err != nil {
-		return err
-	}
-	return nil
+	return p.Release()
 }
 
 func tryToConnect(network, address string) (client *rpc.Client, err os.Error) {

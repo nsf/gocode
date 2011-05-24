@@ -2,13 +2,12 @@ package main
 
 import (
 	"os"
-	"strings"
 	"go/ast"
 	"go/parser"
 	"io/ioutil"
 	"go/token"
 	"runtime"
-	"path"
+	"path/filepath"
 	"fmt"
 	"sync"
 )
@@ -163,9 +162,9 @@ func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
 }
 
 func absPathForPackage(filename, p string) (string, bool) {
-	dir, _ := path.Split(filename)
+	dir, _ := filepath.Split(filename)
 	if p[0] == '.' {
-		return fmt.Sprintf("%s.a", path.Join(dir, p)), true
+		return fmt.Sprintf("%s.a", filepath.Join(dir, p)), true
 	}
 	pkg, ok := findGoDagPackage(p, dir)
 	if ok {
@@ -186,8 +185,8 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 
 func findGoDagPackage(imp, filedir string) (string, bool) {
 	// Support godag directory structure
-	dir, pkg := path.Split(imp)
-	godag_pkg := path.Join(filedir, "..", dir, "_obj", pkg+".a")
+	dir, pkg := filepath.Split(imp)
+	godag_pkg := filepath.Join(filedir, "..", dir, "_obj", pkg+".a")
 	if fileExists(godag_pkg) {
 		return godag_pkg, true
 	}
@@ -208,8 +207,8 @@ func findGlobalFile(imp string) (string, bool) {
 
 	// if lib-path is defined, use it
 	if Config.LibPath != "" {
-		for _, p := range strings.Split(Config.LibPath, ":", -1) {
-			pkg_path := path.Join(p, pkgfile)
+		for _, p := range filepath.SplitList(Config.LibPath) {
+			pkg_path := filepath.Join(p, pkgfile)
 			if fileExists(pkg_path) {
 				return pkg_path, true
 			}
@@ -231,7 +230,7 @@ func findGlobalFile(imp string) (string, bool) {
 		goos = runtime.GOOS
 	}
 	pkgdir := fmt.Sprintf("%s_%s", goos, goarch)
-	pkg_path := path.Join(goroot, "pkg", pkgdir, pkgfile)
+	pkg_path := filepath.Join(goroot, "pkg", pkgdir, pkgfile)
 	return pkg_path, fileExists(pkg_path)
 }
 

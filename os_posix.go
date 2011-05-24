@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"os/signal"
+	"os"
+	"path/filepath"
+	"exec"
 )
 
 func CreateSockFlag(name, desc string) *string {
@@ -20,9 +23,26 @@ func IsTerminationSignal(sig signal.Signal) bool {
 	return false
 }
 
-func IsAbsPath(p string) bool {
-	if p[0] == '/' {
-		return true
+// Full path of the current executable
+func GetExecutableFileName() string {
+	// try readlink first
+	path, err := os.Readlink("/proc/self/exe")
+	if err == nil {
+		return path
 	}
-	return false
+	// use argv[0]
+	path = os.Args[0]
+	if !filepath.IsAbs(path) {
+		cwd, _ := os.Getwd()
+		path = filepath.Join(cwd, path)
+	}
+	if fileExists(path) {
+		return path
+	}
+	// Fallback : use "gocode" and assume we are in the PATH...
+	path, err = exec.LookPath("gocode")
+	if err == nil {
+		return path
+	}
+	return ""
 }

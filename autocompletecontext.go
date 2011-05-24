@@ -8,7 +8,7 @@ import (
 	"go/ast"
 	"io/ioutil"
 	"strings"
-	"path"
+	"path/filepath"
 	"sort"
 	"time"
 	"runtime"
@@ -365,7 +365,7 @@ func findOtherPackageFiles(filename, packageName string) []string {
 		return nil
 	}
 
-	dir, file := path.Split(filename)
+	dir, file := filepath.Split(filename)
 	filesInDir, err := ioutil.ReadDir(dir)
 	if err != nil {
 		panic(err.String())
@@ -373,7 +373,7 @@ func findOtherPackageFiles(filename, packageName string) []string {
 
 	count := 0
 	for _, stat := range filesInDir {
-		ok, _ := path.Match("*.go", stat.Name)
+		ok, _ := filepath.Match("*.go", stat.Name)
 		if !ok || stat.Name == file {
 			continue
 		}
@@ -382,12 +382,12 @@ func findOtherPackageFiles(filename, packageName string) []string {
 
 	out := make([]string, 0, count)
 	for _, stat := range filesInDir {
-		ok, _ := path.Match("*.go", stat.Name)
+		ok, _ := filepath.Match("*.go", stat.Name)
 		if !ok || stat.Name == file || !stat.IsRegular() {
 			continue
 		}
 
-		abspath := path.Join(dir, stat.Name)
+		abspath := filepath.Join(dir, stat.Name)
 		if filePackageName(abspath) == packageName {
 			n := len(out)
 			out = out[:n+1]
