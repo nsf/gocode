@@ -279,10 +279,9 @@ func cmdSet(c *rpc.Client) {
 func tryRunServer() os.Error {
 	path := GetExecutableFileName()
 
-
 	args := []string{os.Args[0], "-s", "-sock", *sock, "-addr", *addr}
 	cwd, _ := os.Getwd()
-	procattr := os.ProcAttr{cwd, os.Environ(), []*os.File{nil, nil, nil}}
+	procattr := os.ProcAttr{Dir: cwd, Env: os.Environ(), Files: []*os.File{nil, nil, nil}}
 	p, err := os.StartProcess(path, args, &procattr)
 
 	if err != nil {
