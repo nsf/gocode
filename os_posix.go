@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"os/signal"
 	"os"
 	"path/filepath"
 	"exec"
@@ -12,12 +11,12 @@ func CreateSockFlag(name, desc string) *string {
 	return flag.String(name, "unix", desc)
 }
 
-func IsTerminationSignal(sig signal.Signal) bool {
-	usig, ok := sig.(signal.UnixSignal)
+func IsTerminationSignal(sig os.Signal) bool {
+	usig, ok := sig.(os.UnixSignal)
 	if !ok {
 		return false
 	}
-	if usig == signal.SIGINT || usig == signal.SIGTERM {
+	if usig == os.SIGINT || usig == os.SIGTERM {
 		return true
 	}
 	return false
