@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"os/signal"
+	"os"
 	"syscall"
 	"unsafe"
 	"fmt"
@@ -13,7 +13,7 @@ func CreateSockFlag(name, desc string) *string {
 	return flag.String(name, "tcp", desc)
 }
 
-func IsTerminationSignal(sig signal.Signal) bool {
+func IsTerminationSignal(sig os.Signal) bool {
 	return false
 }
 
