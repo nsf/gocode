@@ -1,4 +1,4 @@
-Found 54 candidates:
+Found 55 candidates:
   func Addr() reflect.Value
   func Bool() bool
   func Call(in []reflect.Value) []reflect.Value
@@ -26,6 +26,7 @@ Found 54 candidates:
   func MapIndex(key reflect.Value) reflect.Value
   func MapKeys() []reflect.Value
   func Method(i int) reflect.Value
+  func MethodByName(name string) reflect.Value
   func NumField() int
   func OverflowComplex(x complex128) bool
   func OverflowFloat(x float64) bool

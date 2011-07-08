@@ -71,7 +71,7 @@ func listConfig(v interface{}) string {
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		name := typ.Field(i).Tag
-		listValue(v, name, buf)
+		listValue(v, string(name), buf)
 	}
 	return buf.String()
 }
@@ -86,7 +86,7 @@ func listOption(v interface{}, name string) string {
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		nm := typ.Field(i).Tag
-		if nm == name {
+		if string(nm) == name {
 			listValue(v, name, buf)
 		}
 	}
@@ -103,7 +103,7 @@ func setOption(v interface{}, name, value string) string {
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		nm := typ.Field(i).Tag
-		if nm == name {
+		if string(nm) == name {
 			setValue(v, name, value)
 			listValue(v, name, buf)
 		}
@@ -175,7 +175,7 @@ func writeConfig(v interface{}) os.Error {
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		name := typ.Field(i).Tag
-		writeValue(v, name, c)
+		writeValue(v, string(name), c)
 	}
 
 	makeSureConfigDirExists()
@@ -203,7 +203,7 @@ func readConfig(v interface{}) os.Error {
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		name := typ.Field(i).Tag
-		readValue(v, name, c)
+		readValue(v, string(name), c)
 	}
 
 	return nil
