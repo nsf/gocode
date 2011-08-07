@@ -18,7 +18,6 @@ override_dh_auto_install: install
 install:
 	mkdir -p debian/gocode/usr/bin
 	cp gocode debian/gocode/usr/bin
-	cp goremote/goremote debian/gocode/usr/bin
 	mkdir -p debian/gocode/usr/share/gocode
 	cp -av emacs debian/gocode/usr/share/gocode
 	cp -av vim debian/gocode/usr/share/gocode
