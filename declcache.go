@@ -233,9 +233,11 @@ func findGlobalFile(imp string) (string, bool) {
 	pkgdir := fmt.Sprintf("%s_%s", goos, goarch)
 	pkgpath := filepath.Join("pkg", pkgdir, pkgfile)
 
-	gopath_pkg := filepath.Join(gopath, pkgpath)
-	if fileExists(gopath_pkg) {
-		return gopath_pkg, true
+	if gopath != "" {
+		gopath_pkg := filepath.Join(gopath, pkgpath)
+		if fileExists(gopath_pkg) {
+			return gopath_pkg, true
+		}
 	}
 	goroot_pkg := filepath.Join(goroot, pkgpath)
 	return goroot_pkg, fileExists(goroot_pkg)
