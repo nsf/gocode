@@ -213,25 +213,32 @@ func findGlobalFile(imp string) (string, bool) {
 				return pkg_path, true
 			}
 		}
-		return "", false
 	}
 
 	// otherwise figure out the default lib-path
+	gopath := os.Getenv("GOPATH")
 	goroot := os.Getenv("GOROOT")
+	goarch := os.Getenv("GOARCH")
+	goos   := os.Getenv("GOOS")
 	if goroot == "" {
 		goroot = runtime.GOROOT()
 	}
-	goarch := os.Getenv("GOARCH")
 	if goarch == "" {
 		goarch = runtime.GOARCH
 	}
-	goos := os.Getenv("GOOS")
 	if goos == "" {
 		goos = runtime.GOOS
 	}
+
 	pkgdir := fmt.Sprintf("%s_%s", goos, goarch)
-	pkg_path := filepath.Join(goroot, "pkg", pkgdir, pkgfile)
-	return pkg_path, fileExists(pkg_path)
+	pkgpath := filepath.Join("pkg", pkgdir, pkgfile)
+
+	gopath_pkg := filepath.Join(gopath, pkgpath)
+	if fileExists(gopath_pkg) {
+		return gopath_pkg, true
+	}
+	goroot_pkg := filepath.Join(goroot, pkgpath)
+	return goroot_pkg, fileExists(goroot_pkg)
 }
 
 func packageName(file *ast.File) string {

@@ -86,7 +86,7 @@ You can change all available options using `gocode set` command. The config file
 
  - *lib-path*
 
-   A string option. Allows you to override default location of the standard Go library. By default, it uses **$GOROOT/pkg/$GOOS_$GOARCH** in terms of previously existed environment variables. Also you can specify multiple paths using ':' (colon) as a separator.
+   A string option. Allows you to add search paths for packages. By default, gocode only searches **$GOPATH/pkg/$GOOS_$GOARCH** and **$GOROOT/pkg/$GOOS_$GOARCH** in terms of previously existed environment variables. Also you can specify multiple paths using ':' (colon) as a separator (on Windows use semicolon ';').
 
 ### Debugging
 
