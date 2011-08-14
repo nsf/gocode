@@ -61,7 +61,7 @@ func (pi *PackageImports) appendImport(alias, path string) {
 
 //-------------------------------------------------------------------------
 // DeclFileCache
-// 
+//
 // Contains cache for top-level declarations of a file as well as its
 // contents, AST and import information. Used in both autocompletion
 // and refactoring utilities.
@@ -234,9 +234,11 @@ func findGlobalFile(imp string) (string, bool) {
 	pkgpath := filepath.Join("pkg", pkgdir, pkgfile)
 
 	if gopath != "" {
-		gopath_pkg := filepath.Join(gopath, pkgpath)
-		if fileExists(gopath_pkg) {
-			return gopath_pkg, true
+		for _, p := range filepath.SplitList(gopath) {
+			gopath_pkg := filepath.Join(p, pkgpath)
+			if fileExists(gopath_pkg) {
+				return gopath_pkg, true
+			}
 		}
 	}
 	goroot_pkg := filepath.Join(goroot, pkgpath)
