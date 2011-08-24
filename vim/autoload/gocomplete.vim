@@ -5,6 +5,11 @@ let g:loaded_gocode = 1
 
 fu! s:gocodeCurrentBuffer()
 	let buf = getline(1, '$')
+	if &l:fileformat == 'dos'
+		" XXX: line2byte() depend on 'fileformat' option.
+		" so if fileformat is 'dos', 'buf' must include '\r'.
+		let buf = map(buf, 'v:val."\r"')
+	endif
 	let file = tempname()
 	call writefile(buf, file)
 	return file
