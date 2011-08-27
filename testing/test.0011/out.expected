@@ -1,4 +1,4 @@
-Found 55 candidates:
+Found 56 candidates:
   func Addr() reflect.Value
   func Bool() bool
   func Call(in []reflect.Value) []reflect.Value
@@ -28,6 +28,7 @@ Found 55 candidates:
   func Method(i int) reflect.Value
   func MethodByName(name string) reflect.Value
   func NumField() int
+  func NumMethod() int
   func OverflowComplex(x complex128) bool
   func OverflowFloat(x float64) bool
   func OverflowInt(x int64) bool
