@@ -8,20 +8,3 @@ because usually you spend some time in editor between requests and
 that time is wasted on a GC run, but testing app throws requests one
 after another and it causes GC to eat a lot of CPU. So.. don't worry
 about that.
-
- --== Utils ==--
-
-There is a bunch of console utils to use when you're working with
-tests.
-
-  showcursor - Dumps file and highlights cursor position (with red
-  color).
-
-  showsmap - Dumps file and highlights each identifier which has
-  semantic information in the semantic map.
-
-  rename - Renames an identifier pointed by the cursor position and
-  prints the renamed version of the source code to stdout.
-
-  listidents - Scans the source code with a lexer, and returns the
-  list of all identifiers in the code together with their positions.

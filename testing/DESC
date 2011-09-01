@@ -29,3 +29,4 @@ test.0028 - the reason why I need to implement binary ops
 test.0029 - import to the current package scope (import . "whatever")
 test.0030 - typedef struct type and try to use its fields
 test.0031 - simple test for select clause
+test.0032 - import all packages (tests package parser)
