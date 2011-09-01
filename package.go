@@ -198,6 +198,7 @@ func (m *PackageFileCache) processPackageData(s string) {
 // 1. a go/parser parsable string representing one Go declaration
 // 2. and a package name this declaration belongs to
 func (m *PackageFileCache) processExport(s string) (string, string) {
+	s = strings.Replace(s, ` :"noescape"`, "", -1)
 	i := 0
 	pkg := ""
 
