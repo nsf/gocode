@@ -857,10 +857,10 @@ var builtinUnsafePackage = []byte(`
 import
 $$
 package unsafe 
-	type "".Pointer *any
-	func "".Offsetof (? any) int
-	func "".Sizeof (? any) int
-	func "".Alignof (? any) int
+	type "".Pointer uintptr
+	func "".Offsetof (? any) uintptr
+	func "".Sizeof (? any) uintptr
+	func "".Alignof (? any) uintptr
 	func "".Typeof (i interface { }) interface { }
 	func "".Reflect (i interface { }) (typ interface { }, addr "".Pointer)
 	func "".Unreflect (typ interface { }, addr "".Pointer) interface { }
