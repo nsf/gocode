@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"fmt"
 	"os"
+	"utf8"
 )
 
 var (
@@ -229,12 +230,22 @@ func cmdAutoComplete(c *rpc.Client) {
 	filename := *input
 	cursor := -1
 
+	offset := ""
 	switch flag.NArg() {
 	case 2:
-		cursor, _ = strconv.Atoi(flag.Arg(1))
+		offset = flag.Arg(1)
 	case 3:
 		filename = flag.Arg(1) // Override default filename
-		cursor, _ = strconv.Atoi(flag.Arg(2))
+		offset = flag.Arg(2)
+	}
+
+	if offset != "" {
+		if offset[0] == 'c' || offset[0] == 'C' {
+			cursor, _ = strconv.Atoi(offset[1:])
+			cursor = charToByteOffset(file, cursor)
+		} else {
+			cursor, _ = strconv.Atoi(offset)
+		}
 	}
 
 	cursor -= skipped
@@ -342,6 +353,15 @@ func clientFunc() int {
 		}
 	}
 	return 0
+}
+
+func charToByteOffset(s []byte, offsetC int) (offsetB int) {
+	for offsetB = 0; offsetC > 0 && offsetB < len(s); offsetB++ {
+		if utf8.RuneStart(s[offsetB]) {
+			offsetC--
+		}
+	}
+	return offsetB
 }
 
 func main() {
