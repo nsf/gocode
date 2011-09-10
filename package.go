@@ -239,7 +239,7 @@ func (p *gcParser) init(src io.Reader) {
 	p.scanner.Error = func(_ *scanner.Scanner, msg string) { p.error(msg) }
 	p.scanner.Mode = scanner.ScanIdents | scanner.ScanInts | scanner.ScanStrings |
 		scanner.ScanComments | scanner.SkipComments
-	p.scanner.Whitespace = 1 << '\t' | 1 << ' '
+	p.scanner.Whitespace = 1 << '\t' | 1 << ' ' | 1 << '\r' | 1 << '\v' | 1 << '\f'
 	p.scanner.Filename = "package.go"
 	p.next()
 	p.pathToAlias = make(map[string]string)
