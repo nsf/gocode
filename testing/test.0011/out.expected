@@ -1,7 +1,6 @@
-Found 58 candidates:
+Found 56 candidates:
   func Addr() reflect.Value
   func Bool() bool
-  func Bytes() []uint8
   func Call(in []reflect.Value) []reflect.Value
   func CallSlice(in []reflect.Value) []reflect.Value
   func CanAddr() bool
@@ -39,7 +38,6 @@ Found 58 candidates:
   func Send(x reflect.Value)
   func Set(x reflect.Value)
   func SetBool(x bool)
-  func SetBytes(x []uint8)
   func SetComplex(x complex128)
   func SetFloat(x float64)
   func SetInt(x int64)
