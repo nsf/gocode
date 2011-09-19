@@ -163,6 +163,9 @@ func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
 
 func absPathForPackage(filename, p string) (string, bool) {
 	dir, _ := filepath.Split(filename)
+	if len(p) == 0 {
+		return "", false
+	}
 	if p[0] == '.' {
 		return fmt.Sprintf("%s.a", filepath.Join(dir, p)), true
 	}
@@ -174,12 +177,15 @@ func absPathForPackage(filename, p string) (string, bool) {
 }
 
 func pathAndAlias(imp *ast.ImportSpec) (string, string) {
-	path := string(imp.Path.Value)
+	path := ""
+	if imp.Path != nil {
+		path = string(imp.Path.Value)
+		path = path[1 : len(path)-1]
+	}
 	alias := ""
 	if imp.Name != nil {
 		alias = imp.Name.Name
 	}
-	path = path[1 : len(path)-1]
 	return path, alias
 }
 
