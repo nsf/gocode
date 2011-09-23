@@ -598,7 +598,7 @@ func chanPredicate(v ast.Expr) bool {
 
 func indexPredicate(v ast.Expr) bool {
 	switch v.(type) {
-	case *ast.ArrayType, *ast.MapType:
+	case *ast.ArrayType, *ast.MapType, *ast.Ellipsis:
 		return true
 	}
 	return false
@@ -620,7 +620,7 @@ func rangePredicate(v ast.Expr) bool {
 		if t.Name == "string" {
 			return true
 		}
-	case *ast.ArrayType, *ast.MapType, *ast.ChanType:
+	case *ast.ArrayType, *ast.MapType, *ast.ChanType, *ast.Ellipsis:
 		return true
 	}
 	return false
@@ -639,6 +639,8 @@ func (a *anonymousTyper) Visit(node ast.Node) ast.Visitor {
 		t.Key = checkForAnonType(t.Key, a.flags, a.scope)
 		t.Value = checkForAnonType(t.Value, a.flags, a.scope)
 	case *ast.ArrayType:
+		t.Elt = checkForAnonType(t.Elt, a.flags, a.scope)
+	case *ast.Ellipsis:
 		t.Elt = checkForAnonType(t.Elt, a.flags, a.scope)
 	case *ast.ChanType:
 		t.Value = checkForAnonType(t.Value, a.flags, a.scope)
@@ -750,6 +752,8 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 		switch t := it.(type) {
 		case *ast.ArrayType:
 			return t.Elt, s, false
+		case *ast.Ellipsis:
+			return t.Elt, s, false
 		case *ast.MapType:
 			switch index {
 			case -1, 0:
@@ -853,7 +857,7 @@ func inferType(v ast.Expr, scope *Scope, index int) (ast.Expr, *Scope, bool) {
 		case 1:
 			return ast.NewIdent("bool"), universeScope, false
 		}
-	case *ast.ArrayType, *ast.MapType, *ast.ChanType,
+	case *ast.ArrayType, *ast.MapType, *ast.ChanType, *ast.Ellipsis,
 		*ast.FuncType, *ast.StructType, *ast.InterfaceType:
 		return t, scope, true
 	default:
@@ -946,6 +950,10 @@ func inferRangeType(e ast.Expr, scope *Scope, valueindex int) (ast.Expr, *Scope)
 				t1, t2 = nil, nil
 			}
 		case *ast.ArrayType:
+			t1 = ast.NewIdent("int")
+			s1 = universeScope
+			t2 = t.Elt
+		case *ast.Ellipsis:
 			t1 = ast.NewIdent("int")
 			s1 = universeScope
 			t2 = t.Elt
