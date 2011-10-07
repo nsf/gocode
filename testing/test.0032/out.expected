@@ -1,4 +1,4 @@
-Found 152 candidates:
+Found 151 candidates:
   func main()
   package adler32 
   package aes 
@@ -121,7 +121,6 @@ Found 152 candidates:
   package subtle 
   package suffixarray 
   package sync 
-  package syntax 
   package syscall 
   package syslog 
   package tabwriter 
