@@ -115,19 +115,18 @@ func (m *PackageFileCache) processPackageData(data []byte) {
 	// create map for other packages
 	m.others = make(map[string]*Decl)
 	p.parseExport(func (pkg string, decl ast.Decl) {
-		decls := [...]ast.Decl{decl}
 		if pkg == "" {
 			// main package
 			if m.main == nil {
 				m.main = NewDecl(m.name, DECL_PACKAGE, nil)
 			}
-			addAstDeclsToPackage(m.main, decls[:], m.scope)
+			addAstDeclToPackage(m.main, decl, m.scope)
 		} else {
 			// others
 			if _, ok := m.others[pkg]; !ok {
 				m.others[pkg] = NewDecl(pkg, DECL_PACKAGE, nil)
 			}
-			addAstDeclsToPackage(m.others[pkg], decls[:], m.scope)
+			addAstDeclToPackage(m.others[pkg], decl, m.scope)
 		}
 	})
 
@@ -151,43 +150,41 @@ func (m *PackageFileCache) addPackageToScope(alias, realname string) {
 	m.scope.addDecl(alias, d)
 }
 
-func addAstDeclsToPackage(pkg *Decl, decls []ast.Decl, scope *Scope) {
-	for _, decl := range decls {
-		foreachDecl(decl, func(data *foreachDeclStruct) {
-			class := astDeclClass(data.decl)
-			for i, name := range data.names {
-				typ, v, vi := data.typeValueIndex(i, DECL_FOREIGN)
+func addAstDeclToPackage(pkg *Decl, decl ast.Decl, scope *Scope) {
+	foreachDecl(decl, func(data *foreachDeclStruct) {
+		class := astDeclClass(data.decl)
+		for i, name := range data.names {
+			typ, v, vi := data.typeValueIndex(i, DECL_FOREIGN)
 
-				d := NewDecl2(name.Name, class, DECL_FOREIGN, typ, v, vi, scope)
-				if d == nil {
-					return
-				}
+			d := NewDecl2(name.Name, class, DECL_FOREIGN, typ, v, vi, scope)
+			if d == nil {
+				return
+			}
 
-				if !name.IsExported() && d.Class != DECL_TYPE {
-					return
-				}
+			if !name.IsExported() && d.Class != DECL_TYPE {
+				return
+			}
 
-				methodof := MethodOf(data.decl)
-				if methodof != "" {
-					decl := pkg.FindChild(methodof)
-					if decl != nil {
-						decl.AddChild(d)
-					} else {
-						decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
-						decl.AddChild(d)
-						pkg.AddChild(decl)
-					}
+			methodof := MethodOf(data.decl)
+			if methodof != "" {
+				decl := pkg.FindChild(methodof)
+				if decl != nil {
+					decl.AddChild(d)
 				} else {
-					decl := pkg.FindChild(d.Name)
-					if decl != nil {
-						decl.ExpandOrReplace(d)
-					} else {
-						pkg.AddChild(d)
-					}
+					decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
+					decl.AddChild(d)
+					pkg.AddChild(decl)
+				}
+			} else {
+				decl := pkg.FindChild(d.Name)
+				if decl != nil {
+					decl.ExpandOrReplace(d)
+				} else {
+					pkg.AddChild(d)
 				}
 			}
-		})
-	}
+		}
+	})
 }
 
 //-------------------------------------------------------------------------
