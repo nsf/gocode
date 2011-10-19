@@ -326,8 +326,9 @@ func (p *gcParser) parsePackage() *ast.Ident {
 	return ast.NewIdent(path)
 }
 
-// ExportedName = ImportPath "." dotIdentifier .
+// ExportedName = "@" ImportPath "." dotIdentifier .
 func (p *gcParser) parseExportedName() *ast.SelectorExpr {
+	p.expect('@')
 	pkg := p.parsePackage()
 	if p.beautify {
 		if pkg.Name == "" {
@@ -357,13 +358,12 @@ func (p *gcParser) parseName() string {
 	return ""
 }
 
-// Field = Name Type [ ":" string_lit ] .
+// Field = Name Type [ string_lit ] .
 func (p *gcParser) parseField() *ast.Field {
 	var tag string
 	name := p.parseName()
 	typ := p.parseType()
-	if p.tok == ':' {
-		p.next()
+	if p.tok == scanner.String {
 		tag = p.expect(scanner.String)
 	}
 
@@ -374,7 +374,7 @@ func (p *gcParser) parseField() *ast.Field {
 	}
 }
 
-// Parameter = ( identifier | "?" ) [ "..." ] Type [ ":" string_lit ] .
+// Parameter = ( identifier | "?" ) [ "..." ] Type [ string_lit ] .
 func (p *gcParser) parseParameter() *ast.Field {
 	// name
 	name := p.parseName()
@@ -389,9 +389,7 @@ func (p *gcParser) parseParameter() *ast.Field {
 	}
 
 	var tag string
-	if p.tok == ':' {
-		// tag is ignored (no place for it in ast node)
-		p.next()
+	if p.tok == scanner.String {
 		tag = p.expect(scanner.String)
 	}
 
@@ -435,7 +433,7 @@ func (p *gcParser) parseSignature() *ast.FuncType {
 
 	params = p.parseParameters()
 	switch p.tok {
-	case scanner.Ident, scanner.String, '[', '*', '<':
+	case scanner.Ident, '[', '*', '<', '@':
 		fld := &ast.Field{Type: p.parseType()}
 		results = &ast.FieldList{List: []*ast.Field{fld}}
 	case '(':
@@ -444,7 +442,7 @@ func (p *gcParser) parseSignature() *ast.FuncType {
 	return &ast.FuncType{Params: params, Results: results}
 }
 
-// MethodSpec = identifier Signature .
+// MethodSpec = ( identifier | ExportedName ) Signature .
 func (p *gcParser) parseMethodSpec() *ast.Field {
 	var name string
 
@@ -452,6 +450,7 @@ func (p *gcParser) parseMethodSpec() *ast.Field {
 		name = p.expect(scanner.Ident)
 	} else {
 		// here we'll skip package crap and just use the name
+		p.expect('@')
 		p.parsePackage()
 		p.expect('.')
 		name = p.parseDotIdent()
@@ -607,7 +606,7 @@ func (p *gcParser) parseType() ast.Expr {
 			p.next()
 			return ast.NewIdent(lit)
 		}
-	case scanner.String:
+	case '@':
 		return p.parseExportedName()
 	case '[':
 		return p.parseArrayOrSliceType()
@@ -723,12 +722,28 @@ func (p *gcParser) parseVarDecl() (string, *ast.GenDecl) {
 	}
 }
 
-// FuncDecl = "func" ExportedName Signature .
+// FuncBody = "{" ... "}" .
+func (p *gcParser) parseFuncBody() {
+	p.expect('{')
+	for i := 1; i > 0; p.next() {
+		switch p.tok {
+		case '{':
+			i++
+		case '}':
+			i--
+		}
+	}
+}
+
+// FuncDecl = "func" ExportedName Signature [ FuncBody ] .
 func (p *gcParser) parseFuncDecl() (string, *ast.FuncDecl) {
 	// "func" was already consumed by lookahead
 	name := p.parseExportedName()
 	p.beautify = true
 	typ := p.parseSignature()
+	if p.tok == '{' {
+		p.parseFuncBody()
+	}
 	return name.X.(*ast.Ident).Name, &ast.FuncDecl{
 		Name: name.Sel,
 		Type: typ,
@@ -762,13 +777,16 @@ func stripMethodReceiver(recv *ast.FieldList) string {
 }
 
 // MethodDecl = "func" Receiver identifier Signature .
-// Receiver = "(" ( identifier | "?" ) [ "*" ] ExportedName ")" .
+// Receiver = "(" ( identifier | "?" ) [ "*" ] ExportedName ")" [ FuncBody ] .
 func (p *gcParser) parseMethodDecl() (string, *ast.FuncDecl) {
 	recv := p.parseParameters()
 	p.beautify = true
 	pkg := stripMethodReceiver(recv)
 	name := p.expect(scanner.Ident)
 	typ := p.parseSignature()
+	if p.tok == '{' {
+		p.parseFuncBody()
+	}
 	return pkg, &ast.FuncDecl{
 		Recv: recv,
 		Name: ast.NewIdent(name),
@@ -854,15 +872,15 @@ var builtinUnsafePackage = []byte(`
 import
 $$
 package unsafe 
-	type "".Pointer uintptr
-	func "".Offsetof (? any) uintptr
-	func "".Sizeof (? any) uintptr
-	func "".Alignof (? any) uintptr
-	func "".Typeof (i interface { }) interface { }
-	func "".Reflect (i interface { }) (typ interface { }, addr "".Pointer)
-	func "".Unreflect (typ interface { }, addr "".Pointer) interface { }
-	func "".New (typ interface { }) "".Pointer
-	func "".NewArray (typ interface { }, n int) "".Pointer
+	type @"".Pointer uintptr
+	func @"".Offsetof (? any) uintptr
+	func @"".Sizeof (? any) uintptr
+	func @"".Alignof (? any) uintptr
+	func @"".Typeof (i interface { }) interface { }
+	func @"".Reflect (i interface { }) (typ interface { }, addr @"".Pointer)
+	func @"".Unreflect (typ interface { }, addr @"".Pointer) interface { }
+	func @"".New (typ interface { }) @"".Pointer
+	func @"".NewArray (typ interface { }, n int) @"".Pointer
 
 $$
 `)

@@ -1,4 +1,4 @@
-Found 151 candidates:
+Found 143 candidates:
   func main()
   package adler32 
   package aes 
@@ -26,7 +26,6 @@ Found 151 candidates:
   package crc64 
   package crypto 
   package csv 
-  package datafmt 
   package debug 
   package des 
   package dict 
@@ -34,7 +33,6 @@ Found 151 candidates:
   package draw 
   package dsa 
   package dwarf 
-  package ebnf 
   package ecdsa 
   package elf 
   package elgamal 
@@ -80,7 +78,6 @@ Found 151 candidates:
   package mime 
   package multipart 
   package net 
-  package netchan 
   package norm 
   package ocsp 
   package openpgp 
@@ -115,7 +112,6 @@ Found 151 candidates:
   package signal 
   package smtp 
   package sort 
-  package spdy 
   package strconv 
   package strings 
   package subtle 
@@ -132,16 +128,12 @@ Found 151 candidates:
   package time 
   package tls 
   package token 
-  package try 
   package twofish 
-  package typechecker 
-  package types 
   package unicode 
   package url 
   package user 
   package utf16 
   package utf8 
-  package vector 
   package websocket 
   package x11 
   package x509 
