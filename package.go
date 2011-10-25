@@ -109,7 +109,7 @@ func (m *PackageFileCache) processPackageData(data []byte) {
 
 	buf := bytes.NewBuffer(data)
 	var p gcParser
-	p.init(buf)
+	p.init(buf, m)
 	// and the built-in "unsafe" package to the pathToAlias map
 	p.pathToAlias["unsafe"] = "unsafe"
 	// create map for other packages
@@ -129,8 +129,6 @@ func (m *PackageFileCache) processPackageData(data []byte) {
 			addAstDeclToPackage(m.others[pkg], decl, m.scope)
 		}
 	})
-
-	m.defalias = p.defalias
 
 	// hack, add ourselves to the package scope
 	m.addPackageToScope(m.defalias, m.name)
@@ -226,12 +224,12 @@ type gcParser struct {
 	scanner scanner.Scanner
 	tok int
 	lit string
-	defalias string
 	pathToAlias map[string]string
 	beautify bool
+	pfc *PackageFileCache
 }
 
-func (p *gcParser) init(src io.Reader) {
+func (p *gcParser) init(src io.Reader, pfc *PackageFileCache) {
 	p.scanner.Init(src)
 	p.scanner.Error = func(_ *scanner.Scanner, msg string) { p.error(msg) }
 	p.scanner.Mode = scanner.ScanIdents | scanner.ScanInts | scanner.ScanStrings |
@@ -240,6 +238,7 @@ func (p *gcParser) init(src io.Reader) {
 	p.scanner.Filename = "package.go"
 	p.next()
 	p.pathToAlias = make(map[string]string)
+	p.pfc = pfc
 }
 
 func (p *gcParser) next() {
@@ -332,7 +331,7 @@ func (p *gcParser) parseExportedName() *ast.SelectorExpr {
 	pkg := p.parsePackage()
 	if p.beautify {
 		if pkg.Name == "" {
-			pkg.Name = p.defalias
+			pkg.Name = p.pfc.defalias
 		} else {
 			pkg.Name = p.pathToAlias[pkg.Name]
 		}
@@ -635,6 +634,7 @@ func (p *gcParser) parseImportDecl() {
 	alias := p.expect(scanner.Ident)
 	path := p.parsePackage()
 	p.pathToAlias[path.Name] = alias
+	p.pfc.addPackageToScope(alias, path.Name)
 }
 
 // ConstDecl   = "const" ExportedName [ Type ] "=" Literal .
@@ -821,7 +821,7 @@ func (p *gcParser) parseDecl() (pkg string, decl ast.Decl) {
 // PackageClause = "package" identifier [ "safe" ] "\n" .
 func (p *gcParser) parseExport(callback func(string, ast.Decl)) {
 	p.expectKeyword("package")
-	p.defalias = p.expect(scanner.Ident)
+	p.pfc.defalias = p.expect(scanner.Ident)
 	if p.tok != '\n' {
 		p.expectKeyword("safe")
 	}

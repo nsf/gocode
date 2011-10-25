@@ -31,3 +31,4 @@ test.0030 - typedef struct type and try to use its fields
 test.0031 - simple test for select clause
 test.0032 - import all packages (tests package parser)
 test.0033 - varargs type as a slice type in different contexts
+test.0034 - interface with methods imported from another package
