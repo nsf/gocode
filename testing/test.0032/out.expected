@@ -1,4 +1,4 @@
-Found 143 candidates:
+Found 142 candidates:
   func main()
   package adler32 
   package aes 
@@ -60,7 +60,6 @@ Found 143 candidates:
   package http 
   package httptest 
   package image 
-  package inotify 
   package io 
   package iotest 
   package ioutil 
