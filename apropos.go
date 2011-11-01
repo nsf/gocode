@@ -25,8 +25,8 @@ func utf8MoveBackwards(file []byte, cursor int) int {
 	return 0
 }
 
-func isIdent(rune int) bool {
-	return unicode.IsDigit(rune) || unicode.IsLetter(rune) || rune == '_'
+func isIdent(r rune) bool {
+	return unicode.IsDigit(r) || unicode.IsLetter(r) || r == '_'
 }
 
 func skipIdent(file []byte, cursor int) int {
