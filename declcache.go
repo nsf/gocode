@@ -72,7 +72,7 @@ type DeclFileCache struct {
 	mtime int64  // last modification time
 
 	Decls     map[string]*Decl // top-level declarations
-	Error     os.Error         // last error
+	Error     error            // last error
 	Packages  PackageImports   // import information
 	FileScope *Scope
 
@@ -225,7 +225,7 @@ func findGlobalFile(imp string) (string, bool) {
 	gopath := os.Getenv("GOPATH")
 	goroot := os.Getenv("GOROOT")
 	goarch := os.Getenv("GOARCH")
-	goos   := os.Getenv("GOOS")
+	goos := os.Getenv("GOOS")
 	if goroot == "" {
 		goroot = runtime.GOROOT()
 	}

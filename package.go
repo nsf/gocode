@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"go/ast"
 	"go/token"
 	"strconv"
@@ -114,7 +115,7 @@ func (m *PackageFileCache) processPackageData(data []byte) {
 	p.pathToAlias["unsafe"] = "unsafe"
 	// create map for other packages
 	m.others = make(map[string]*Decl)
-	p.parseExport(func (pkg string, decl ast.Decl) {
+	p.parseExport(func(pkg string, decl ast.Decl) {
 		if pkg == "" {
 			// main package
 			if m.main == nil {
@@ -221,12 +222,12 @@ func addAstDeclToPackage(pkg *Decl, decl ast.Decl, scope *Scope) {
 //-------------------------------------------------------------------------
 
 type gcParser struct {
-	scanner scanner.Scanner
-	tok int
-	lit string
+	scanner     scanner.Scanner
+	tok         int
+	lit         string
 	pathToAlias map[string]string
-	beautify bool
-	pfc *PackageFileCache
+	beautify    bool
+	pfc         *PackageFileCache
 }
 
 func (p *gcParser) init(src io.Reader, pfc *PackageFileCache) {
@@ -234,7 +235,7 @@ func (p *gcParser) init(src io.Reader, pfc *PackageFileCache) {
 	p.scanner.Error = func(_ *scanner.Scanner, msg string) { p.error(msg) }
 	p.scanner.Mode = scanner.ScanIdents | scanner.ScanInts | scanner.ScanStrings |
 		scanner.ScanComments | scanner.SkipComments
-	p.scanner.Whitespace = 1 << '\t' | 1 << ' ' | 1 << '\r' | 1 << '\v' | 1 << '\f'
+	p.scanner.Whitespace = 1<<'\t' | 1<<' ' | 1<<'\r' | 1<<'\v' | 1<<'\f'
 	p.scanner.Filename = "package.go"
 	p.next()
 	p.pathToAlias = make(map[string]string)
@@ -252,7 +253,7 @@ func (p *gcParser) next() {
 }
 
 func (p *gcParser) error(msg string) {
-	panic(os.NewError(msg))
+	panic(errors.New(msg))
 }
 
 func (p *gcParser) errorf(format string, args ...interface{}) {
@@ -263,7 +264,7 @@ func (p *gcParser) expect(tok int) string {
 	lit := p.lit
 	if p.tok != tok {
 		p.errorf("expected %s, got %s (%q)", scanner.TokenString(tok),
-			 scanner.TokenString(p.tok), lit)
+			scanner.TokenString(p.tok), lit)
 	}
 	p.next()
 	return lit
@@ -341,7 +342,6 @@ func (p *gcParser) parseExportedName() *ast.SelectorExpr {
 	return &ast.SelectorExpr{X: pkg, Sel: name}
 }
 
-
 // Name = identifier | "?" .
 func (p *gcParser) parseName() string {
 	switch p.tok {
@@ -368,8 +368,8 @@ func (p *gcParser) parseField() *ast.Field {
 
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(name)},
-		Type: typ,
-		Tag: &ast.BasicLit{Kind: token.STRING, Value: tag},
+		Type:  typ,
+		Tag:   &ast.BasicLit{Kind: token.STRING, Value: tag},
 	}
 }
 
@@ -394,8 +394,8 @@ func (p *gcParser) parseParameter() *ast.Field {
 
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(name)},
-		Type: typ,
-		Tag: &ast.BasicLit{Kind: token.STRING, Value: tag},
+		Type:  typ,
+		Tag:   &ast.BasicLit{Kind: token.STRING, Value: tag},
 	}
 }
 
@@ -457,7 +457,7 @@ func (p *gcParser) parseMethodSpec() *ast.Field {
 	typ := p.parseSignature()
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(name)},
-		Type: typ,
+		Type:  typ,
 	}
 }
 
@@ -680,8 +680,8 @@ func (p *gcParser) parseConstDecl() (string, *ast.GenDecl) {
 		Tok: token.CONST,
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
-				Names: []*ast.Ident{name.Sel},
-				Type: typ,
+				Names:  []*ast.Ident{name.Sel},
+				Type:   typ,
 				Values: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: "0"}},
 			},
 		},
@@ -716,7 +716,7 @@ func (p *gcParser) parseVarDecl() (string, *ast.GenDecl) {
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
 				Names: []*ast.Ident{name.Sel},
-				Type: typ,
+				Type:  typ,
 			},
 		},
 	}

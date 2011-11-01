@@ -212,7 +212,7 @@ func cmdStatus(c *rpc.Client) {
 
 func cmdAutoComplete(c *rpc.Client) {
 	var file []byte
-	var err os.Error
+	var err error
 
 	if *input != "" {
 		file, err = ioutil.ReadFile(*input)
@@ -221,7 +221,7 @@ func cmdAutoComplete(c *rpc.Client) {
 	}
 
 	if err != nil {
-		panic(err.String())
+		panic(err.Error())
 	}
 
 	var skipped int
@@ -287,7 +287,7 @@ func cmdSet(c *rpc.Client) {
 	}
 }
 
-func tryRunServer() os.Error {
+func tryRunServer() error {
 	path := GetExecutableFileName()
 
 	args := []string{os.Args[0], "-s", "-sock", *sock, "-addr", *addr}
@@ -301,7 +301,7 @@ func tryRunServer() os.Error {
 	return p.Release()
 }
 
-func tryToConnect(network, address string) (client *rpc.Client, err os.Error) {
+func tryToConnect(network, address string) (client *rpc.Client, err error) {
 	t := 0
 	for {
 		client, err = rpc.Dial(network, address)
@@ -327,12 +327,12 @@ func clientFunc() int {
 	if err != nil {
 		err = tryRunServer()
 		if err != nil {
-			fmt.Printf("%s\n", err.String())
+			fmt.Printf("%s\n", err.Error())
 			return 1
 		}
 		client, err = tryToConnect(*sock, addr)
 		if err != nil {
-			fmt.Printf("%s\n", err.String())
+			fmt.Printf("%s\n", err.Error())
 			return 1
 		}
 	}

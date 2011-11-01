@@ -368,7 +368,7 @@ func findOtherPackageFiles(filename, packageName string) []string {
 	dir, file := filepath.Split(filename)
 	filesInDir, err := ioutil.ReadDir(dir)
 	if err != nil {
-		panic(err.String())
+		panic(err)
 	}
 
 	count := 0

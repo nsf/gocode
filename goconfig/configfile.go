@@ -46,22 +46,21 @@
 // of the Python Standard Library.
 package configfile
 
-
 import (
 	"bufio"
+	"errors"
+	"io"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-
 // ConfigFile is the representation of configuration settings.
 // The public interface is entirely through methods.
 type ConfigFile struct {
 	data map[string]map[string]string // Maps sections to options to values.
 }
-
 
 var (
 	DefaultSection = "default" // Default section name (must be lower-case).
@@ -86,7 +85,6 @@ var (
 	varRegExp = regexp.MustCompile(`%\(([a-zA-Z0-9_.\-]+)\)s`)
 )
 
-
 // AddSection adds a new section to the configuration.
 // It returns true if the new section was inserted, and false if the section already existed.
 func (c *ConfigFile) AddSection(section string) bool {
@@ -100,7 +98,6 @@ func (c *ConfigFile) AddSection(section string) bool {
 	return true
 }
 
-
 // RemoveSection removes a section from the configuration.
 // It returns true if the section was removed, and false if section did not exist.
 func (c *ConfigFile) RemoveSection(section string) bool {
@@ -113,14 +110,13 @@ func (c *ConfigFile) RemoveSection(section string) bool {
 		return false // default section cannot be removed
 	default:
 		for o, _ := range c.data[section] {
-			c.data[section][o] = "", false
+			delete(c.data[section], o)
 		}
-		c.data[section] = nil, false
+		delete(c.data, section)
 	}
 
 	return true
 }
-
 
 // AddOption adds a new option and value to the configuration.
 // It returns true if the option and value were inserted, and false if the value was overwritten.
@@ -137,7 +133,6 @@ func (c *ConfigFile) AddOption(section string, option string, value string) bool
 	return !ok
 }
 
-
 // RemoveOption removes a option and value from the configuration.
 // It returns true if the option and value were removed, and false otherwise,
 // including if the section did not exist.
@@ -150,11 +145,10 @@ func (c *ConfigFile) RemoveOption(section string, option string) bool {
 	}
 
 	_, ok := c.data[section][option]
-	c.data[section][option] = "", false
+	delete(c.data[section], option)
 
 	return ok
 }
-
 
 // NewConfigFile creates an empty configuration representation.
 // This representation can be filled with AddSection and AddOption and then
@@ -168,7 +162,6 @@ func NewConfigFile() *ConfigFile {
 	return c
 }
 
-
 func stripComments(l string) string {
 	// comments are preceded by space or TAB
 	for _, c := range []string{" ;", "\t;", " #", "\t#"} {
@@ -178,7 +171,6 @@ func stripComments(l string) string {
 	}
 	return l
 }
-
 
 func firstIndex(s string, delim []byte) int {
 	for i := 0; i < len(s); i++ {
@@ -191,12 +183,11 @@ func firstIndex(s string, delim []byte) int {
 	return -1
 }
 
-
-func (c *ConfigFile) read(buf *bufio.Reader) (err os.Error) {
+func (c *ConfigFile) read(buf *bufio.Reader) (err error) {
 	var section, option string
 	for {
 		l, err := buf.ReadString('\n') // parse line-by-line
-		if err == os.EOF {
+		if err == io.EOF {
 			break
 		} else if err != nil {
 			return err
@@ -223,7 +214,7 @@ func (c *ConfigFile) read(buf *bufio.Reader) (err os.Error) {
 			c.AddSection(section)
 
 		case section == "": // not new section and no section defined so far
-			return os.NewError("section not found: must start with section")
+			return errors.New("section not found: must start with section")
 
 		default: // other alternatives
 			i := firstIndex(l, []byte{'=', ':'})
@@ -240,17 +231,16 @@ func (c *ConfigFile) read(buf *bufio.Reader) (err os.Error) {
 				c.AddOption(section, option, prev+"\n"+value)
 
 			default:
-				return os.NewError("could not parse line: " + l)
+				return errors.New("could not parse line: " + l)
 			}
 		}
 	}
 	return nil
 }
 
-
 // ReadConfigFile reads a file and returns a new configuration representation.
 // This representation can be queried with GetString, etc.
-func ReadConfigFile(fname string) (c *ConfigFile, err os.Error) {
+func ReadConfigFile(fname string) (c *ConfigFile, err error) {
 	var file *os.File
 
 	if file, err = os.Open(fname); err != nil {
@@ -269,8 +259,7 @@ func ReadConfigFile(fname string) (c *ConfigFile, err os.Error) {
 	return c, nil
 }
 
-
-func (c *ConfigFile) write(buf *bufio.Writer, header string) (err os.Error) {
+func (c *ConfigFile) write(buf *bufio.Writer, header string) (err error) {
 	if header != "" {
 		if _, err = buf.WriteString("# " + header + "\n"); err != nil {
 			return err
@@ -297,11 +286,10 @@ func (c *ConfigFile) write(buf *bufio.Writer, header string) (err os.Error) {
 	return nil
 }
 
-
 // WriteConfigFile saves the configuration representation to a file.
 // The desired file permissions must be passed as in os.Open.
 // The header is a string that is saved as a comment in the first line of the file.
-func (c *ConfigFile) WriteConfigFile(fname string, perm uint32, header string) (err os.Error) {
+func (c *ConfigFile) WriteConfigFile(fname string, perm uint32, header string) (err error) {
 	var file *os.File
 
 	if file, err = os.Create(fname); err != nil {
@@ -317,7 +305,6 @@ func (c *ConfigFile) WriteConfigFile(fname string, perm uint32, header string) (
 	return file.Close()
 }
 
-
 // GetSections returns the list of sections in the configuration.
 // (The default section always exists.)
 func (c *ConfigFile) GetSections() (sections []string) {
@@ -332,7 +319,6 @@ func (c *ConfigFile) GetSections() (sections []string) {
 	return sections
 }
 
-
 // HasSection checks if the configuration has the given section.
 // (The default section always exists.)
 func (c *ConfigFile) HasSection(section string) bool {
@@ -341,15 +327,14 @@ func (c *ConfigFile) HasSection(section string) bool {
 	return ok
 }
 
-
 // GetOptions returns the list of options available in the given section.
 // It returns an error if the section does not exist and an empty list if the section is empty.
 // Options within the default section are also included.
-func (c *ConfigFile) GetOptions(section string) (options []string, err os.Error) {
+func (c *ConfigFile) GetOptions(section string) (options []string, err error) {
 	section = strings.ToLower(section)
 
 	if _, ok := c.data[section]; !ok {
-		return nil, os.NewError("section not found")
+		return nil, errors.New("section not found")
 	}
 
 	options = make([]string, len(c.data[DefaultSection])+len(c.data[section]))
@@ -365,7 +350,6 @@ func (c *ConfigFile) GetOptions(section string) (options []string, err os.Error)
 
 	return options, nil
 }
-
 
 // HasOption checks if the configuration has the given option in the section.
 // It returns false if either the option or section do not exist.
@@ -383,11 +367,10 @@ func (c *ConfigFile) HasOption(section string, option string) bool {
 	return okd || oknd
 }
 
-
 // GetRawString gets the (raw) string value for the given option in the section.
 // The raw string value is not subjected to unfolding, which was illustrated in the beginning of this documentation.
 // It returns an error if either the section or the option do not exist.
-func (c *ConfigFile) GetRawString(section string, option string) (value string, err os.Error) {
+func (c *ConfigFile) GetRawString(section string, option string) (value string, err error) {
 	section = strings.ToLower(section)
 	option = strings.ToLower(option)
 
@@ -395,17 +378,16 @@ func (c *ConfigFile) GetRawString(section string, option string) (value string, 
 		if value, ok = c.data[section][option]; ok {
 			return value, nil
 		}
-		return "", os.NewError("option not found")
+		return "", errors.New("option not found")
 	}
-	return "", os.NewError("section not found")
+	return "", errors.New("section not found")
 }
-
 
 // GetString gets the string value for the given option in the section.
 // If the value needs to be unfolded (see e.g. %(host)s example in the beginning of this documentation),
 // then GetString does this unfolding automatically, up to DepthValues number of iterations.
 // It returns an error if either the section or the option do not exist, or the unfolding cycled.
-func (c *ConfigFile) GetString(section string, option string) (value string, err os.Error) {
+func (c *ConfigFile) GetString(section string, option string) (value string, err error) {
 	value, err = c.GetRawString(section, option)
 	if err != nil {
 		return "", err
@@ -429,7 +411,7 @@ func (c *ConfigFile) GetString(section string, option string) (value string, err
 			nvalue = c.data[section][noption]
 		}
 		if nvalue == "" {
-			return "", os.NewError("option not found: " + noption)
+			return "", errors.New("option not found: " + noption)
 		}
 
 		// substitute by new value and take off leading '%(' and trailing ')s'
@@ -437,15 +419,14 @@ func (c *ConfigFile) GetString(section string, option string) (value string, err
 	}
 
 	if i == DepthValues {
-		return "", os.NewError("possible cycle while unfolding variables: max depth of " + strconv.Itoa(DepthValues) + " reached")
+		return "", errors.New("possible cycle while unfolding variables: max depth of " + strconv.Itoa(DepthValues) + " reached")
 	}
 
 	return value, nil
 }
 
-
 // GetInt has the same behaviour as GetString but converts the response to int.
-func (c *ConfigFile) GetInt(section string, option string) (value int, err os.Error) {
+func (c *ConfigFile) GetInt(section string, option string) (value int, err error) {
 	sv, err := c.GetString(section, option)
 	if err == nil {
 		value, err = strconv.Atoi(sv)
@@ -454,9 +435,8 @@ func (c *ConfigFile) GetInt(section string, option string) (value int, err os.Er
 	return value, err
 }
 
-
 // GetFloat has the same behaviour as GetString but converts the response to float.
-func (c *ConfigFile) GetFloat(section string, option string) (value float64, err os.Error) {
+func (c *ConfigFile) GetFloat(section string, option string) (value float64, err error) {
 	sv, err := c.GetString(section, option)
 	if err == nil {
 		value, err = strconv.Atof64(sv)
@@ -465,10 +445,9 @@ func (c *ConfigFile) GetFloat(section string, option string) (value float64, err
 	return value, err
 }
 
-
 // GetBool has the same behaviour as GetString but converts the response to bool.
 // See constant BoolStrings for string values converted to bool.
-func (c *ConfigFile) GetBool(section string, option string) (value bool, err os.Error) {
+func (c *ConfigFile) GetBool(section string, option string) (value bool, err error) {
 	sv, err := c.GetString(section, option)
 	if err != nil {
 		return false, err
@@ -476,7 +455,7 @@ func (c *ConfigFile) GetBool(section string, option string) (value bool, err os.
 
 	value, ok := BoolStrings[strings.ToLower(sv)]
 	if !ok {
-		return false, os.NewError("could not parse bool value: " + sv)
+		return false, errors.New("could not parse bool value: " + sv)
 	}
 
 	return value, nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	cfg "./configfile"
+	"errors"
 	"reflect"
 	"strconv"
 	"bytes"
@@ -163,12 +164,12 @@ func readValue(v reflect.Value, name string, c *cfg.ConfigFile) {
 	}
 }
 
-func writeConfig(v interface{}) os.Error {
+func writeConfig(v interface{}) error {
 	const errstr = "WriteConfig expects a pointer to a struct value as an argument"
 
 	str, typ, ok := interfaceIsPtrStruct(v)
 	if !ok {
-		return os.NewError(errstr)
+		return errors.New(errstr)
 	}
 
 	c := cfg.NewConfigFile()
@@ -187,7 +188,7 @@ func writeConfig(v interface{}) os.Error {
 	return nil
 }
 
-func readConfig(v interface{}) os.Error {
+func readConfig(v interface{}) error {
 	c, err := cfg.ReadConfigFile(configFile())
 	if err != nil {
 		return err
@@ -197,7 +198,7 @@ func readConfig(v interface{}) os.Error {
 
 	str, typ, ok := interfaceIsPtrStruct(v)
 	if !ok {
-		return os.NewError(errstr)
+		return errors.New(errstr)
 	}
 
 	for i := 0; i < str.NumField(); i++ {

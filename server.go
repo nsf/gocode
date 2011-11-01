@@ -3,7 +3,6 @@ package main
 import (
 	"net"
 	"rpc"
-	"os"
 	"os/signal"
 	"fmt"
 	"runtime"
@@ -121,12 +120,12 @@ type Server struct {
 }
 
 func NewServer(network, address string) *Server {
-	var err os.Error
+	var err error
 
 	s := new(Server)
 	s.listener, err = net.Listen(network, address)
 	if err != nil {
-		panic(err.String())
+		panic(err.Error())
 	}
 	s.cmd_in = make(chan int, 1)
 	return s
@@ -136,7 +135,7 @@ func acceptConnections(in chan net.Conn, listener net.Listener) {
 	for {
 		c, err := listener.Accept()
 		if err != nil {
-			panic(err.String())
+			panic(err.Error())
 		}
 		in <- c
 	}

@@ -3,12 +3,12 @@ Found 13 candidates:
   const BestSpeed 
   const DefaultCompression 
   const NoCompression 
-  func NewReader(r io.Reader) (io.ReadCloser, os.Error)
-  func NewReaderDict(r io.Reader, dict []byte) (io.ReadCloser, os.Error)
-  func NewWriter(w io.Writer) (*zlib.Writer, os.Error)
-  func NewWriterDict(w io.Writer, level int, dict []byte) (*zlib.Writer, os.Error)
-  func NewWriterLevel(w io.Writer, level int) (*zlib.Writer, os.Error)
+  func NewReader(r io.Reader) (io.ReadCloser, error)
+  func NewReaderDict(r io.Reader, dict []byte) (io.ReadCloser, error)
+  func NewWriter(w io.Writer) (*zlib.Writer, error)
+  func NewWriterDict(w io.Writer, level int, dict []byte) (*zlib.Writer, error)
+  func NewWriterLevel(w io.Writer, level int) (*zlib.Writer, error)
   type Writer struct
-  var ChecksumError os.Error
-  var DictionaryError os.Error
-  var HeaderError os.Error
+  var ChecksumError error
+  var DictionaryError error
+  var HeaderError error
