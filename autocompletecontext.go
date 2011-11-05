@@ -414,7 +414,6 @@ func makeDeclSetRecursive(set map[string]*Decl, scope *Scope) {
 	}
 }
 
-
 func checkFuncFieldList(f *ast.FieldList) bool {
 	if f == nil {
 		return true
@@ -457,7 +456,6 @@ func checkTypeExpr(e ast.Expr) bool {
 	}
 	return true
 }
-
 
 //-------------------------------------------------------------------------
 // Status output
