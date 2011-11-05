@@ -320,6 +320,28 @@ func NewDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, scope *Sc
 	return decl
 }
 
+func NewDeclBuiltinError(scope *Scope) *Decl {
+	d := NewDecl("error", DECL_TYPE, scope)
+	d.Type = &ast.InterfaceType{}
+	d.Children = make(map[string]*Decl)
+	d.Children["Error"] = NewDeclTyped(
+		"Error",
+		DECL_FUNC,
+		&ast.FuncType{
+			Results: &ast.FieldList{
+				List: []*ast.Field{
+					&ast.Field{
+						Type: ast.NewIdent("string"),
+					},
+				},
+			},
+		},
+		scope,
+	)
+
+	return d
+}
+
 func MethodOf(d ast.Decl) string {
 	if t, ok := d.(*ast.FuncDecl); ok {
 		if t.Recv != nil {
@@ -943,7 +965,7 @@ func inferRangeType(e ast.Expr, scope *Scope, valueindex int) (ast.Expr, *Scope)
 			// string
 			if t.Name == "string" {
 				t1 = ast.NewIdent("int")
-				t2 = ast.NewIdent("int")
+				t2 = ast.NewIdent("rune")
 				s1 = universeScope
 				s2 = universeScope
 			} else {
@@ -1275,7 +1297,6 @@ func init() {
 	u.addNamedDecl(NewDeclTyped("uint16", DECL_TYPE, t, u))
 	u.addNamedDecl(NewDeclTyped("uint32", DECL_TYPE, t, u))
 	u.addNamedDecl(NewDeclTyped("uint64", DECL_TYPE, t, u))
-	u.addNamedDecl(NewDeclTyped("complex", DECL_TYPE, t, u))
 	u.addNamedDecl(NewDeclTyped("float", DECL_TYPE, t, u))
 	u.addNamedDecl(NewDeclTyped("int", DECL_TYPE, t, u))
 	u.addNamedDecl(NewDeclTyped("uint", DECL_TYPE, t, u))
@@ -1302,4 +1323,6 @@ func init() {
 	u.addNamedDecl(NewDeclTypedNamed("println", DECL_FUNC, "func(...interface{})", u))
 	u.addNamedDecl(NewDeclTypedNamed("real", DECL_FUNC, "func(complex)", u))
 	u.addNamedDecl(NewDeclTypedNamed("recover", DECL_FUNC, "func() interface{}", u))
+
+	u.addNamedDecl(NewDeclBuiltinError(u))
 }
