@@ -57,7 +57,7 @@ func (b *OutBuffers) Swap(i, j int) {
 }
 
 func (b *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
-	c1 := !Config.ProposeBuiltins && decl.Scope == universeScope
+	c1 := !Config.ProposeBuiltins && decl.Scope == universeScope && decl.Name != "Error"
 	c2 := class != -1 && !matchClass(int(decl.Class), class)
 	c3 := class == -1 && !strings.HasPrefix(name, p)
 	c4 := !decl.Matches()
