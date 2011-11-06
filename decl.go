@@ -175,7 +175,7 @@ func astFieldListToDecls(f *ast.FieldList, class int, flags int, scope *Scope) m
 func astFieldListToEmbedded(f *ast.FieldList) []ast.Expr {
 	count := 0
 	for _, field := range f.List {
-		if field.Names == nil {
+		if field.Names == nil || field.Names[0].Name == "?" {
 			count++
 		}
 	}
@@ -187,7 +187,7 @@ func astFieldListToEmbedded(f *ast.FieldList) []ast.Expr {
 	embedded := make([]ast.Expr, count)
 	i := 0
 	for _, field := range f.List {
-		if field.Names == nil {
+		if field.Names == nil || field.Names[0].Name == "?" {
 			embedded[i] = field.Type
 			i++
 		}
