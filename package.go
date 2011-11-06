@@ -92,7 +92,7 @@ func (m *PackageFileCache) updateCache() {
 }
 
 func (m *PackageFileCache) processPackageData(data []byte) {
-	m.scope = NewScope(nil)
+	m.scope = NewScope(universeScope)
 
 	// find import section
 	i := bytes.Index(data, []byte{'\n', '$', '$'})
