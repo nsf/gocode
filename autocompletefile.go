@@ -1,8 +1,8 @@
 package main
 
 import (
-	"go/parser"
 	"go/ast"
+	"go/parser"
 	"go/token"
 )
 

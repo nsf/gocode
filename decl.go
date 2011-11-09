@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"go/ast"
 	"go/token"
-	"fmt"
-	"reflect"
 	"io"
-	"bytes"
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -427,7 +427,7 @@ func (d *Decl) Matches() bool {
 func (d *Decl) PrettyPrintType(out io.Writer) {
 	switch d.Class {
 	case DECL_TYPE:
-		switch t := d.Type.(type) {
+		switch d.Type.(type) {
 		case *ast.StructType:
 			fmt.Fprintf(out, "struct")
 		case *ast.InterfaceType:

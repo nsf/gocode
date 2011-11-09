@@ -1,14 +1,14 @@
 package main
 
 import (
-	"os"
+	"fmt"
 	"go/ast"
 	"go/parser"
-	"io/ioutil"
 	"go/token"
-	"runtime"
+	"io/ioutil"
+	"os"
 	"path/filepath"
-	"fmt"
+	"runtime"
 	"sync"
 )
 

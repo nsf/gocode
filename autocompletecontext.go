@@ -1,17 +1,17 @@
 package main
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
-	"go/ast"
 	"io/ioutil"
-	"strings"
 	"path/filepath"
-	"sort"
-	"time"
 	"runtime"
+	"sort"
+	"strings"
+	"time"
 )
 
 //-------------------------------------------------------------------------

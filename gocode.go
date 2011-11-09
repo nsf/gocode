@@ -1,16 +1,16 @@
 package main
 
 import (
-	"io/ioutil"
-	"strconv"
 	"bytes"
-	"rpc"
 	"flag"
-	"time"
-	"path/filepath"
 	"fmt"
+	"io/ioutil"
+	"net/rpc"
 	"os"
-	"utf8"
+	"path/filepath"
+	"strconv"
+	"time"
+	"unicode/utf8"
 )
 
 var (

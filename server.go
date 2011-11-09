@@ -1,10 +1,10 @@
 package main
 
 import (
-	"net"
-	"rpc"
-	"os/signal"
 	"fmt"
+	"net"
+	"net/rpc"
+	"os/signal"
 	"runtime"
 	"sync"
 )

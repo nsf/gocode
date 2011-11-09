@@ -1,10 +1,10 @@
 package main
 
 import (
-	"utf8"
-	"unicode"
 	"go/parser"
 	"go/token"
+	"unicode"
+	"unicode/utf8"
 )
 
 type DeclApropos struct {

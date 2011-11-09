@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"syscall"
 	"unsafe"
-	"fmt"
 	"utf16"
 )
 

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"go/token"
 	"go/scanner"
+	"go/token"
 )
 
 // All the code in this file serves single purpose:

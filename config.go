@@ -2,14 +2,14 @@ package main
 
 import (
 	cfg "./configfile"
+	"bytes"
 	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
-	"bytes"
-	"path/filepath"
-	"fmt"
-	"os"
-	"io"
 )
 
 //-------------------------------------------------------------------------

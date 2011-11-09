@@ -1,4 +1,4 @@
-Found 142 candidates:
+Found 154 candidates:
   func main()
   package adler32 
   package aes 
@@ -9,6 +9,7 @@ Found 142 candidates:
   package atomic 
   package base32 
   package base64 
+  package bcrypt 
   package big 
   package binary 
   package blowfish 
@@ -21,7 +22,8 @@ Found 142 candidates:
   package cgi 
   package cgo 
   package cipher 
-  package cmath 
+  package cmplx 
+  package color 
   package crc32 
   package crc64 
   package crypto 
@@ -31,13 +33,16 @@ Found 142 candidates:
   package dict 
   package doc 
   package draw 
+  package driver 
   package dsa 
   package dwarf 
+  package ebnf 
   package ecdsa 
   package elf 
   package elgamal 
   package elliptic 
   package error 
+  package errors 
   package exec 
   package expvar 
   package fcgi 
@@ -59,7 +64,9 @@ Found 142 candidates:
   package html 
   package http 
   package httptest 
+  package httputil 
   package image 
+  package inotify 
   package io 
   package iotest 
   package ioutil 
@@ -77,6 +84,7 @@ Found 142 candidates:
   package mime 
   package multipart 
   package net 
+  package netchan 
   package norm 
   package ocsp 
   package openpgp 
@@ -111,11 +119,14 @@ Found 142 candidates:
   package signal 
   package smtp 
   package sort 
+  package spdy 
+  package sql 
   package strconv 
   package strings 
   package subtle 
   package suffixarray 
   package sync 
+  package syntax 
   package syscall 
   package syslog 
   package tabwriter 
@@ -128,6 +139,7 @@ Found 142 candidates:
   package tls 
   package token 
   package twofish 
+  package types 
   package unicode 
   package url 
   package user 

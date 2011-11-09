@@ -3,14 +3,14 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"go/ast"
 	"go/token"
-	"strconv"
-	"scanner"
-	"fmt"
-	"os"
 	"io"
 	"io/ioutil"
+	"os"
+	"strconv"
+	"text/scanner"
 )
 
 //-------------------------------------------------------------------------

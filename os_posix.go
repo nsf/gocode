@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"exec"
 )
 
 func CreateSockFlag(name, desc string) *string {
