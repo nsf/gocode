@@ -1,4 +1,4 @@
-Found 58 candidates:
+Found 56 candidates:
   func Addr() reflect.Value
   func Bool() bool
   func Bytes() []byte
@@ -55,5 +55,3 @@ Found 58 candidates:
   func Type() reflect.Type
   func Uint() uint64
   func UnsafeAddr() uintptr
-  var Internal interface{}
-  var InternalMethod int
