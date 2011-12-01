@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+	"unicode/utf16"
 	"unsafe"
-	"utf16"
 )
 
 func CreateSockFlag(name, desc string) *string {
