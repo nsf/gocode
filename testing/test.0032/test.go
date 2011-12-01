@@ -65,13 +65,13 @@ import (
 	"encoding/xml"
 	"errors"
 	"exp/ebnf"
-	"exp/gui"
-	"exp/gui/x11"
 	"exp/inotify"
 	"exp/norm"
 	"exp/spdy"
 	"exp/sql"
 	"exp/sql/driver"
+	"exp/ssh"
+	"exp/terminal"
 	"exp/types"
 	"expvar"
 	"flag"
@@ -163,5 +163,5 @@ import (
 )
 
 func main() {
-	
+
 }

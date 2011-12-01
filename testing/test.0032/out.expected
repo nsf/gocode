@@ -55,7 +55,6 @@ Found 154 candidates:
   package git85 
   package gob 
   package gosym 
-  package gui 
   package gzip 
   package hash 
   package heap 
@@ -121,6 +120,7 @@ Found 154 candidates:
   package sort 
   package spdy 
   package sql 
+  package ssh 
   package strconv 
   package strings 
   package subtle 
@@ -132,6 +132,7 @@ Found 154 candidates:
   package tabwriter 
   package tar 
   package template 
+  package terminal 
   package testing 
   package textproto 
   package tiff 
@@ -146,7 +147,6 @@ Found 154 candidates:
   package utf16 
   package utf8 
   package websocket 
-  package x11 
   package x509 
   package xml 
   package xtea 

@@ -94,11 +94,12 @@ func (f *DeclFileCache) update() {
 		return
 	}
 
-	if f.mtime == stat.Mtime_ns {
+	statmtime := stat.ModTime().UnixNano()
+	if f.mtime == statmtime {
 		return
 	}
 
-	f.mtime = stat.Mtime_ns
+	f.mtime = statmtime
 	f.readFile(f.name)
 }
 

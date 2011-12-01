@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"os"
 	"strings"
 	"time"
 )
@@ -195,8 +196,8 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 	c.current.name = filename
 
 	// Update caches and parse the current file.
-	// This process is quite complicated, because I was trying to design it in a 
-	// concurrent fashion. Apparently I'm not really good at that. Hopefully 
+	// This process is quite complicated, because I was trying to design it in a
+	// concurrent fashion. Apparently I'm not really good at that. Hopefully
 	// will be better in future.
 
 	// Does full processing of the currently editted file (top-level declarations plus
@@ -373,8 +374,8 @@ func findOtherPackageFiles(filename, packageName string) []string {
 
 	count := 0
 	for _, stat := range filesInDir {
-		ok, _ := filepath.Match("*.go", stat.Name)
-		if !ok || stat.Name == file {
+		ok, _ := filepath.Match("*.go", stat.Name())
+		if !ok || stat.Name() == file {
 			continue
 		}
 		count++
@@ -382,12 +383,15 @@ func findOtherPackageFiles(filename, packageName string) []string {
 
 	out := make([]string, 0, count)
 	for _, stat := range filesInDir {
-		ok, _ := filepath.Match("*.go", stat.Name)
-		if !ok || stat.Name == file || !stat.IsRegular() {
+		const NonRegular = os.ModeDir | os.ModeSymlink |
+			os.ModeDevice | os.ModeNamedPipe | os.ModeSocket
+
+		ok, _ := filepath.Match("*.go", stat.Name())
+		if !ok || stat.Name() == file || stat.Mode() & NonRegular != 0 {
 			continue
 		}
 
-		abspath := filepath.Join(dir, stat.Name)
+		abspath := filepath.Join(dir, stat.Name())
 		if filePackageName(abspath) == packageName {
 			n := len(out)
 			out = out[:n+1]
@@ -520,8 +524,8 @@ func (c *AutoCompleteContext) Status() string {
 		if mod.mtime == -1 {
 			fmt.Fprintf(buf, "\tthis package stays in cache forever (built-in package)\n")
 		} else {
-			mtime := time.SecondsToLocalTime(mod.mtime)
-			fmt.Fprintf(buf, "\tlast modification time: %s\n", mtime.String())
+			mtime := time.Unix(0, mod.mtime)
+			fmt.Fprintf(buf, "\tlast modification time: %s\n", mtime)
 		}
 		fmt.Fprintf(buf, "\n")
 	}
