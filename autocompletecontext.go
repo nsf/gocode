@@ -7,10 +7,10 @@ import (
 	"go/parser"
 	"go/token"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
-	"os"
 	"strings"
 	"time"
 )
@@ -387,7 +387,7 @@ func findOtherPackageFiles(filename, packageName string) []string {
 			os.ModeDevice | os.ModeNamedPipe | os.ModeSocket
 
 		ok, _ := filepath.Match("*.go", stat.Name())
-		if !ok || stat.Name() == file || stat.Mode() & NonRegular != 0 {
+		if !ok || stat.Name() == file || stat.Mode()&NonRegular != 0 {
 			continue
 		}
 

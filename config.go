@@ -37,12 +37,12 @@ func setValue(v reflect.Value, name, value string) {
 	case reflect.String:
 		t.SetString(value)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v, err := strconv.Atoi64(value)
+		v, err := strconv.ParseInt(value, 10, 64)
 		if err == nil {
 			t.SetInt(v)
 		}
 	case reflect.Float32, reflect.Float64:
-		v, err := strconv.Atof64(value)
+		v, err := strconv.ParseFloat(value, 64)
 		if err == nil {
 			t.SetFloat(v)
 		}

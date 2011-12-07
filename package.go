@@ -343,7 +343,7 @@ func (p *gcParser) parseExportedName() *ast.SelectorExpr {
 	return &ast.SelectorExpr{X: pkg, Sel: name}
 }
 
-// Name = identifier | "?" .
+// Name = identifier | "?" | ExportedName .
 func (p *gcParser) parseName() string {
 	switch p.tok {
 	case scanner.Ident:
@@ -353,6 +353,8 @@ func (p *gcParser) parseName() string {
 	case '?':
 		p.next()
 		return "?"
+	case '@':
+		return p.parseExportedName().Sel.Name
 	}
 	p.error("name expected")
 	return ""
@@ -777,13 +779,13 @@ func stripMethodReceiver(recv *ast.FieldList) string {
 	return pkg
 }
 
-// MethodDecl = "func" Receiver identifier Signature .
+// MethodDecl = "func" Receiver Name Signature .
 // Receiver = "(" ( identifier | "?" ) [ "*" ] ExportedName ")" [ FuncBody ] .
 func (p *gcParser) parseMethodDecl() (string, *ast.FuncDecl) {
 	recv := p.parseParameters()
 	p.beautify = true
 	pkg := stripMethodReceiver(recv)
-	name := p.expect(scanner.Ident)
+	name := p.parseName()
 	typ := p.parseSignature()
 	if p.tok == '{' {
 		p.parseFuncBody()

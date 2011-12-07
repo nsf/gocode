@@ -1,16 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"flag"
+	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
-	"strings"
-	"reflect"
-	"flag"
-	"go/ast"
-	"bytes"
-	"fmt"
 	"io"
 	"os"
+	"reflect"
+	"strings"
 )
 
 const prefix = "Server_"
