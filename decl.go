@@ -330,7 +330,7 @@ func NewDeclBuiltinError(scope *Scope) *Decl {
 		&ast.FuncType{
 			Results: &ast.FieldList{
 				List: []*ast.Field{
-					&ast.Field{
+					{
 						Type: ast.NewIdent("string"),
 					},
 				},

@@ -97,7 +97,7 @@ func prettyPrintFuncFieldListUsingArgs(out io.Writer, f *ast.FieldList) int {
 	for i, field := range f.List {
 		// names
 		if field.Names != nil {
-			for j, _ := range field.Names {
+			for j := range field.Names {
 				fmt.Fprintf(out, "Arg%d", count)
 				if j != len(field.Names)-1 {
 					fmt.Fprintf(out, ", ")
@@ -127,7 +127,7 @@ func generateStructWrapper(out io.Writer, fun *ast.FieldList, structname, name s
 		fmt.Fprintf(out, "\t")
 		// names
 		if field.Names != nil {
-			for j, _ := range field.Names {
+			for j := range field.Names {
 				fmt.Fprintf(out, "Arg%d", argn)
 				if j != len(field.Names)-1 {
 					fmt.Fprintf(out, ", ")

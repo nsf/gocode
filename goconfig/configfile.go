@@ -109,7 +109,7 @@ func (c *ConfigFile) RemoveSection(section string) bool {
 	case section == DefaultSection:
 		return false // default section cannot be removed
 	default:
-		for o, _ := range c.data[section] {
+		for o := range c.data[section] {
 			delete(c.data[section], o)
 		}
 		delete(c.data, section)
@@ -311,7 +311,7 @@ func (c *ConfigFile) GetSections() (sections []string) {
 	sections = make([]string, len(c.data))
 
 	i := 0
-	for s, _ := range c.data {
+	for s := range c.data {
 		sections[i] = s
 		i++
 	}
@@ -339,11 +339,11 @@ func (c *ConfigFile) GetOptions(section string) (options []string, err error) {
 
 	options = make([]string, len(c.data[DefaultSection])+len(c.data[section]))
 	i := 0
-	for s, _ := range c.data[DefaultSection] {
+	for s := range c.data[DefaultSection] {
 		options[i] = s
 		i++
 	}
-	for s, _ := range c.data[section] {
+	for s := range c.data[section] {
 		options[i] = s
 		i++
 	}
