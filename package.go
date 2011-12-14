@@ -224,7 +224,7 @@ func addAstDeclToPackage(pkg *Decl, decl ast.Decl, scope *Scope) {
 
 type gcParser struct {
 	scanner     scanner.Scanner
-	tok         int
+	tok         rune
 	lit         string
 	pathToAlias map[string]string
 	beautify    bool
@@ -261,7 +261,7 @@ func (p *gcParser) errorf(format string, args ...interface{}) {
 	p.error(fmt.Sprintf(format, args...))
 }
 
-func (p *gcParser) expect(tok int) string {
+func (p *gcParser) expect(tok rune) string {
 	lit := p.lit
 	if p.tok != tok {
 		p.errorf("expected %s, got %s (%q)", scanner.TokenString(tok),
@@ -281,7 +281,7 @@ func (p *gcParser) expectKeyword(keyword string) {
 func (p *gcParser) expectSpecial(what string) {
 	i := 0
 	for i < len(what) {
-		if p.tok != int(what[i]) {
+		if p.tok != rune(what[i]) {
 			break
 		}
 
