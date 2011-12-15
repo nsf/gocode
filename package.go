@@ -235,7 +235,7 @@ func (p *gcParser) init(src io.Reader, pfc *PackageFileCache) {
 	p.scanner.Init(src)
 	p.scanner.Error = func(_ *scanner.Scanner, msg string) { p.error(msg) }
 	p.scanner.Mode = scanner.ScanIdents | scanner.ScanInts | scanner.ScanStrings |
-		scanner.ScanComments | scanner.SkipComments
+		scanner.ScanComments | scanner.ScanChars | scanner.SkipComments
 	p.scanner.Whitespace = 1<<'\t' | 1<<' ' | 1<<'\r' | 1<<'\v' | 1<<'\f'
 	p.scanner.Filename = "package.go"
 	p.next()
@@ -644,6 +644,7 @@ func (p *gcParser) parseImportDecl() {
 // Literal     = bool_lit | int_lit | float_lit | complex_lit | string_lit .
 // bool_lit    = "true" | "false" .
 // complex_lit = "(" float_lit "+" float_lit ")" .
+// rune_lit    = "(" int_lit "+" int_lit ")" .
 // string_lit  = `"` { unicode_char } `"` .
 func (p *gcParser) parseConstDecl() (string, *ast.GenDecl) {
 	// TODO: do we really need actual const value? gocode doesn't use this
@@ -667,12 +668,18 @@ func (p *gcParser) parseConstDecl() (string, *ast.GenDecl) {
 		// number
 		p.parseNumber()
 	case '(':
-		// complex_lit
+		// complex_lit or rune_lit
 		p.next() // skip '('
-		p.parseNumber()
+		if p.tok == scanner.Char {
+			p.next()
+		} else {
+			p.parseNumber()
+		}
 		p.expect('+')
 		p.parseNumber()
 		p.expect(')')
+	case scanner.Char:
+		p.next()
 	case scanner.String:
 		p.next()
 	default:
