@@ -1,4 +1,4 @@
-Found 154 candidates:
+Found 155 candidates:
   func main()
   package adler32 
   package aes 
@@ -72,6 +72,7 @@ Found 154 candidates:
   package jpeg 
   package json 
   package jsonrpc 
+  package life 
   package list 
   package log 
   package lzw 
@@ -121,6 +122,7 @@ Found 154 candidates:
   package spdy 
   package sql 
   package ssh 
+  package stdio 
   package strconv 
   package strings 
   package subtle 
@@ -150,6 +152,5 @@ Found 154 candidates:
   package x509 
   package xml 
   package xtea 
-  package ycbcr 
   package zip 
   package zlib 
