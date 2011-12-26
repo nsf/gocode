@@ -98,9 +98,9 @@ func Server_DropCache(notused int) int {
 }
 
 func Server_Set(key, value string) string {
-	if key == "" {
+	if key == "\x00" {
 		return listConfig(&Config)
-	} else if value == "" {
+	} else if value == "\x00" {
 		return listOption(&Config, key)
 	}
 	return setOption(&Config, key, value)

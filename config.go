@@ -1,15 +1,15 @@
 package main
 
 import (
-	cfg "./configfile"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"encoding/json"
 )
 
 //-------------------------------------------------------------------------
@@ -20,17 +20,32 @@ import (
 //-------------------------------------------------------------------------
 
 var Config = struct {
-	ProposeBuiltins bool   "propose-builtins"
-	LibPath         string "lib-path"
+	ProposeBuiltins bool   `json:"propose-builtins"`
+	LibPath         string `json:"lib-path"`
 }{
 	false,
 	"",
 }
 
+var boolStrings = map[string]bool{
+	"t":     true,
+	"true":  true,
+	"y":     true,
+	"yes":   true,
+	"on":    true,
+	"1":     true,
+	"f":     false,
+	"false": false,
+	"n":     false,
+	"no":    false,
+	"off":   false,
+	"0":     false,
+}
+
 func setValue(v reflect.Value, name, value string) {
 	switch t := v; t.Kind() {
 	case reflect.Bool:
-		v, ok := cfg.BoolStrings[value]
+		v, ok := boolStrings[value]
 		if ok {
 			t.SetBool(v)
 		}
@@ -71,8 +86,8 @@ func listConfig(v interface{}) string {
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
-		name := typ.Field(i).Tag
-		listValue(v, string(name), buf)
+		name := typ.Field(i).Tag.Get("json")
+		listValue(v, name, buf)
 	}
 	return buf.String()
 }
@@ -86,8 +101,8 @@ func listOption(v interface{}, name string) string {
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
-		nm := typ.Field(i).Tag
-		if string(nm) == name {
+		nm := typ.Field(i).Tag.Get("json")
+		if nm == name {
 			listValue(v, name, buf)
 		}
 	}
@@ -103,8 +118,8 @@ func setOption(v interface{}, name, value string) string {
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
-		nm := typ.Field(i).Tag
-		if string(nm) == name {
+		nm := typ.Field(i).Tag.Get("json")
+		if nm == name {
 			setValue(v, name, value)
 			listValue(v, name, buf)
 		}
@@ -128,59 +143,20 @@ func interfaceIsPtrStruct(v interface{}) (reflect.Value, reflect.Type, bool) {
 	return str, typ, true
 }
 
-func writeValue(v reflect.Value, name string, c *cfg.ConfigFile) {
-	switch v.Kind() {
-	case reflect.Bool, reflect.String,
-		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Float32, reflect.Float64:
-		c.AddOption(cfg.DefaultSection, name, fmt.Sprint(v.Interface()))
-	}
-}
-
-func readValue(v reflect.Value, name string, c *cfg.ConfigFile) {
-	if !c.HasOption(cfg.DefaultSection, name) {
-		return
-	}
-	switch t := v; t.Kind() {
-	case reflect.Bool:
-		v, err := c.GetBool(cfg.DefaultSection, name)
-		if err == nil {
-			t.SetBool(v)
-		}
-	case reflect.String:
-		v, err := c.GetString(cfg.DefaultSection, name)
-		if err == nil {
-			t.SetString(v)
-		}
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v, err := c.GetInt(cfg.DefaultSection, name)
-		if err == nil {
-			t.SetInt(int64(v))
-		}
-	case reflect.Float32, reflect.Float64:
-		v, err := c.GetFloat(cfg.DefaultSection, name)
-		if err == nil {
-			t.SetFloat(float64(v))
-		}
-	}
-}
-
 func writeConfig(v interface{}) error {
-	const errstr = "WriteConfig expects a pointer to a struct value as an argument"
-
-	str, typ, ok := interfaceIsPtrStruct(v)
-	if !ok {
-		return errors.New(errstr)
-	}
-
-	c := cfg.NewConfigFile()
-	for i := 0; i < str.NumField(); i++ {
-		v := str.Field(i)
-		name := typ.Field(i).Tag
-		writeValue(v, string(name), c)
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
 	}
 
 	makeSureConfigDirExists()
-	err := c.WriteConfigFile(configFile(), 0644, "gocode config file")
+	f, err := os.Create(configFile())
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(data)
 	if err != nil {
 		return err
 	}
@@ -189,22 +165,14 @@ func writeConfig(v interface{}) error {
 }
 
 func readConfig(v interface{}) error {
-	c, err := cfg.ReadConfigFile(configFile())
+	data, err := ioutil.ReadFile(configFile())
 	if err != nil {
 		return err
 	}
 
-	const errstr = "ReadConfig expects a pointer to a struct value as an argument"
-
-	str, typ, ok := interfaceIsPtrStruct(v)
-	if !ok {
-		return errors.New(errstr)
-	}
-
-	for i := 0; i < str.NumField(); i++ {
-		v := str.Field(i)
-		name := typ.Field(i).Tag
-		readValue(v, string(name), c)
+	err = json.Unmarshal(data, v)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -226,5 +194,5 @@ func makeSureConfigDirExists() {
 }
 
 func configFile() string {
-	return filepath.Join(xdgHomeDir(), "gocode", "config.ini")
+	return filepath.Join(xdgHomeDir(), "gocode", "config.json")
 }

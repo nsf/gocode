@@ -279,9 +279,9 @@ func cmdDropCache(c *rpc.Client) {
 func cmdSet(c *rpc.Client) {
 	switch flag.NArg() {
 	case 1:
-		fmt.Print(Client_Set(c, "", ""))
+		fmt.Print(Client_Set(c, "\x00", "\x00"))
 	case 2:
-		fmt.Print(Client_Set(c, flag.Arg(1), ""))
+		fmt.Print(Client_Set(c, flag.Arg(1), "\x00"))
 	case 3:
 		fmt.Print(Client_Set(c, flag.Arg(1), flag.Arg(2)))
 	}

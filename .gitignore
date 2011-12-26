@@ -4,7 +4,6 @@
 gocode
 goremote
 gocodetest
-rpc.go
 *.swp
 listidents
 showcursor
