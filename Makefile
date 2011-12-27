@@ -15,7 +15,7 @@ GOFILES=gocode.go\
 	declcache.go
 
 ifeq ($(GOOS),windows)
-GOFILES+=os_win32.go
+GOFILES+=os_windows.go
 else
 GOFILES+=os_posix.go
 endif
