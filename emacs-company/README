@@ -23,5 +23,23 @@ In other words, company-go.el does this:
                           (set (make-local-variable 'company-backends) '(company-go))
                           (company-mode)))
 
-P.S. Also, default company-mode colors looks ugly, but I haven't tweaked that
-yet, probably will add a couple of notes here when I'm done with it.
+P.S. Also, default company mode colors are kind of ugly, I took these from
+auto-complete-mode defaults:
+
+(custom-set-faces
+ '(company-preview
+   ((t (:foreground "darkgray" :underline t))))
+ '(company-preview-common
+   ((t (:inherit company-preview))))
+ '(company-tooltip
+   ((t (:background "lightgray" :foreground "black"))))
+ '(company-tooltip-selection
+   ((t (:background "steelblue" :foreground "white"))))
+ '(company-tooltip-common
+   ((((type x)) (:inherit company-tooltip :weight bold))
+    (t (:inherit company-tooltip))))
+ '(company-tooltip-common-selection
+   ((((type x)) (:inherit company-tooltip-selection :weight bold))
+    (t (:inherit company-tooltip-selection)))))
+
+Of course you can change them the you prefer, use customize-mode or do it manually.
