@@ -1,0 +1,27 @@
+This is an alternative emacs plugin, uses company-mode:
+	http://nschum.de/src/emacs/company-mode
+
+Here's how I use it in my .emacs:
+
+(require 'company)                     ; load company mode
+(require 'company-go)                  ; load company mode go backend and hook it up
+(setq company-tooltip-limit 20)        ; bigger popup window
+(setq company-minimum-prefix-length 0) ; autocomplete right after '.'
+(setq company-idle-delay .3)           ; shorter delay before autocompletion popup
+(setq company-echo-delay 0)            ; removes annoying blinking
+
+One thing to note here is 'company-backends'. By default company mode loads
+every backend it has and it takes a huge amount of time to do so. I don't like
+when my emacs takes more than 1 second to load, therefore I use a local variable
+in company-go.el which contains only one backend (that is company-go
+backend). Therefore if you want to use more company mode backends together with
+company-go backend, you'll have to change that in company-go.el.
+
+In other words, company-go.el does this:
+
+(add-hook 'go-mode-hook (lambda ()
+                          (set (make-local-variable 'company-backends) '(company-go))
+                          (company-mode)))
+
+P.S. Also, default company-mode colors looks ugly, but I haven't tweaked that
+yet, probably will add a couple of notes here when I'm done with it.
