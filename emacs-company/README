@@ -3,12 +3,13 @@ This is an alternative emacs plugin, uses company-mode:
 
 Here's how I use it in my .emacs:
 
-(require 'company)                     ; load company mode
-(require 'company-go)                  ; load company mode go backend and hook it up
-(setq company-tooltip-limit 20)        ; bigger popup window
-(setq company-minimum-prefix-length 0) ; autocomplete right after '.'
-(setq company-idle-delay .3)           ; shorter delay before autocompletion popup
-(setq company-echo-delay 0)            ; removes annoying blinking
+(require 'company)                                   ; load company mode
+(require 'company-go)                                ; load company mode go backend and hook it up
+(setq company-tooltip-limit 20)                      ; bigger popup window
+(setq company-minimum-prefix-length 0)               ; autocomplete right after '.'
+(setq company-idle-delay .3)                         ; shorter delay before autocompletion popup
+(setq company-echo-delay 0)                          ; removes annoying blinking
+(setq company-begin-commands '(self-insert-command)) ; start autocompletion only after typing
 
 One thing to note here is 'company-backends'. By default company mode loads
 every backend it has and it takes a huge amount of time to do so. I don't like
