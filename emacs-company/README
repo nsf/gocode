@@ -43,4 +43,4 @@ auto-complete-mode defaults:
    ((((type x)) (:inherit company-tooltip-selection :weight bold))
     (t (:inherit company-tooltip-selection)))))
 
-Of course you can change them the you prefer, use customize-mode or do it manually.
+Of course you can change them the way you prefer, use customize-mode or do it manually.
