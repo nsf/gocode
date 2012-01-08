@@ -1080,6 +1080,10 @@ func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 			fmt.Fprintf(out, "chan ")
 		}
 		prettyPrintTypeExpr(out, t.Value)
+	case *ast.ParenExpr:
+		fmt.Fprintf(out, "(")
+		prettyPrintTypeExpr(out, t.X)
+		fmt.Fprintf(out, ")")
 	case *ast.BadExpr:
 		// TODO: probably I should check that in a separate function
 		// and simply discard declarations with BadExpr as a part of their
