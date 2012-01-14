@@ -10,10 +10,12 @@ Also watch the [demo screencast](http://nsf.110mb.com/gocode-demo.swf).
 
 ![Gocode in vim](http://nosmileface.ru/images/gocode-screenshot.png)
 
+![Gocode in emacs](http://nosmileface.ru/images/gocode-emacs.png)
+
 ### Setup
 
- 1. First of all, you need to get the latest git version of the gocode source code: 
-    
+ 1. First of all, you need to get the latest git version of the gocode source code:
+
     `git clone git://github.com/nsf/gocode.git`
 
  2. Change the directory:
@@ -55,7 +57,7 @@ In order to install vim scripts, you need to fulfill the following steps:
 
     `filetype plugin on`
 
- 4. Autocompletion should work now. Use `<C-x><C-o>` for autocompletion (omnifunc autocompletion). 
+ 4. Autocompletion should work now. Use `<C-x><C-o>` for autocompletion (omnifunc autocompletion).
 
 ### Emacs setup
 
