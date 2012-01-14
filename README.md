@@ -10,7 +10,7 @@ Also watch the [demo screencast](http://nsf.110mb.com/gocode-demo.swf).
 
 ![Gocode in vim](http://nosmileface.ru/images/gocode-screenshot.png)
 
-![Gocode in emacs](http://nosmileface.ru/images/gocode-emacs.png)
+![Gocode in emacs](http://nosmileface.ru/images/emacs-gocode.png)
 
 ### Setup
 
