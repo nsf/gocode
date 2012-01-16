@@ -41,7 +41,6 @@ Found 155 candidates:
   package elf 
   package elgamal 
   package elliptic 
-  package error 
   package errors 
   package exec 
   package expvar 
@@ -100,6 +99,7 @@ Found 155 candidates:
   package png 
   package pprof 
   package printer 
+  package proxy 
   package quick 
   package rand 
   package rc4 

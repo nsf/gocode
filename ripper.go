@@ -106,7 +106,7 @@ func (t *TokCollection) findOutermostScope(cursor int) (int, int) {
 func (t *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []byte) {
 	t.fset = token.NewFileSet()
 	s := new(scanner.Scanner)
-	s.Init(t.fset.AddFile("", t.fset.Base(), len(file)), file, nil, scanner.ScanComments|scanner.InsertSemis)
+	s.Init(t.fset.AddFile("", t.fset.Base(), len(file)), file, nil, scanner.ScanComments)
 	for t.next(s) {
 	}
 

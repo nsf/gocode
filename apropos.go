@@ -2,7 +2,6 @@ package main
 
 import (
 	"go/parser"
-	"go/token"
 	"unicode"
 	"unicode/utf8"
 )
@@ -104,8 +103,8 @@ loop:
 }
 
 func (c *AutoCompleteContext) deduceExpr(file []byte, partial string) *DeclApropos {
-	e := findExpr(file)
-	expr, err := parser.ParseExpr(token.NewFileSet(), "", e)
+	e := string(findExpr(file))
+	expr, err := parser.ParseExpr(e)
 	if err != nil {
 		return nil
 	}

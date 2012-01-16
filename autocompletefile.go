@@ -4,7 +4,21 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"bytes"
 )
+
+const fixlen = len("package p;")
+
+func parseDeclList(fset *token.FileSet, data []byte) ([]ast.Decl, error) {
+	var buf bytes.Buffer
+	buf.WriteString("package p;")
+	buf.Write(data)
+	file, err := parser.ParseFile(fset, "", buf.Bytes(), 0)
+	if err != nil {
+		return file.Decls, err
+	}
+	return file.Decls, nil
+}
 
 //-------------------------------------------------------------------------
 // AutoCompleteFile
@@ -52,7 +66,7 @@ func (f *AutoCompleteFile) processData(data []byte) {
 	}
 	if block != nil {
 		// process local function as top-level declaration
-		decls, _ := parser.ParseDeclList(f.fset, "", block)
+		decls, _ := parseDeclList(f.fset, block)
 
 		for _, d := range decls {
 			anonymifyAst(d, 0, f.filescope)
@@ -88,7 +102,7 @@ func (f *AutoCompleteFile) processDeclLocals(decl ast.Decl) {
 }
 
 func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
-	if t, ok := decl.(*ast.GenDecl); ok && f.fset.Position(t.TokPos).Offset > f.cursor {
+	if t, ok := decl.(*ast.GenDecl); ok && f.fset.Position(t.TokPos).Offset - fixlen > f.cursor {
 		return
 	}
 	prevscope := f.scope
@@ -188,7 +202,7 @@ func (f *AutoCompleteFile) processSelectStmt(a *ast.SelectStmt) {
 
 	var lastCursorAfter *ast.CommClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.CommClause); f.cursor > f.fset.Position(cc.Colon).Offset {
+		if cc := s.(*ast.CommClause); f.cursor > f.fset.Position(cc.Colon).Offset - fixlen {
 			lastCursorAfter = cc
 		}
 	}
@@ -229,7 +243,7 @@ func (f *AutoCompleteFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 
 	var lastCursorAfter *ast.CaseClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.CaseClause); f.cursor > f.fset.Position(cc.Colon).Offset {
+		if cc := s.(*ast.CaseClause); f.cursor > f.fset.Position(cc.Colon).Offset - fixlen {
 			lastCursorAfter = cc
 		}
 	}
@@ -257,7 +271,7 @@ func (f *AutoCompleteFile) processSwitchStmt(a *ast.SwitchStmt) {
 	f.processStmt(a.Init)
 	var lastCursorAfter *ast.CaseClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.CaseClause); f.cursor > f.fset.Position(cc.Colon).Offset {
+		if cc := s.(*ast.CaseClause); f.cursor > f.fset.Position(cc.Colon).Offset - fixlen {
 			lastCursorAfter = cc
 		}
 	}
@@ -299,7 +313,7 @@ func (f *AutoCompleteFile) processRangeStmt(a *ast.RangeStmt) {
 }
 
 func (f *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
-	if a.Tok != token.DEFINE || f.fset.Position(a.TokPos).Offset > f.cursor {
+	if a.Tok != token.DEFINE || f.fset.Position(a.TokPos).Offset - fixlen > f.cursor {
 		return
 	}
 
@@ -342,7 +356,10 @@ func (f *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
 		return false
 	}
 
-	if f.cursor >= f.fset.Position(block.Lbrace).Offset && f.cursor <= f.fset.Position(block.Rbrace).Offset {
+	loff := f.fset.Position(block.Lbrace).Offset
+	roff := f.fset.Position(block.Rbrace).Offset
+
+	if f.cursor >= loff - fixlen && f.cursor <= roff - fixlen {
 		return true
 	}
 	return false
