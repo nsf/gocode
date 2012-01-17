@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"net"
-	"net/rpc"
-	"os/signal"
 	"runtime"
 	"sync"
 )
@@ -138,28 +136,6 @@ func acceptConnections(in chan net.Conn, listener net.Listener) {
 			panic(err.Error())
 		}
 		in <- c
-	}
-}
-
-func (s *Server) Loop() {
-	conn_in := make(chan net.Conn)
-	go acceptConnections(conn_in, s.listener)
-	for {
-		// handle connections or server CMDs (currently one CMD)
-		select {
-		case c := <-conn_in:
-			rpc.ServeConn(c)
-			runtime.GC()
-		case cmd := <-s.cmd_in:
-			switch cmd {
-			case SERVER_CLOSE:
-				return
-			}
-		case sig := <-signal.Incoming:
-			if IsTerminationSignal(sig) {
-				return
-			}
-		}
 	}
 }
 
