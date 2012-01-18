@@ -72,6 +72,8 @@ In order to install emacs script, you need to fulfill the following steps:
  		(require 'go-autocomplete)
 		(require 'auto-complete-config)
 
+There is an alternative plugin for emacs using company-mode. See `emacs-company/README` for installation instructions.
+
 ### Options
 
 You can change all available options using `gocode set` command. The config file uses .ini-like format and usually stored somewhere in **~/.config/gocode** directory.
