@@ -7,8 +7,6 @@ import (
 	"bytes"
 )
 
-const fixlen = len("package p;")
-
 func parseDeclList(fset *token.FileSet, data []byte) ([]ast.Decl, error) {
 	var buf bytes.Buffer
 	buf.WriteString("package p;")
@@ -43,6 +41,11 @@ func NewAutoCompleteFile(name string) *AutoCompleteFile {
 	p.cursor = -1
 	p.fset = token.NewFileSet()
 	return p
+}
+
+func (f *AutoCompleteFile) offset(p token.Pos) int {
+	const fixlen = len("package p;")
+	return f.fset.Position(p).Offset - fixlen
 }
 
 // this one is used for current file buffer exclusively
@@ -102,7 +105,7 @@ func (f *AutoCompleteFile) processDeclLocals(decl ast.Decl) {
 }
 
 func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
-	if t, ok := decl.(*ast.GenDecl); ok && f.fset.Position(t.TokPos).Offset - fixlen > f.cursor {
+	if t, ok := decl.(*ast.GenDecl); ok && f.offset(t.TokPos) > f.cursor {
 		return
 	}
 	prevscope := f.scope
@@ -202,7 +205,7 @@ func (f *AutoCompleteFile) processSelectStmt(a *ast.SelectStmt) {
 
 	var lastCursorAfter *ast.CommClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.CommClause); f.cursor > f.fset.Position(cc.Colon).Offset - fixlen {
+		if cc := s.(*ast.CommClause); f.cursor > f.offset(cc.Colon) {
 			lastCursorAfter = cc
 		}
 	}
@@ -243,7 +246,7 @@ func (f *AutoCompleteFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
 
 	var lastCursorAfter *ast.CaseClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.CaseClause); f.cursor > f.fset.Position(cc.Colon).Offset - fixlen {
+		if cc := s.(*ast.CaseClause); f.cursor > f.offset(cc.Colon) {
 			lastCursorAfter = cc
 		}
 	}
@@ -271,7 +274,7 @@ func (f *AutoCompleteFile) processSwitchStmt(a *ast.SwitchStmt) {
 	f.processStmt(a.Init)
 	var lastCursorAfter *ast.CaseClause
 	for _, s := range a.Body.List {
-		if cc := s.(*ast.CaseClause); f.cursor > f.fset.Position(cc.Colon).Offset - fixlen {
+		if cc := s.(*ast.CaseClause); f.cursor > f.offset(cc.Colon) {
 			lastCursorAfter = cc
 		}
 	}
@@ -313,7 +316,7 @@ func (f *AutoCompleteFile) processRangeStmt(a *ast.RangeStmt) {
 }
 
 func (f *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
-	if a.Tok != token.DEFINE || f.fset.Position(a.TokPos).Offset - fixlen > f.cursor {
+	if a.Tok != token.DEFINE || f.offset(a.TokPos) > f.cursor {
 		return
 	}
 
@@ -356,10 +359,7 @@ func (f *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
 		return false
 	}
 
-	loff := f.fset.Position(block.Lbrace).Offset
-	roff := f.fset.Position(block.Rbrace).Offset
-
-	if f.cursor >= loff - fixlen && f.cursor <= roff - fixlen {
+	if f.cursor >= f.offset(block.Lbrace) && f.cursor <= f.offset(block.Rbrace) {
 		return true
 	}
 	return false
