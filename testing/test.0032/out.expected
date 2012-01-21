@@ -1,4 +1,4 @@
-Found 155 candidates:
+Found 157 candidates:
   func main()
   package adler32 
   package aes 
@@ -21,6 +21,7 @@ Found 155 candidates:
   package cast5 
   package cgi 
   package cgo 
+  package cgosotest 
   package cipher 
   package cmplx 
   package color 
@@ -148,6 +149,7 @@ Found 155 candidates:
   package user 
   package utf16 
   package utf8 
+  package utf8string 
   package websocket 
   package x509 
   package xml 

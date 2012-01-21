@@ -344,26 +344,27 @@ func (p *gcParser) parseExportedName() *ast.SelectorExpr {
 }
 
 // Name = identifier | "?" | ExportedName .
-func (p *gcParser) parseName() string {
+func (p *gcParser) parseName() (string, ast.Expr) {
 	switch p.tok {
 	case scanner.Ident:
 		name := p.lit
 		p.next()
-		return name
+		return name, ast.NewIdent(name)
 	case '?':
 		p.next()
-		return "?"
+		return "?", ast.NewIdent("?")
 	case '@':
-		return p.parseExportedName().Sel.Name
+		en := p.parseExportedName()
+		return en.Sel.Name, en
 	}
 	p.error("name expected")
-	return ""
+	return "", nil
 }
 
 // Field = Name Type [ string_lit ] .
 func (p *gcParser) parseField() *ast.Field {
 	var tag string
-	name := p.parseName()
+	name, _ := p.parseName()
 	typ := p.parseType()
 	if p.tok == scanner.String {
 		tag = p.expect(scanner.String)
@@ -379,7 +380,7 @@ func (p *gcParser) parseField() *ast.Field {
 // Parameter = ( identifier | "?" ) [ "..." ] Type [ string_lit ] .
 func (p *gcParser) parseParameter() *ast.Field {
 	// name
-	name := p.parseName()
+	name, _ := p.parseName()
 
 	// type
 	var typ ast.Expr
@@ -444,23 +445,19 @@ func (p *gcParser) parseSignature() *ast.FuncType {
 	return &ast.FuncType{Params: params, Results: results}
 }
 
-// MethodSpec = ( identifier | ExportedName ) Signature .
-func (p *gcParser) parseMethodSpec() *ast.Field {
-	var name string
-
-	if p.tok == scanner.Ident {
-		name = p.expect(scanner.Ident)
-	} else {
-		// here we'll skip package crap and just use the name
-		p.expect('@')
-		p.parsePackage()
-		p.expect('.')
-		name = p.parseDotIdent()
+// MethodOrEmbedSpec = Name [ Signature ] .
+func (p *gcParser) parseMethodOrEmbedSpec() *ast.Field {
+	name, nameexpr := p.parseName()
+	if p.tok == '(' {
+		typ := p.parseSignature()
+		return &ast.Field{
+			Names: []*ast.Ident{ast.NewIdent(name)},
+			Type:  typ,
+		}
 	}
-	typ := p.parseSignature()
+
 	return &ast.Field{
-		Names: []*ast.Ident{ast.NewIdent(name)},
-		Type:  typ,
+		Type: nameexpr,
 	}
 }
 
@@ -486,12 +483,12 @@ func (p *gcParser) parseNumber() {
 // gcParser.Types
 //-------------------------------------------------------------------------------
 
-// InterfaceType = "interface" "{" [ MethodList ] "}" .
-// MethodList = MethodSpec { ";" MethodSpec } .
+// InterfaceType = "interface" "{" [ MethodOrEmbedList ] "}" .
+// MethodOrEmbedList = MethodOrEmbedSpec { ";" MethodOrEmbedSpec } .
 func (p *gcParser) parseInterfaceType() ast.Expr {
 	var methods []*ast.Field
 	parseMethod := func() {
-		meth := p.parseMethodSpec()
+		meth := p.parseMethodOrEmbedSpec()
 		methods = append(methods, meth)
 	}
 
@@ -792,7 +789,7 @@ func (p *gcParser) parseMethodDecl() (string, *ast.FuncDecl) {
 	recv := p.parseParameters()
 	p.beautify = true
 	pkg := stripMethodReceiver(recv)
-	name := p.parseName()
+	name, _ := p.parseName()
 	typ := p.parseSignature()
 	if p.tok == '{' {
 		p.parseFuncBody()
