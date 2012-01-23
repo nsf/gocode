@@ -12,3 +12,4 @@ func main() {
 		}
 	}
 }
+// +build ignore

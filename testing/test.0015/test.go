@@ -11,3 +11,4 @@ func main() {
 	arro := <-c
 	
 }
+// +build ignore

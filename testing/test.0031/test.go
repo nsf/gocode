@@ -9,3 +9,4 @@ func main() {
 	default:
 	}
 }
+// +build ignore

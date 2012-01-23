@@ -8,3 +8,4 @@ func main() {
 	var X *X
 	X.
 }
+// +build ignore

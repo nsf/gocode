@@ -28,3 +28,4 @@ func (t *Tester) SetB() {
 Tester.
 
 // methods SetC and SetD are defined in 'b.go'
+// +build ignore

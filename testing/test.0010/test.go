@@ -7,3 +7,4 @@ func main() {
 	v := gd.Specs[0].(*ast.ValueSpec)
 	v.
 }
+// +build ignore

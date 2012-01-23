@@ -11,3 +11,4 @@ func main() {
 	g := C.g
 	
 }
+// +build ignore

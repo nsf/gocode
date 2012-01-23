@@ -6,3 +6,4 @@ func main() {
 	var a Formatter
 	
 }
+// +build ignore

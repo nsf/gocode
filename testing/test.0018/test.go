@@ -27,3 +27,4 @@ func main() {
 	t := new(Test)
 	(*t.GetMe().MoreTests["blabla"][10]).
 }
+// +build ignore

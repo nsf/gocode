@@ -10,3 +10,4 @@ func main() {
 	var b B
 	b.
 }
+// +build ignore

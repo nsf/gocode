@@ -56,3 +56,4 @@ func PrettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 		panic("OMGWTFBBQ!")
 	}
 }
+// +build ignore
