@@ -26,4 +26,3 @@ func main() {
 	logand := c && d
 	
 }
-// +build ignore

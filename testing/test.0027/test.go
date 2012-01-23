@@ -12,4 +12,3 @@ func (file *file) String() {
 func main() {
 	
 }
-// +build ignore

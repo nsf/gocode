@@ -13,4 +13,3 @@ hosts.Mutex.
 
 func main() {
 }
-// +build ignore

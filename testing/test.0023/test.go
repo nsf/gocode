@@ -7,4 +7,3 @@ import ъ "fmt"
 func main() {
 	ъ.
 }
-// +build ignore

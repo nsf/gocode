@@ -10,4 +10,3 @@ func testEllipsis(dummies ...*Dummy) {
 		
 	}
 }
-// +build ignore

@@ -6,4 +6,3 @@ func test() {
 	img, err := png.Decode(nil)
 	img.
 }
-// +build ignore

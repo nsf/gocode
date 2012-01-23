@@ -13,4 +13,3 @@ hosts.
 
 func main() {
 }
-// +build ignore

@@ -12,4 +12,3 @@ func b(a, b, c string) string {
 	return "abc"
 }
 
-// +build ignore

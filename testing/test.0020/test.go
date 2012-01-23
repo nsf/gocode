@@ -20,4 +20,3 @@ func main() {
 	var b Bar
 	b.
 }
-// +build ignore

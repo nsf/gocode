@@ -5,4 +5,3 @@ import "compress/zlib"
 func main() {
 	var b map[int]zlib.
 }
-// +build ignore

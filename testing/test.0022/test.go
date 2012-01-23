@@ -12,4 +12,3 @@ func getMap() map[string]os.Error {
 	// simply to trick type inference
 	return nil
 }
-// +build ignore

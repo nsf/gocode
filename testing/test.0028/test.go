@@ -12,4 +12,3 @@ func main() {
 	j := ^i
 	j.
 }
-// +build ignore

@@ -16,4 +16,3 @@ func main() {
 	bb := &typeptr
 	
 }
-// +build ignore

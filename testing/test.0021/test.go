@@ -6,4 +6,3 @@ func main() {
 	var test *ast.ImportSpec
 	test.Name.
 }
-// +build ignore

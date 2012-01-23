@@ -6,4 +6,3 @@ func main() {
 	var test reflect.Value
 	test.
 }
-// +build ignore
