@@ -1,24 +1,20 @@
-Found 157 candidates:
+Found 138 candidates:
   func main()
   package adler32 
   package aes 
-  package armor 
   package ascii85 
   package asn1 
   package ast 
   package atomic 
   package base32 
   package base64 
-  package bcrypt 
   package big 
   package binary 
-  package blowfish 
   package bmp 
   package bufio 
   package build 
   package bytes 
   package bzip2 
-  package cast5 
   package cgi 
   package cgo 
   package cgosotest 
@@ -31,7 +27,6 @@ Found 157 candidates:
   package csv 
   package debug 
   package des 
-  package dict 
   package doc 
   package draw 
   package driver 
@@ -40,7 +35,6 @@ Found 157 candidates:
   package ebnf 
   package ecdsa 
   package elf 
-  package elgamal 
   package elliptic 
   package errors 
   package exec 
@@ -52,7 +46,6 @@ Found 157 candidates:
   package fmt 
   package fnv 
   package gif 
-  package git85 
   package gob 
   package gosym 
   package gzip 
@@ -79,20 +72,15 @@ Found 157 candidates:
   package macho 
   package mail 
   package math 
-  package md4 
   package md5 
   package mime 
   package multipart 
   package net 
   package netchan 
   package norm 
-  package ocsp 
-  package openpgp 
   package os 
-  package packet 
   package parse 
   package parser 
-  package patch 
   package path 
   package pe 
   package pem 
@@ -107,11 +95,9 @@ Found 157 candidates:
   package reflect 
   package regexp 
   package ring 
-  package ripemd160 
   package rpc 
   package rsa 
   package runtime 
-  package s2k 
   package scanner 
   package script 
   package sha1 
@@ -120,9 +106,7 @@ Found 157 candidates:
   package signal 
   package smtp 
   package sort 
-  package spdy 
   package sql 
-  package ssh 
   package stdio 
   package strconv 
   package strings 
@@ -142,7 +126,6 @@ Found 157 candidates:
   package time 
   package tls 
   package token 
-  package twofish 
   package types 
   package unicode 
   package url 
@@ -150,9 +133,7 @@ Found 157 candidates:
   package utf16 
   package utf8 
   package utf8string 
-  package websocket 
   package x509 
   package xml 
-  package xtea 
   package zip 
   package zlib 

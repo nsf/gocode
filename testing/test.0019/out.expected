@@ -9,6 +9,6 @@ Found 13 candidates:
   func NewWriterDict(w io.Writer, level int, dict []byte) (*zlib.Writer, error)
   func NewWriterLevel(w io.Writer, level int) (*zlib.Writer, error)
   type Writer struct
-  var ChecksumError error
-  var DictionaryError error
-  var HeaderError error
+  var ErrChecksum error
+  var ErrDictionary error
+  var ErrHeader error
