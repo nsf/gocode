@@ -14,17 +14,17 @@ Also watch the [demo screencast](http://nsf.110mb.com/gocode-demo.swf).
 
 ### Setup
 
- 1. First of all, you need to get the appropriate version of the gocode, for 6g/8g/5g compiler you can do this:
-
-    `go get -u github.com/nsf/gocode` (-u flag for "update")
-
- 2. At this step, please make sure that your **$GOBIN** is available in your **$PATH**. By default **$GOBIN** points to **$GOROOT/bin**. This is important, because editors assume that **gocode** executable is available in one of the directories, specified by your **$PATH** environment variable. Usually you've done that already while installing the Go compiler suite.
+ 1. At this step, please make sure that your **$GOBIN** is available in your **$PATH**. By default **$GOBIN** points to **$GOROOT/bin**. This is important, because editors assume that **gocode** executable is available in one of the directories, specified by your **$PATH** environment variable. Usually you've done that already while installing the Go compiler suite.
 
     Do these steps only if you know why do you need them:
 
     `export GOBIN=$HOME/bin`
 
     `export PATH=$PATH:$HOME/bin`
+
+ 2. Then you need to get the appropriate version of the gocode, for 6g/8g/5g compiler you can do this:
+
+    `go get -u github.com/nsf/gocode` (-u flag for "update")
 
  3. Next steps are editor specific. See below.
 
