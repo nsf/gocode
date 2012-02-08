@@ -31,22 +31,3 @@ func GetExecutableFileName() string {
 	}
 	return string(utf16.Decode(b[:ret]))
 }
-
-func (s *Server) Loop() {
-	conn_in := make(chan net.Conn)
-	go acceptConnections(conn_in, s.listener)
-	for {
-		// handle connections or server CMDs (currently one CMD)
-		select {
-		case c := <-conn_in:
-			rpc.ServeConn(c)
-			runtime.GC()
-		case cmd := <-s.cmd_in:
-			switch cmd {
-			case SERVER_CLOSE:
-				return
-			}
-		}
-	}
-}
-
