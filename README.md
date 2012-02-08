@@ -14,15 +14,11 @@ Also watch the [demo screencast](http://nsf.110mb.com/gocode-demo.swf).
 
 ### Setup
 
- 1. First of all, you need to get the latest git version of the gocode source code:
+ 1. First of all, you need to get the appropriate version of the gocode, for 6g/8g/5g compiler you can do this:
 
-    `git clone git://github.com/nsf/gocode.git`
+    `go get -u github.com/nsf/gocode` (-u flag for "update")
 
- 2. Change the directory:
-
-    `cd gocode`
-
- 3. At this step, please make sure that your **$GOBIN** is available in your **$PATH**. By default **$GOBIN** points to **$GOROOT/bin**. This is important, because editors assume that **gocode** executable is available in one of the directories, specified by your **$PATH** environment variable. Usually you've done that already while installing the Go compiler suite.
+ 2. At this step, please make sure that your **$GOBIN** is available in your **$PATH**. By default **$GOBIN** points to **$GOROOT/bin**. This is important, because editors assume that **gocode** executable is available in one of the directories, specified by your **$PATH** environment variable. Usually you've done that already while installing the Go compiler suite.
 
     Do these steps only if you know why do you need them:
 
@@ -30,11 +26,7 @@ Also watch the [demo screencast](http://nsf.110mb.com/gocode-demo.swf).
 
     `export PATH=$PATH:$HOME/bin`
 
- 4. Then you need to build the gocode and install it (make sure you're using GNU make):
-
-    `gomake install`
-
- 5. Next steps are editor specific. See below.
+ 3. Next steps are editor specific. See below.
 
 ### Vim setup
 
@@ -109,4 +101,3 @@ If you want to integrate gocode in your editor, please, contact me and I will te
 ### Misc
 
  - It's a good idea to use the latest git version always. I'm trying to keep it in a working state.
- - Gocode always requires the latest Go compiler suite version of the 'release' or 'weekly' branch. Use tags to see what version is required. For example tag compatible-with-go-weekly-XXXX-XX-XX says that you can use Go version weekly.XXXX-XX-XX. Use `git log --decorate` to see tags in the git log. Each commit that was commited after compatible tag requires the same version as specified by this tag. If commit has multiple version tags, the use of the latest version amongst these is strongly recommended.
