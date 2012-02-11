@@ -1,4 +1,3 @@
-// +build windows
 package main
 
 import (
@@ -7,9 +6,6 @@ import (
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
-	"net"
-	"net/rpc"
-	"runtime"
 )
 
 func CreateSockFlag(name, desc string) *string {

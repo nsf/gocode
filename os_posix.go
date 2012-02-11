@@ -1,4 +1,5 @@
-// +build darwin freebsd linux netbsd openbsd
+// +build !windows
+
 package main
 
 import (
