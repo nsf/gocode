@@ -1,4 +1,4 @@
-Found 138 candidates:
+Found 132 candidates:
   func main()
   package adler32 
   package aes 
@@ -10,14 +10,12 @@ Found 138 candidates:
   package base64 
   package big 
   package binary 
-  package bmp 
   package bufio 
   package build 
   package bytes 
   package bzip2 
   package cgi 
   package cgo 
-  package cgosotest 
   package cipher 
   package cmplx 
   package color 
@@ -65,7 +63,6 @@ Found 138 candidates:
   package jpeg 
   package json 
   package jsonrpc 
-  package life 
   package list 
   package log 
   package lzw 
@@ -99,7 +96,6 @@ Found 138 candidates:
   package rsa 
   package runtime 
   package scanner 
-  package script 
   package sha1 
   package sha256 
   package sha512 
@@ -107,7 +103,6 @@ Found 138 candidates:
   package smtp 
   package sort 
   package sql 
-  package stdio 
   package strconv 
   package strings 
   package subtle 
@@ -122,7 +117,6 @@ Found 138 candidates:
   package terminal 
   package testing 
   package textproto 
-  package tiff 
   package time 
   package tls 
   package token 
