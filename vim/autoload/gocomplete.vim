@@ -46,7 +46,7 @@ fu! s:gocodeAutocomplete()
 	let filename = s:gocodeCurrentBuffer()
 	let result = s:gocodeCommand('autocomplete',
 				   \ [s:gocodeCurrentBufferOpt(filename), '-f=vim'],
-				   \ [bufname('%'), s:gocodeCursor()])
+				   \ [expand('%:p'), s:gocodeCursor()])
 	call delete(filename)
 	return result
 endf
