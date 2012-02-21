@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -79,7 +80,7 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 		word := names[i]
 		if classes[i] == "func" {
 			word += "("
-			if len(types[i]) == 6 {
+			if strings.HasPrefix(types[i], "func()") {
 				word += ")"
 			}
 		}
