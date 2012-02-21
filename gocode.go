@@ -83,6 +83,9 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 		if classes[i] == "func" {
 			word += "("
 		}
+		if len(types[i]) == 6 {
+			word += ")"
+		}
 
 		abbr := fmt.Sprintf("%s %s %s", classes[i], names[i], types[i])
 		if classes[i] == "func" {
