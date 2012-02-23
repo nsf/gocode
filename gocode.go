@@ -292,7 +292,6 @@ func cmdSet(c *rpc.Client) {
 
 func tryRunServer() error {
 	path := GetExecutableFileName()
-
 	args := []string{os.Args[0], "-s", "-sock", *sock, "-addr", *addr}
 	cwd, _ := os.Getwd()
 	procattr := os.ProcAttr{Dir: cwd, Env: os.Environ(), Files: []*os.File{nil, nil, nil}}
@@ -309,7 +308,7 @@ func tryToConnect(network, address string) (client *rpc.Client, err error) {
 	for {
 		client, err = rpc.Dial(network, address)
 		if err != nil && t < 1000 {
-			time.Sleep(10e6) // wait 10 milliseconds
+			time.Sleep(10 * time.Millisecond)
 			t += 10
 			continue
 		}
@@ -328,6 +327,10 @@ func clientFunc() int {
 	// client
 	client, err := rpc.Dial(*sock, addr)
 	if err != nil {
+		if *sock == "unix" && fileExists(addr) {
+			os.Remove(addr)
+		}
+
 		err = tryRunServer()
 		if err != nil {
 			fmt.Printf("%s\n", err.Error())
