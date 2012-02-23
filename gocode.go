@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -37,11 +38,8 @@ func filterOutShebang(data []byte) ([]byte, int) {
 // Formatter interfaces
 //-------------------------------------------------------------------------
 
-type FormatterEmpty interface {
+type Formatter interface {
 	WriteEmpty()
-}
-
-type FormatterCandidates interface {
 	WriteCandidates(names, types, classes []string, num int)
 }
 
@@ -82,7 +80,7 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 		word := names[i]
 		if classes[i] == "func" {
 			word += "("
-			if len(types[i]) == 6 {
+			if strings.HasPrefix(types[i], "func()") {
 				word += ")"
 			}
 		}
@@ -106,6 +104,9 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 
 type EmacsFormatter struct{}
 
+func (*EmacsFormatter) WriteEmpty() {
+}
+
 func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) {
 	for i := 0; i < len(names); i++ {
 		name := names[i]
@@ -122,6 +123,9 @@ func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) 
 //-------------------------------------------------------------------------
 
 type CSVFormatter struct{}
+
+func (*CSVFormatter) WriteEmpty() {
+}
 
 func (*CSVFormatter) WriteCandidates(names, types, classes []string, num int) {
 	for i := 0; i < len(names); i++ {
@@ -153,7 +157,7 @@ func (*JSONFormatter) WriteCandidates(names, types, classes []string, num int) {
 
 //-------------------------------------------------------------------------
 
-func getFormatter() interface{} {
+func getFormatter() Formatter {
 	switch *format {
 	case "vim":
 		return new(VimFormatter)
@@ -260,15 +264,10 @@ func cmdAutoComplete(c *rpc.Client) {
 	formatter := getFormatter()
 	names, types, classes, partial := Client_AutoComplete(c, file, filename, cursor)
 	if names == nil {
-		if f, ok := formatter.(FormatterEmpty); ok {
-			f.WriteEmpty()
-		}
+		formatter.WriteEmpty()
 		return
 	}
-
-	if f, ok := formatter.(FormatterCandidates); ok {
-		f.WriteCandidates(names, types, classes, partial)
-	}
+	formatter.WriteCandidates(names, types, classes, partial)
 }
 
 func cmdClose(c *rpc.Client) {
