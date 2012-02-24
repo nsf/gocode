@@ -16,22 +16,22 @@ import (
 )
 
 //-------------------------------------------------------------------------
-// OutBuffers
+// out_buffers
 //
 // Temporary structure for writing autocomplete response.
 //-------------------------------------------------------------------------
 
-type OutBuffers struct {
+type out_buffers struct {
 	tmpbuf  *bytes.Buffer
 	names   []string
 	types   []string
 	classes []string
-	ctx     *AutoCompleteContext
+	ctx     *auto_complete_context
 	tmpns   map[string]bool
 }
 
-func NewOutBuffers(ctx *AutoCompleteContext) *OutBuffers {
-	b := new(OutBuffers)
+func new_out_buffers(ctx *auto_complete_context) *out_buffers {
+	b := new(out_buffers)
 	b.tmpbuf = bytes.NewBuffer(make([]byte, 0, 1024))
 	b.names = make([]string, 0, 1024)
 	b.types = make([]string, 0, 1024)
@@ -40,29 +40,29 @@ func NewOutBuffers(ctx *AutoCompleteContext) *OutBuffers {
 	return b
 }
 
-func (b *OutBuffers) Len() int {
+func (b *out_buffers) Len() int {
 	return len(b.names)
 }
 
-func (b *OutBuffers) Less(i, j int) bool {
+func (b *out_buffers) Less(i, j int) bool {
 	if b.classes[i][0] == b.classes[j][0] {
 		return b.names[i] < b.names[j]
 	}
 	return b.classes[i] < b.classes[j]
 }
 
-func (b *OutBuffers) Swap(i, j int) {
+func (b *out_buffers) Swap(i, j int) {
 	b.names[i], b.names[j] = b.names[j], b.names[i]
 	b.types[i], b.types[j] = b.types[j], b.types[i]
 	b.classes[i], b.classes[j] = b.classes[j], b.classes[i]
 }
 
-func (b *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
-	c1 := !Config.ProposeBuiltins && decl.Scope == universeScope && decl.Name != "Error"
-	c2 := class != -1 && !matchClass(int(decl.Class), class)
+func (b *out_buffers) append_decl(p, name string, decl *decl, class int) {
+	c1 := !g_config.ProposeBuiltins && decl.scope == g_universe_scope && decl.name != "Error"
+	c2 := class != -1 && !match_class(int(decl.class), class)
 	c3 := class == -1 && !strings.HasPrefix(name, p)
-	c4 := !decl.Matches()
-	c5 := !checkTypeExpr(decl.Type)
+	c4 := !decl.matches()
+	c5 := !check_type_expr(decl.typ)
 
 	if c1 || c2 || c3 || c4 || c5 {
 		return
@@ -70,51 +70,51 @@ func (b *OutBuffers) appendDecl(p, name string, decl *Decl, class int) {
 
 	b.names = append(b.names, name)
 
-	decl.PrettyPrintType(b.tmpbuf)
+	decl.pretty_print_type(b.tmpbuf)
 	b.types = append(b.types, b.tmpbuf.String())
 	b.tmpbuf.Reset()
 
-	b.classes = append(b.classes, decl.ClassName())
+	b.classes = append(b.classes, decl.class_name())
 }
 
-func (b *OutBuffers) appendEmbedded(p string, decl *Decl, class int) {
-	if decl.Embedded == nil {
+func (b *out_buffers) append_embedded(p string, decl *decl, class int) {
+	if decl.embedded == nil {
 		return
 	}
 
-	firstLevel := false
+	first_level := false
 	if b.tmpns == nil {
 		// first level, create tmp namespace
 		b.tmpns = make(map[string]bool)
-		firstLevel = true
+		first_level = true
 
 		// add all children of the current decl to the namespace
-		for _, c := range decl.Children {
-			b.tmpns[c.Name] = true
+		for _, c := range decl.children {
+			b.tmpns[c.name] = true
 		}
 	}
 
-	for _, emb := range decl.Embedded {
-		typedecl := typeToDecl(emb, decl.Scope)
+	for _, emb := range decl.embedded {
+		typedecl := type_to_decl(emb, decl.scope)
 		if typedecl != nil {
-			for _, c := range typedecl.Children {
-				if _, has := b.tmpns[c.Name]; has {
+			for _, c := range typedecl.children {
+				if _, has := b.tmpns[c.name]; has {
 					continue
 				}
-				b.appendDecl(p, c.Name, c, class)
-				b.tmpns[c.Name] = true
+				b.append_decl(p, c.name, c, class)
+				b.tmpns[c.name] = true
 			}
-			b.appendEmbedded(p, typedecl, class)
+			b.append_embedded(p, typedecl, class)
 		}
 	}
 
-	if firstLevel {
+	if first_level {
 		// remove tmp namespace
 		b.tmpns = nil
 	}
 }
 
-func matchClass(declclass int, class int) bool {
+func match_class(declclass int, class int) bool {
 	if class == declclass {
 		return true
 	}
@@ -122,67 +122,67 @@ func matchClass(declclass int, class int) bool {
 }
 
 //-------------------------------------------------------------------------
-// AutoCompleteContext
+// auto_complete_context
 //
 // Context that holds cache structures for autocompletion needs. It
 // includes cache for packages and for main package files.
 //-------------------------------------------------------------------------
 
-type AutoCompleteContext struct {
-	current *AutoCompleteFile // currently editted file
-	others  []*DeclFileCache  // other files of the current package
-	pkg     *Scope
+type auto_complete_context struct {
+	current *auto_complete_file // currently editted file
+	others  []*decl_file_cache  // other files of the current package
+	pkg     *scope
 
-	pcache    PackageCache // packages cache
-	declcache *DeclCache   // top-level declarations cache
+	pcache    package_cache // packages cache
+	declcache *decl_cache   // top-level declarations cache
 }
 
-func NewAutoCompleteContext(pcache PackageCache, declcache *DeclCache) *AutoCompleteContext {
-	c := new(AutoCompleteContext)
-	c.current = NewAutoCompleteFile("")
+func new_auto_complete_context(pcache package_cache, declcache *decl_cache) *auto_complete_context {
+	c := new(auto_complete_context)
+	c.current = new_auto_complete_file("")
 	c.pcache = pcache
 	c.declcache = declcache
 	return c
 }
 
-func (c *AutoCompleteContext) updateCaches() {
+func (c *auto_complete_context) update_caches() {
 	// temporary map for packages that we need to check for a cache expiration
 	// map is used as a set of unique items to prevent double checks
-	ps := make(map[string]*PackageFileCache)
+	ps := make(map[string]*package_file_cache)
 
 	// collect import information from all of the files
-	c.pcache.AppendPackages(ps, c.current.packages)
-	c.others = getOtherPackageFiles(c.current.name, c.current.packageName, c.declcache)
+	c.pcache.append_packages(ps, c.current.packages)
+	c.others = get_other_package_files(c.current.name, c.current.package_name, c.declcache)
 	for _, other := range c.others {
-		c.pcache.AppendPackages(ps, other.Packages)
+		c.pcache.append_packages(ps, other.packages)
 	}
 
-	updatePackages(ps)
+	update_packages(ps)
 
 	// fix imports for all files
-	fixupPackages(c.current.filescope, c.current.packages, c.pcache)
+	fixup_packages(c.current.filescope, c.current.packages, c.pcache)
 	for _, f := range c.others {
-		fixupPackages(f.FileScope, f.Packages, c.pcache)
+		fixup_packages(f.filescope, f.packages, c.pcache)
 	}
 
 	// At this point we have collected all top level declarations, now we need to
 	// merge them in the common package block.
-	c.mergeDecls()
+	c.merge_decls()
 }
 
-func (c *AutoCompleteContext) mergeDecls() {
-	c.pkg = NewScope(universeScope)
-	mergeDecls(c.current.filescope, c.pkg, c.current.decls)
-	mergeDeclsFromPackages(c.pkg, c.current.packages, c.pcache)
+func (c *auto_complete_context) merge_decls() {
+	c.pkg = new_scope(g_universe_scope)
+	merge_decls(c.current.filescope, c.pkg, c.current.decls)
+	merge_decls_from_packages(c.pkg, c.current.packages, c.pcache)
 	for _, f := range c.others {
-		mergeDecls(f.FileScope, c.pkg, f.Decls)
-		mergeDeclsFromPackages(c.pkg, f.Packages, c.pcache)
+		merge_decls(f.filescope, c.pkg, f.decls)
+		merge_decls_from_packages(c.pkg, f.packages, c.pcache)
 	}
 }
 
-func (c *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
-	set := make(map[string]*Decl, len(c.pkg.entities)*2)
-	makeDeclSetRecursive(set, scope)
+func (c *auto_complete_context) make_decl_set(scope *scope) map[string]*decl {
+	set := make(map[string]*decl, len(c.pkg.entities)*2)
+	make_decl_set_recursive(set, scope)
 	return set
 }
 
@@ -191,7 +191,7 @@ func (c *AutoCompleteContext) makeDeclSet(scope *Scope) map[string]*Decl {
 // 2. apropos types (pretty-printed)
 // 3. apropos classes
 // and length of the part that should be replaced (if any)
-func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
+func (c *auto_complete_context) apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
 	c.current.cursor = cursor
 	c.current.name = filename
 
@@ -202,64 +202,64 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 
 	// Does full processing of the currently editted file (top-level declarations plus
 	// active function).
-	c.current.processData(file)
+	c.current.process_data(file)
 
 	// Updates cache of other files and packages. See the function for details of
 	// the process. At the end merges all the top-level declarations into the package
 	// block.
-	c.updateCaches()
+	c.update_caches()
 
 	// And we're ready to Go. ;)
 
-	b := NewOutBuffers(c)
+	b := new_out_buffers(c)
 
 	partial := 0
-	da := c.deduceDecl(file, cursor)
+	da := c.deduce_decl(file, cursor)
 	if da != nil {
 		class := -1
-		switch da.Partial {
+		switch da.partial {
 		case "const":
-			class = DECL_CONST
+			class = decl_const
 		case "var":
-			class = DECL_VAR
+			class = decl_var
 		case "type":
-			class = DECL_TYPE
+			class = decl_type
 		case "func":
-			class = DECL_FUNC
+			class = decl_func
 		case "package":
-			class = DECL_PACKAGE
+			class = decl_package
 		}
-		if da.Decl == nil {
+		if da.decl == nil {
 			// In case if no declaraion is a subject of completion, propose all:
-			set := c.makeDeclSet(c.current.scope)
+			set := c.make_decl_set(c.current.scope)
 			for key, value := range set {
 				if value == nil {
 					continue
 				}
-				value.InferType()
-				b.appendDecl(da.Partial, key, value, class)
+				value.infer_type()
+				b.append_decl(da.partial, key, value, class)
 			}
 		} else {
 			// propose all children of a subject declaration and
-			for _, decl := range da.Decl.Children {
-				if da.Decl.Class == DECL_PACKAGE && !ast.IsExported(decl.Name) {
+			for _, decl := range da.decl.children {
+				if da.decl.class == decl_package && !ast.IsExported(decl.name) {
 					continue
 				}
-				b.appendDecl(da.Partial, decl.Name, decl, class)
+				b.append_decl(da.partial, decl.name, decl, class)
 			}
 			// propose all children of an underlying struct/interface type
-			adecl := advanceToStructOrInterface(da.Decl)
-			if adecl != nil && adecl != da.Decl {
-				for _, decl := range adecl.Children {
-					if decl.Class == DECL_VAR {
-						b.appendDecl(da.Partial, decl.Name, decl, class)
+			adecl := advance_to_struct_or_interface(da.decl)
+			if adecl != nil && adecl != da.decl {
+				for _, decl := range adecl.children {
+					if decl.class == decl_var {
+						b.append_decl(da.partial, decl.name, decl, class)
 					}
 				}
 			}
 			// propose all children of its embedded types
-			b.appendEmbedded(da.Partial, da.Decl, class)
+			b.append_embedded(da.partial, da.decl, class)
 		}
-		partial = len(da.Partial)
+		partial = len(da.partial)
 	}
 
 	if len(b.names) == 0 || len(b.types) == 0 || len(b.classes) == 0 {
@@ -270,18 +270,18 @@ func (c *AutoCompleteContext) Apropos(file []byte, filename string, cursor int) 
 	return b.names, b.types, b.classes, partial
 }
 
-func updatePackages(ps map[string]*PackageFileCache) {
+func update_packages(ps map[string]*package_file_cache) {
 	// initiate package cache update
 	done := make(chan bool)
 	for _, p := range ps {
-		go func(p *PackageFileCache) {
+		go func(p *package_file_cache) {
 			defer func() {
 				if err := recover(); err != nil {
-					printBacktrace(err)
+					print_backtrace(err)
 					done <- false
 				}
 			}()
-			p.updateCache()
+			p.update_cache()
 			done <- true
 		}(p)
 	}
@@ -294,16 +294,16 @@ func updatePackages(ps map[string]*PackageFileCache) {
 	}
 }
 
-func mergeDecls(filescope *Scope, pkg *Scope, decls map[string]*Decl) {
+func merge_decls(filescope *scope, pkg *scope, decls map[string]*decl) {
 	for _, d := range decls {
-		pkg.mergeDecl(d)
+		pkg.merge_decl(d)
 	}
 	filescope.parent = pkg
 }
 
-func mergeDeclsFromPackages(pkgscope *Scope, pkgs PackageImports, pcache PackageCache) {
+func merge_decls_from_packages(pkgscope *scope, pkgs package_imports, pcache package_cache) {
 	for _, p := range pkgs {
-		path, alias := p.Path, p.Alias
+		path, alias := p.path, p.alias
 		if alias != "." {
 			continue
 		}
@@ -311,17 +311,17 @@ func mergeDeclsFromPackages(pkgscope *Scope, pkgs PackageImports, pcache Package
 		if p == nil {
 			continue
 		}
-		for _, d := range p.Children {
-			if ast.IsExported(d.Name) {
-				pkgscope.mergeDecl(d)
+		for _, d := range p.children {
+			if ast.IsExported(d.name) {
+				pkgscope.merge_decl(d)
 			}
 		}
 	}
 }
 
-func fixupPackages(filescope *Scope, pkgs PackageImports, pcache PackageCache) {
+func fixup_packages(filescope *scope, pkgs package_imports, pcache package_cache) {
 	for _, p := range pkgs {
-		path, alias := p.Path, p.Alias
+		path, alias := p.path, p.alias
 		if alias == "" {
 			alias = pcache[path].defalias
 		}
@@ -329,25 +329,25 @@ func fixupPackages(filescope *Scope, pkgs PackageImports, pcache PackageCache) {
 		if alias == "." {
 			continue
 		}
-		filescope.replaceDecl(alias, pcache[path].main)
+		filescope.replace_decl(alias, pcache[path].main)
 	}
 }
 
-func getOtherPackageFiles(filename, packageName string, declcache *DeclCache) []*DeclFileCache {
-	others := findOtherPackageFiles(filename, packageName)
+func get_other_package_files(filename, packageName string, declcache *decl_cache) []*decl_file_cache {
+	others := find_other_package_files(filename, packageName)
 
-	ret := make([]*DeclFileCache, len(others))
-	done := make(chan *DeclFileCache)
+	ret := make([]*decl_file_cache, len(others))
+	done := make(chan *decl_file_cache)
 
 	for _, nm := range others {
 		go func(name string) {
 			defer func() {
 				if err := recover(); err != nil {
-					printBacktrace(err)
+					print_backtrace(err)
 					done <- nil
 				}
 			}()
-			done <- declcache.Get(name)
+			done <- declcache.get_and_update(name)
 		}(nm)
 	}
 
@@ -361,19 +361,19 @@ func getOtherPackageFiles(filename, packageName string, declcache *DeclCache) []
 	return ret
 }
 
-func findOtherPackageFiles(filename, packageName string) []string {
+func find_other_package_files(filename, package_name string) []string {
 	if filename == "" {
 		return nil
 	}
 
 	dir, file := filepath.Split(filename)
-	filesInDir, err := ioutil.ReadDir(dir)
+	files_in_dir, err := ioutil.ReadDir(dir)
 	if err != nil {
 		panic(err)
 	}
 
 	count := 0
-	for _, stat := range filesInDir {
+	for _, stat := range files_in_dir {
 		ok, _ := filepath.Match("*.go", stat.Name())
 		if !ok || stat.Name() == file {
 			continue
@@ -382,17 +382,17 @@ func findOtherPackageFiles(filename, packageName string) []string {
 	}
 
 	out := make([]string, 0, count)
-	for _, stat := range filesInDir {
-		const NonRegular = os.ModeDir | os.ModeSymlink |
+	for _, stat := range files_in_dir {
+		const non_regular = os.ModeDir | os.ModeSymlink |
 			os.ModeDevice | os.ModeNamedPipe | os.ModeSocket
 
 		ok, _ := filepath.Match("*.go", stat.Name())
-		if !ok || stat.Name() == file || stat.Mode()&NonRegular != 0 {
+		if !ok || stat.Name() == file || stat.Mode()&non_regular != 0 {
 			continue
 		}
 
 		abspath := filepath.Join(dir, stat.Name())
-		if filePackageName(abspath) == packageName {
+		if file_package_name(abspath) == package_name {
 			n := len(out)
 			out = out[:n+1]
 			out[n] = abspath
@@ -402,29 +402,29 @@ func findOtherPackageFiles(filename, packageName string) []string {
 	return out
 }
 
-func filePackageName(filename string) string {
+func file_package_name(filename string) string {
 	file, _ := parser.ParseFile(token.NewFileSet(), filename, nil, parser.PackageClauseOnly)
 	return file.Name.Name
 }
 
-func makeDeclSetRecursive(set map[string]*Decl, scope *Scope) {
+func make_decl_set_recursive(set map[string]*decl, scope *scope) {
 	for name, ent := range scope.entities {
 		if _, ok := set[name]; !ok {
 			set[name] = ent
 		}
 	}
 	if scope.parent != nil {
-		makeDeclSetRecursive(set, scope.parent)
+		make_decl_set_recursive(set, scope.parent)
 	}
 }
 
-func checkFuncFieldList(f *ast.FieldList) bool {
+func check_func_field_list(f *ast.FieldList) bool {
 	if f == nil {
 		return true
 	}
 
 	for _, field := range f.List {
-		if !checkTypeExpr(field.Type) {
+		if !check_type_expr(field.Type) {
 			return false
 		}
 	}
@@ -433,26 +433,26 @@ func checkFuncFieldList(f *ast.FieldList) bool {
 
 // checks for a type expression correctness, it the type expression has
 // ast.BadExpr somewhere, returns false, otherwise true
-func checkTypeExpr(e ast.Expr) bool {
+func check_type_expr(e ast.Expr) bool {
 	switch t := e.(type) {
 	case *ast.StarExpr:
-		return checkTypeExpr(t.X)
+		return check_type_expr(t.X)
 	case *ast.ArrayType:
-		return checkTypeExpr(t.Elt)
+		return check_type_expr(t.Elt)
 	case *ast.SelectorExpr:
-		return checkTypeExpr(t.X)
+		return check_type_expr(t.X)
 	case *ast.FuncType:
-		a := checkFuncFieldList(t.Params)
-		b := checkFuncFieldList(t.Results)
+		a := check_func_field_list(t.Params)
+		b := check_func_field_list(t.Results)
 		return a && b
 	case *ast.MapType:
-		a := checkTypeExpr(t.Key)
-		b := checkTypeExpr(t.Value)
+		a := check_type_expr(t.Key)
+		b := check_type_expr(t.Value)
 		return a && b
 	case *ast.Ellipsis:
-		return checkTypeExpr(t.Elt)
+		return check_type_expr(t.Elt)
 	case *ast.ChanType:
-		return checkTypeExpr(t.Value)
+		return check_type_expr(t.Value)
 	case *ast.BadExpr:
 		return false
 	default:
@@ -465,54 +465,54 @@ func checkTypeExpr(e ast.Expr) bool {
 // Status output
 //-------------------------------------------------------------------------
 
-type DeclSlice []*Decl
+type decl_slice []*decl
 
-func (s DeclSlice) Less(i, j int) bool {
-	if s[i].ClassName()[0] == s[j].ClassName()[0] {
-		return s[i].Name < s[j].Name
+func (s decl_slice) Less(i, j int) bool {
+	if s[i].class_name()[0] == s[j].class_name()[0] {
+		return s[i].name < s[j].name
 	}
-	return s[i].ClassName() < s[j].ClassName()
+	return s[i].class_name() < s[j].class_name()
 }
-func (s DeclSlice) Len() int      { return len(s) }
-func (s DeclSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s decl_slice) Len() int      { return len(s) }
+func (s decl_slice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 const (
-	COLOR_red     = "\033[0;31m"
-	COLOR_RED     = "\033[1;31m"
-	COLOR_green   = "\033[0;32m"
-	COLOR_GREEN   = "\033[1;32m"
-	COLOR_yellow  = "\033[0;33m"
-	COLOR_YELLOW  = "\033[1;33m"
-	COLOR_blue    = "\033[0;34m"
-	COLOR_BLUE    = "\033[1;34m"
-	COLOR_magenta = "\033[0;35m"
-	COLOR_MAGENTA = "\033[1;35m"
-	COLOR_cyan    = "\033[0;36m"
-	COLOR_CYAN    = "\033[1;36m"
-	COLOR_white   = "\033[0;37m"
-	COLOR_WHITE   = "\033[1;37m"
-	NC            = "\033[0m"
+	color_red          = "\033[0;31m"
+	color_red_bold     = "\033[1;31m"
+	color_green        = "\033[0;32m"
+	color_green_bold   = "\033[1;32m"
+	color_yellow       = "\033[0;33m"
+	color_yellow_bold  = "\033[1;33m"
+	color_blue         = "\033[0;34m"
+	color_blue_bold    = "\033[1;34m"
+	color_magenta      = "\033[0;35m"
+	color_magenta_bold = "\033[1;35m"
+	color_cyan         = "\033[0;36m"
+	color_cyan_bold    = "\033[1;36m"
+	color_white        = "\033[0;37m"
+	color_white_bold   = "\033[1;37m"
+	color_none         = "\033[0m"
 )
 
-var declClassToColor = [...]string{
-	DECL_CONST:        COLOR_WHITE,
-	DECL_VAR:          COLOR_magenta,
-	DECL_TYPE:         COLOR_cyan,
-	DECL_FUNC:         COLOR_green,
-	DECL_PACKAGE:      COLOR_red,
-	DECL_METHODS_STUB: COLOR_red,
+var g_decl_class_to_color = [...]string{
+	decl_const:        color_white_bold,
+	decl_var:          color_magenta,
+	decl_type:         color_cyan,
+	decl_func:         color_green,
+	decl_package:      color_red,
+	decl_methods_stub: color_red,
 }
 
-var declClassToStringStatus = [...]string{
-	DECL_CONST:        "  const",
-	DECL_VAR:          "    var",
-	DECL_TYPE:         "   type",
-	DECL_FUNC:         "   func",
-	DECL_PACKAGE:      "package",
-	DECL_METHODS_STUB: "   stub",
+var g_decl_class_to_string_status = [...]string{
+	decl_const:        "  const",
+	decl_var:          "    var",
+	decl_type:         "   type",
+	decl_func:         "   func",
+	decl_package:      "package",
+	decl_methods_stub: "   stub",
 }
 
-func (c *AutoCompleteContext) Status() string {
+func (c *auto_complete_context) status() string {
 
 	buf := bytes.NewBuffer(make([]byte, 0, 4096))
 	fmt.Fprintf(buf, "Server's GOMAXPROCS == %d\n", runtime.GOMAXPROCS(0))
@@ -520,7 +520,7 @@ func (c *AutoCompleteContext) Status() string {
 	fmt.Fprintf(buf, "\nListing these entries:\n")
 	for _, mod := range c.pcache {
 		fmt.Fprintf(buf, "\tname: %s (default alias: %s)\n", mod.name, mod.defalias)
-		fmt.Fprintf(buf, "\timports %d declarations and %d packages\n", len(mod.main.Children), len(mod.others))
+		fmt.Fprintf(buf, "\timports %d declarations and %d packages\n", len(mod.main.children), len(mod.others))
 		if mod.mtime == -1 {
 			fmt.Fprintf(buf, "\tthis package stays in cache forever (built-in package)\n")
 		} else {
@@ -530,7 +530,7 @@ func (c *AutoCompleteContext) Status() string {
 		fmt.Fprintf(buf, "\n")
 	}
 	if c.current.name != "" {
-		fmt.Fprintf(buf, "Last editted file: %s (package: %s)\n", c.current.name, c.current.packageName)
+		fmt.Fprintf(buf, "Last editted file: %s (package: %s)\n", c.current.name, c.current.package_name)
 		if len(c.others) > 0 {
 			fmt.Fprintf(buf, "\nOther files from the current package:\n")
 		}
@@ -539,53 +539,51 @@ func (c *AutoCompleteContext) Status() string {
 		}
 		fmt.Fprintf(buf, "\nListing declarations from files:\n")
 
-		const STATUS_DECLS = "\t%s%s" + NC + " " + COLOR_yellow + "%s" + NC + "\n"
-		const STATUS_DECLS_CHILDREN = "\t%s%s" + NC + " " + COLOR_yellow + "%s" + NC + " (%d)\n"
-		var ds DeclSlice
-		var i int
+		const status_decls = "\t%s%s" + color_none + " " + color_yellow + "%s" + color_none + "\n"
+		const status_decls_children = "\t%s%s" + color_none + " " + color_yellow + "%s" + color_none + " (%d)\n"
 
 		fmt.Fprintf(buf, "\n%s:\n", c.current.name)
-		ds = make(DeclSlice, len(c.current.decls))
-		i = 0
+		ds := make(decl_slice, len(c.current.decls))
+		i := 0
 		for _, d := range c.current.decls {
 			ds[i] = d
 			i++
 		}
 		sort.Sort(ds)
 		for _, d := range ds {
-			if len(d.Children) > 0 {
-				fmt.Fprintf(buf, STATUS_DECLS_CHILDREN,
-					declClassToColor[d.Class],
-					declClassToStringStatus[d.Class],
-					d.Name, len(d.Children))
+			if len(d.children) > 0 {
+				fmt.Fprintf(buf, status_decls_children,
+					g_decl_class_to_color[d.class],
+					g_decl_class_to_string_status[d.class],
+					d.name, len(d.children))
 			} else {
-				fmt.Fprintf(buf, STATUS_DECLS,
-					declClassToColor[d.Class],
-					declClassToStringStatus[d.Class],
-					d.Name)
+				fmt.Fprintf(buf, status_decls,
+					g_decl_class_to_color[d.class],
+					g_decl_class_to_string_status[d.class],
+					d.name)
 			}
 		}
 
 		for _, f := range c.others {
 			fmt.Fprintf(buf, "\n%s:\n", f.name)
-			ds = make(DeclSlice, len(f.Decls))
+			ds = make(decl_slice, len(f.decls))
 			i = 0
-			for _, d := range f.Decls {
+			for _, d := range f.decls {
 				ds[i] = d
 				i++
 			}
 			sort.Sort(ds)
 			for _, d := range ds {
-				if len(d.Children) > 0 {
-					fmt.Fprintf(buf, STATUS_DECLS_CHILDREN,
-						declClassToColor[d.Class],
-						declClassToStringStatus[d.Class],
-						d.Name, len(d.Children))
+				if len(d.children) > 0 {
+					fmt.Fprintf(buf, status_decls_children,
+						g_decl_class_to_color[d.class],
+						g_decl_class_to_string_status[d.class],
+						d.name, len(d.children))
 				} else {
-					fmt.Fprintf(buf, STATUS_DECLS,
-						declClassToColor[d.Class],
-						declClassToStringStatus[d.Class],
-						d.Name)
+					fmt.Fprintf(buf, status_decls,
+						g_decl_class_to_color[d.class],
+						g_decl_class_to_string_status[d.class],
+						d.name)
 				}
 			}
 		}

@@ -10,33 +10,34 @@ import (
 // doing that, because sometimes parser is not able to recover itself from an
 // error and the autocompletion results become less complete.
 
-type TokPos struct {
-	Tok token.Token
-	Pos token.Pos
+type tok_pos_pair struct {
+	tok token.Token
+	pos token.Pos
 }
 
-type TokCollection struct {
-	tokens []TokPos
+type tok_collection struct {
+	tokens []tok_pos_pair
 	fset   *token.FileSet
 }
 
-func (t *TokCollection) next(s *scanner.Scanner) bool {
+func (this *tok_collection) next(s *scanner.Scanner) bool {
 	pos, tok, _ := s.Scan()
 	if tok == token.EOF {
 		return false
 	}
 
-	t.tokens = append(t.tokens, TokPos{tok, pos})
+	this.tokens = append(this.tokens, tok_pos_pair{tok, pos})
 	return true
 }
 
-func (t *TokCollection) findDeclBeg(pos int) int {
+func (this *tok_collection) find_decl_beg(pos int) int {
 	lowest := 0
 	lowpos := -1
 	lowi := -1
 	cur := 0
 	for i := pos; i >= 0; i-- {
-		switch t.tokens[i].Tok {
+		t := this.tokens[i]
+		switch t.tok {
 		case token.RBRACE:
 			cur++
 		case token.LBRACE:
@@ -45,14 +46,15 @@ func (t *TokCollection) findDeclBeg(pos int) int {
 
 		if cur < lowest {
 			lowest = cur
-			lowpos = t.fset.Position(t.tokens[i].Pos).Offset
+			lowpos = this.fset.Position(t.pos).Offset
 			lowi = i
 		}
 	}
 
 	for i := lowi; i >= 0; i-- {
-		if t.tokens[i].Tok == token.SEMICOLON {
-			lowpos = t.fset.Position(t.tokens[i+1].Pos).Offset
+		t := this.tokens[i]
+		if t.tok == token.SEMICOLON {
+			lowpos = this.fset.Position(t.pos).Offset
 			break
 		}
 	}
@@ -60,17 +62,18 @@ func (t *TokCollection) findDeclBeg(pos int) int {
 	return lowpos
 }
 
-func (t *TokCollection) findDeclEnd(pos int) int {
+func (this *tok_collection) find_decl_end(pos int) int {
 	highest := 0
 	highpos := -1
 	cur := 0
 
-	if t.tokens[pos].Tok == token.LBRACE {
+	if this.tokens[pos].tok == token.LBRACE {
 		pos++
 	}
 
-	for i := pos; i < len(t.tokens); i++ {
-		switch t.tokens[i].Tok {
+	for i := pos; i < len(this.tokens); i++ {
+		t := this.tokens[i]
+		switch t.tok {
 		case token.RBRACE:
 			cur++
 		case token.LBRACE:
@@ -79,38 +82,38 @@ func (t *TokCollection) findDeclEnd(pos int) int {
 
 		if cur > highest {
 			highest = cur
-			highpos = t.fset.Position(t.tokens[i].Pos).Offset
+			highpos = this.fset.Position(t.pos).Offset
 		}
 	}
 
 	return highpos
 }
 
-func (t *TokCollection) findOutermostScope(cursor int) (int, int) {
+func (this *tok_collection) find_outermost_scope(cursor int) (int, int) {
 	pos := 0
 
-	for i, tok := range t.tokens {
-		if cursor <= t.fset.Position(tok.Pos).Offset {
+	for i, t := range this.tokens {
+		if cursor <= this.fset.Position(t.pos).Offset {
 			break
 		}
 		pos = i
 	}
 
-	return t.findDeclBeg(pos), t.findDeclEnd(pos)
+	return this.find_decl_beg(pos), this.find_decl_end(pos)
 }
 
 // return new cursor position, file without ripped part and the ripped part itself
 // variants:
 //   new-cursor, file-without-ripped-part, ripped-part
 //   old-cursor, file, nil
-func (t *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []byte) {
-	t.fset = token.NewFileSet()
-	s := new(scanner.Scanner)
-	s.Init(t.fset.AddFile("", t.fset.Base(), len(file)), file, nil, scanner.ScanComments)
-	for t.next(s) {
+func (this *tok_collection) rip_off_decl(file []byte, cursor int) (int, []byte, []byte) {
+	this.fset = token.NewFileSet()
+	var s scanner.Scanner
+	s.Init(this.fset.AddFile("", this.fset.Base(), len(file)), file, nil, scanner.ScanComments)
+	for this.next(&s) {
 	}
 
-	beg, end := t.findOutermostScope(cursor)
+	beg, end := this.find_outermost_scope(cursor)
 	if beg == -1 || end == -1 {
 		return cursor, file, nil
 	}
@@ -125,7 +128,7 @@ func (t *TokCollection) ripOffDecl(file []byte, cursor int) (int, []byte, []byte
 	return cursor - beg, newfile, ripped
 }
 
-func RipOffDecl(file []byte, cursor int) (int, []byte, []byte) {
-	tc := new(TokCollection)
-	return tc.ripOffDecl(file, cursor)
+func rip_off_decl(file []byte, cursor int) (int, []byte, []byte) {
+	var tc tok_collection
+	return tc.rip_off_decl(file, cursor)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,25 +10,38 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
-	"encoding/json"
 )
 
+func xdg_home_dir() string {
+	xdghome := os.Getenv("XDG_CONFIG_HOME")
+	if xdghome == "" {
+		xdghome = filepath.Join(os.Getenv("HOME"), ".config")
+	}
+	return xdghome
+}
+
+func config_file() string {
+	return filepath.Join(xdg_home_dir(), "gocode", "config.json")
+}
+
 //-------------------------------------------------------------------------
-// Config
+// config
 //
 // Structure represents persistent config storage of the gocode daemon. Usually
 // the config is located somewhere in ~/.config/gocode directory.
 //-------------------------------------------------------------------------
 
-var Config = struct {
+type config struct {
 	ProposeBuiltins bool   `json:"propose-builtins"`
 	LibPath         string `json:"lib-path"`
-}{
+}
+
+var g_config = config{
 	false,
 	"",
 }
 
-var boolStrings = map[string]bool{
+var g_string_to_bool = map[string]bool{
 	"t":     true,
 	"true":  true,
 	"y":     true,
@@ -42,10 +56,10 @@ var boolStrings = map[string]bool{
 	"0":     false,
 }
 
-func setValue(v reflect.Value, name, value string) {
+func set_value(v reflect.Value, value string) {
 	switch t := v; t.Kind() {
 	case reflect.Bool:
-		v, ok := boolStrings[value]
+		v, ok := g_string_to_bool[value]
 		if ok {
 			t.SetBool(v)
 		}
@@ -64,93 +78,77 @@ func setValue(v reflect.Value, name, value string) {
 	}
 }
 
-func listValue(v reflect.Value, name string, w io.Writer) {
+func list_value(v reflect.Value, name string, w io.Writer) {
 	switch t := v; t.Kind() {
 	case reflect.Bool:
-		fmt.Fprintf(w, "%s = %v\n", name, t.Bool())
+		fmt.Fprintf(w, "%s %v\n", name, t.Bool())
 	case reflect.String:
-		fmt.Fprintf(w, "%s = \"%v\"\n", name, t.String())
+		fmt.Fprintf(w, "%s \"%v\"\n", name, t.String())
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		fmt.Fprintf(w, "%s = %v\n", name, t.Int())
+		fmt.Fprintf(w, "%s %v\n", name, t.Int())
 	case reflect.Float32, reflect.Float64:
-		fmt.Fprintf(w, "%s = %v\n", name, t.Float())
+		fmt.Fprintf(w, "%s %v\n", name, t.Float())
 	}
 }
 
-func listConfig(v interface{}) string {
-	str, typ, ok := interfaceIsPtrStruct(v)
-	if !ok {
-		return ""
-	}
-
+func (this *config) list() string {
+	str, typ := this.value_and_type()
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		name := typ.Field(i).Tag.Get("json")
-		listValue(v, name, buf)
+		list_value(v, name, buf)
 	}
 	return buf.String()
 }
 
-func listOption(v interface{}, name string) string {
-	str, typ, ok := interfaceIsPtrStruct(v)
-	if !ok {
-		return ""
-	}
-
+func (this *config) list_option(name string) string {
+	str, typ := this.value_and_type()
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		nm := typ.Field(i).Tag.Get("json")
 		if nm == name {
-			listValue(v, name, buf)
+			list_value(v, name, buf)
 		}
 	}
 	return buf.String()
 }
 
-func setOption(v interface{}, name, value string) string {
-	str, typ, ok := interfaceIsPtrStruct(v)
-	if !ok {
-		return ""
-	}
-
+func (this *config) set_option(name, value string) string {
+	str, typ := this.value_and_type()
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		nm := typ.Field(i).Tag.Get("json")
 		if nm == name {
-			setValue(v, name, value)
-			listValue(v, name, buf)
+			set_value(v, value)
+			list_value(v, name, buf)
 		}
 	}
-	writeConfig(v)
+	this.write()
 	return buf.String()
+
 }
 
-func interfaceIsPtrStruct(v interface{}) (reflect.Value, reflect.Type, bool) {
-	ptr := reflect.ValueOf(v)
-	ok := ptr.Kind() == reflect.Ptr
-	if !ok {
-		return reflect.Value{}, nil, false
-	}
-
-	str := ptr.Elem()
-	if str.Kind() != reflect.Struct {
-		return reflect.Value{}, nil, false
-	}
-	typ := str.Type()
-	return str, typ, true
+func (this *config) value_and_type() (reflect.Value, reflect.Type) {
+	v := reflect.ValueOf(this).Elem()
+	return v, v.Type()
 }
 
-func writeConfig(v interface{}) error {
-	data, err := json.Marshal(v)
+func (this *config) write() error {
+	data, err := json.Marshal(this)
 	if err != nil {
 		return err
 	}
 
-	makeSureConfigDirExists()
-	f, err := os.Create(configFile())
+	// make sure config dir exists
+	dir := filepath.Join(xdg_home_dir(), "gocode")
+	if !file_exists(dir) {
+		os.MkdirAll(dir, 0755)
+	}
+
+	f, err := os.Create(config_file())
 	if err != nil {
 		return err
 	}
@@ -164,35 +162,16 @@ func writeConfig(v interface{}) error {
 	return nil
 }
 
-func readConfig(v interface{}) error {
-	data, err := ioutil.ReadFile(configFile())
+func (this *config) read() error {
+	data, err := ioutil.ReadFile(config_file())
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(data, v)
+	err = json.Unmarshal(data, this)
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func xdgHomeDir() string {
-	xdghome := os.Getenv("XDG_CONFIG_HOME")
-	if xdghome == "" {
-		xdghome = filepath.Join(os.Getenv("HOME"), ".config")
-	}
-	return xdghome
-}
-
-func makeSureConfigDirExists() {
-	dir := filepath.Join(xdgHomeDir(), "gocode")
-	if !fileExists(dir) {
-		os.MkdirAll(dir, 0755)
-	}
-}
-
-func configFile() string {
-	return filepath.Join(xdgHomeDir(), "gocode", "config.json")
 }

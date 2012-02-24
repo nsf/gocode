@@ -6,12 +6,12 @@ import (
 	"unicode/utf8"
 )
 
-type DeclApropos struct {
-	Decl    *Decl
-	Partial string
+type decl_apropos struct {
+	decl    *decl
+	partial string
 }
 
-func utf8MoveBackwards(file []byte, cursor int) int {
+func utf8_move_backwards(file []byte, cursor int) int {
 	for {
 		cursor--
 		if cursor <= 0 {
@@ -24,17 +24,17 @@ func utf8MoveBackwards(file []byte, cursor int) int {
 	return 0
 }
 
-func isIdent(r rune) bool {
+func is_ident(r rune) bool {
 	return unicode.IsDigit(r) || unicode.IsLetter(r) || r == '_'
 }
 
-func skipIdent(file []byte, cursor int) int {
+func skip_ident(file []byte, cursor int) int {
 	for {
 		letter, _ := utf8.DecodeRune(file[cursor:])
-		if !isIdent(letter) {
+		if !is_ident(letter) {
 			return cursor
 		}
-		cursor = utf8MoveBackwards(file, cursor)
+		cursor = utf8_move_backwards(file, cursor)
 		if cursor <= 0 {
 			return 0
 		}
@@ -42,14 +42,14 @@ func skipIdent(file []byte, cursor int) int {
 	return 0
 }
 
-var pairs = map[byte]byte{
+var g_bracket_pairs = map[byte]byte{
 	')': '(',
 	']': '[',
 }
 
-func skipToPair(file []byte, cursor int) int {
+func skip_to_pair(file []byte, cursor int) int {
 	right := file[cursor]
-	left := pairs[file[cursor]]
+	left := g_bracket_pairs[file[cursor]]
 	balance := 1
 	for balance != 0 {
 		cursor--
@@ -66,7 +66,7 @@ func skipToPair(file []byte, cursor int) int {
 	return cursor
 }
 
-func findExpr(file []byte) []byte {
+func find_expr(file []byte) []byte {
 	const (
 		LAST_NONE = iota
 		LAST_DOT
@@ -75,24 +75,24 @@ func findExpr(file []byte) []byte {
 	)
 	last := LAST_NONE
 	cursor := len(file)
-	cursor = utf8MoveBackwards(file, cursor)
+	cursor = utf8_move_backwards(file, cursor)
 loop:
 	for {
 		c := file[cursor]
 		letter, _ := utf8.DecodeRune(file[cursor:])
 		switch c {
 		case '.':
-			cursor = utf8MoveBackwards(file, cursor)
+			cursor = utf8_move_backwards(file, cursor)
 			last = LAST_DOT
 		case ')', ']':
 			if last == LAST_IDENT {
 				break loop
 			}
-			cursor = utf8MoveBackwards(file, skipToPair(file, cursor))
+			cursor = utf8_move_backwards(file, skip_to_pair(file, cursor))
 			last = LAST_PAREN
 		default:
-			if isIdent(letter) {
-				cursor = skipIdent(file, cursor)
+			if is_ident(letter) {
+				cursor = skip_ident(file, cursor)
 				last = LAST_IDENT
 			} else {
 				break loop
@@ -102,49 +102,49 @@ loop:
 	return file[cursor+1:]
 }
 
-func (c *AutoCompleteContext) deduceExpr(file []byte, partial string) *DeclApropos {
-	e := string(findExpr(file))
+func (c *auto_complete_context) deduce_expr(file []byte, partial string) *decl_apropos {
+	e := string(find_expr(file))
 	expr, err := parser.ParseExpr(e)
 	if err != nil {
 		return nil
 	}
-	typedecl := exprToDecl(expr, c.current.scope)
+	typedecl := expr_to_decl(expr, c.current.scope)
 	if typedecl != nil {
-		return &DeclApropos{typedecl, partial}
+		return &decl_apropos{typedecl, partial}
 	}
 	return nil
 }
 
-func (c *AutoCompleteContext) deduceDecl(file []byte, cursor int) *DeclApropos {
+func (c *auto_complete_context) deduce_decl(file []byte, cursor int) *decl_apropos {
 	orig := cursor
 
 	if cursor < 0 {
 		return nil
 	}
 	if cursor == 0 {
-		return &DeclApropos{nil, ""}
+		return &decl_apropos{nil, ""}
 	}
 
 	// figure out what is just before the cursor
-	cursor = utf8MoveBackwards(file, cursor)
+	cursor = utf8_move_backwards(file, cursor)
 	if file[cursor] == '.' {
 		// we're '<whatever>.'
 		// figure out decl, Parital is ""
-		return c.deduceExpr(file[:cursor], "")
+		return c.deduce_expr(file[:cursor], "")
 	} else {
 		letter, _ := utf8.DecodeRune(file[cursor:])
-		if isIdent(letter) {
+		if is_ident(letter) {
 			// we're '<whatever>.<ident>'
 			// parse <ident> as Partial and figure out decl
-			cursor = skipIdent(file, cursor)
+			cursor = skip_ident(file, cursor)
 			partial := string(file[cursor+1 : orig])
 			if file[cursor] == '.' {
-				return c.deduceExpr(file[:cursor], partial)
+				return c.deduce_expr(file[:cursor], partial)
 			} else {
-				return &DeclApropos{nil, partial}
+				return &decl_apropos{nil, partial}
 			}
 		}
 	}
 
-	return &DeclApropos{nil, ""}
+	return &decl_apropos{nil, ""}
 }

@@ -15,16 +15,16 @@ import (
 )
 
 var (
-	server = flag.Bool("s", false, "run a server instead of a client")
-	format = flag.String("f", "nice", "output format (vim | emacs | nice | csv | json)")
-	input  = flag.String("in", "", "use this file instead of stdin input")
-	sock   = CreateSockFlag("sock", "socket type (unix | tcp)")
-	addr   = flag.String("addr", "localhost:37373", "address for tcp socket")
+	g_is_server = flag.Bool("s", false, "run a server instead of a client")
+	g_format    = flag.String("f", "nice", "output format (vim | emacs | nice | csv | json)")
+	g_input     = flag.String("in", "", "use this file instead of stdin input")
+	g_sock      = create_sock_flag("sock", "socket type (unix | tcp)")
+	g_addr      = flag.String("addr", "localhost:37373", "address for tcp socket")
 )
 
 // TODO: find a better place for this function
 // returns truncated 'data' and amount of bytes skipped (for cursor pos adjustment)
-func filterOutShebang(data []byte) ([]byte, int) {
+func filter_out_shebang(data []byte) ([]byte, int) {
 	if len(data) > 2 && data[0] == '#' && data[1] == '!' {
 		newline := bytes.Index(data, []byte("\n"))
 		if newline != -1 && len(data) > newline+1 {
@@ -35,25 +35,25 @@ func filterOutShebang(data []byte) ([]byte, int) {
 }
 
 //-------------------------------------------------------------------------
-// Formatter interfaces
+// formatter interfaces
 //-------------------------------------------------------------------------
 
-type Formatter interface {
-	WriteEmpty()
-	WriteCandidates(names, types, classes []string, num int)
+type formatter interface {
+	write_empty()
+	write_candidates(names, types, classes []string, num int)
 }
 
 //-------------------------------------------------------------------------
-// NiceFormatter (just for testing, simple textual output)
+// nice_formatter (just for testing, simple textual output)
 //-------------------------------------------------------------------------
 
-type NiceFormatter struct{}
+type nice_formatter struct{}
 
-func (*NiceFormatter) WriteEmpty() {
+func (*nice_formatter) write_empty() {
 	fmt.Printf("Nothing to complete.\n")
 }
 
-func (*NiceFormatter) WriteCandidates(names, types, classes []string, num int) {
+func (*nice_formatter) write_candidates(names, types, classes []string, num int) {
 	fmt.Printf("Found %d candidates:\n", len(names))
 	for i := 0; i < len(names); i++ {
 		abbr := fmt.Sprintf("%s %s %s", classes[i], names[i], types[i])
@@ -65,16 +65,16 @@ func (*NiceFormatter) WriteCandidates(names, types, classes []string, num int) {
 }
 
 //-------------------------------------------------------------------------
-// VimFormatter
+// vim_formatter
 //-------------------------------------------------------------------------
 
-type VimFormatter struct{}
+type vim_formatter struct{}
 
-func (*VimFormatter) WriteEmpty() {
+func (*vim_formatter) write_empty() {
 	fmt.Print("[0, []]")
 }
 
-func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
+func (*vim_formatter) write_candidates(names, types, classes []string, num int) {
 	fmt.Printf("[%d, [", num)
 	for i := 0; i < len(names); i++ {
 		word := names[i]
@@ -99,15 +99,15 @@ func (*VimFormatter) WriteCandidates(names, types, classes []string, num int) {
 }
 
 //-------------------------------------------------------------------------
-// EmacsFormatter
+// emacs_formatter
 //-------------------------------------------------------------------------
 
-type EmacsFormatter struct{}
+type emacs_formatter struct{}
 
-func (*EmacsFormatter) WriteEmpty() {
+func (*emacs_formatter) write_empty() {
 }
 
-func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) {
+func (*emacs_formatter) write_candidates(names, types, classes []string, num int) {
 	for i := 0; i < len(names); i++ {
 		name := names[i]
 		hint := classes[i] + " " + types[i]
@@ -119,31 +119,31 @@ func (*EmacsFormatter) WriteCandidates(names, types, classes []string, num int) 
 }
 
 //-------------------------------------------------------------------------
-// CSVFormatter
+// csv_formatter
 //-------------------------------------------------------------------------
 
-type CSVFormatter struct{}
+type csv_formatter struct{}
 
-func (*CSVFormatter) WriteEmpty() {
+func (*csv_formatter) write_empty() {
 }
 
-func (*CSVFormatter) WriteCandidates(names, types, classes []string, num int) {
+func (*csv_formatter) write_candidates(names, types, classes []string, num int) {
 	for i := 0; i < len(names); i++ {
 		fmt.Printf("%s,,%s,,%s\n", classes[i], names[i], types[i])
 	}
 }
 
 //-------------------------------------------------------------------------
-// JSONFormatter
+// json_formatter
 //-------------------------------------------------------------------------
 
-type JSONFormatter struct{}
+type json_formatter struct{}
 
-func (*JSONFormatter) WriteEmpty() {
+func (*json_formatter) write_empty() {
 	fmt.Print("[]")
 }
 
-func (*JSONFormatter) WriteCandidates(names, types, classes []string, num int) {
+func (*json_formatter) write_candidates(names, types, classes []string, num int) {
 	fmt.Printf(`[%d, [`, num)
 	for i := 0; i < len(names); i++ {
 		fmt.Printf(`{"class": "%s", "name": "%s", "type": "%s"}`,
@@ -157,31 +157,31 @@ func (*JSONFormatter) WriteCandidates(names, types, classes []string, num int) {
 
 //-------------------------------------------------------------------------
 
-func getFormatter() Formatter {
-	switch *format {
+func get_formatter() formatter {
+	switch *g_format {
 	case "vim":
-		return new(VimFormatter)
+		return new(vim_formatter)
 	case "emacs":
-		return new(EmacsFormatter)
+		return new(emacs_formatter)
 	case "nice":
-		return new(NiceFormatter)
+		return new(nice_formatter)
 	case "csv":
-		return new(CSVFormatter)
+		return new(csv_formatter)
 	case "json":
-		return new(JSONFormatter)
+		return new(json_formatter)
 	}
-	return new(VimFormatter)
+	return new(vim_formatter)
 }
 
-func getSocketFilename() string {
+func get_socket_filename() string {
 	user := os.Getenv("USER")
 	if user == "" {
 		user = "all"
 	}
-	return fmt.Sprintf("%s/acrserver.%s", os.TempDir(), user)
+	return fmt.Sprintf("%s/gocode-daemon.%s", os.TempDir(), user)
 }
 
-func fileExists(filename string) bool {
+func file_exists(filename string) bool {
 	_, err := os.Stat(filename)
 	if err != nil {
 		return false
@@ -189,40 +189,39 @@ func fileExists(filename string) bool {
 	return true
 }
 
-func serverFunc() int {
-	readConfig(&Config)
+func do_server() int {
+	g_config.read()
 
-	addr := *addr
-	if *sock == "unix" {
-		addr = getSocketFilename()
-		if fileExists(addr) {
+	addr := *g_addr
+	if *g_sock == "unix" {
+		addr = get_socket_filename()
+		if file_exists(addr) {
 			fmt.Printf("unix socket: '%s' already exists\n", addr)
 			return 1
 		}
 	}
-	daemon = NewDaemon(*sock, addr)
-	if *sock == "unix" {
+	g_daemon = new_daemon(*g_sock, addr)
+	if *g_sock == "unix" {
 		// cleanup unix socket file
 		defer os.Remove(addr)
 	}
 
-	rpcremote := new(RPCRemote)
-	rpc.Register(rpcremote)
+	rpc.Register(new(RPC))
 
-	daemon.acr.Loop()
+	g_daemon.loop()
 	return 0
 }
 
-func cmdStatus(c *rpc.Client) {
-	fmt.Printf("%s\n", Client_Status(c, 0))
+func cmd_status(c *rpc.Client) {
+	fmt.Printf("%s\n", client_status(c, 0))
 }
 
-func cmdAutoComplete(c *rpc.Client) {
+func cmd_auto_complete(c *rpc.Client) {
 	var file []byte
 	var err error
 
-	if *input != "" {
-		file, err = ioutil.ReadFile(*input)
+	if *g_input != "" {
+		file, err = ioutil.ReadFile(*g_input)
 	} else {
 		file, err = ioutil.ReadAll(os.Stdin)
 	}
@@ -232,9 +231,9 @@ func cmdAutoComplete(c *rpc.Client) {
 	}
 
 	var skipped int
-	file, skipped = filterOutShebang(file)
+	file, skipped = filter_out_shebang(file)
 
-	filename := *input
+	filename := *g_input
 	cursor := -1
 
 	offset := ""
@@ -249,7 +248,7 @@ func cmdAutoComplete(c *rpc.Client) {
 	if offset != "" {
 		if offset[0] == 'c' || offset[0] == 'C' {
 			cursor, _ = strconv.Atoi(offset[1:])
-			cursor = charToByteOffset(file, cursor)
+			cursor = char_to_byte_offset(file, cursor)
 		} else {
 			cursor, _ = strconv.Atoi(offset)
 		}
@@ -261,37 +260,37 @@ func cmdAutoComplete(c *rpc.Client) {
 		filename = filepath.Join(cwd, filename)
 	}
 
-	formatter := getFormatter()
-	names, types, classes, partial := Client_AutoComplete(c, file, filename, cursor)
+	formatter := get_formatter()
+	names, types, classes, partial := client_auto_complete(c, file, filename, cursor)
 	if names == nil {
-		formatter.WriteEmpty()
+		formatter.write_empty()
 		return
 	}
-	formatter.WriteCandidates(names, types, classes, partial)
+	formatter.write_candidates(names, types, classes, partial)
 }
 
-func cmdClose(c *rpc.Client) {
-	Client_Close(c, 0)
+func cmd_close(c *rpc.Client) {
+	client_close(c, 0)
 }
 
-func cmdDropCache(c *rpc.Client) {
-	Client_DropCache(c, 0)
+func cmd_drop_cache(c *rpc.Client) {
+	client_drop_cache(c, 0)
 }
 
-func cmdSet(c *rpc.Client) {
+func cmd_set(c *rpc.Client) {
 	switch flag.NArg() {
 	case 1:
-		fmt.Print(Client_Set(c, "\x00", "\x00"))
+		fmt.Print(client_set(c, "\x00", "\x00"))
 	case 2:
-		fmt.Print(Client_Set(c, flag.Arg(1), "\x00"))
+		fmt.Print(client_set(c, flag.Arg(1), "\x00"))
 	case 3:
-		fmt.Print(Client_Set(c, flag.Arg(1), flag.Arg(2)))
+		fmt.Print(client_set(c, flag.Arg(1), flag.Arg(2)))
 	}
 }
 
-func tryRunServer() error {
-	path := GetExecutableFileName()
-	args := []string{os.Args[0], "-s", "-sock", *sock, "-addr", *addr}
+func try_run_server() error {
+	path := get_executable_filename()
+	args := []string{os.Args[0], "-s", "-sock", *g_sock, "-addr", *g_addr}
 	cwd, _ := os.Getwd()
 	procattr := os.ProcAttr{Dir: cwd, Env: os.Environ(), Files: []*os.File{nil, nil, nil}}
 	p, err := os.StartProcess(path, args, &procattr)
@@ -302,7 +301,7 @@ func tryRunServer() error {
 	return p.Release()
 }
 
-func tryToConnect(network, address string) (client *rpc.Client, err error) {
+func try_to_connect(network, address string) (client *rpc.Client, err error) {
 	t := 0
 	for {
 		client, err = rpc.Dial(network, address)
@@ -317,25 +316,25 @@ func tryToConnect(network, address string) (client *rpc.Client, err error) {
 	return
 }
 
-func clientFunc() int {
-	addr := *addr
-	if *sock == "unix" {
-		addr = getSocketFilename()
+func do_client() int {
+	addr := *g_addr
+	if *g_sock == "unix" {
+		addr = get_socket_filename()
 	}
 
 	// client
-	client, err := rpc.Dial(*sock, addr)
+	client, err := rpc.Dial(*g_sock, addr)
 	if err != nil {
-		if *sock == "unix" && fileExists(addr) {
+		if *g_sock == "unix" && file_exists(addr) {
 			os.Remove(addr)
 		}
 
-		err = tryRunServer()
+		err = try_run_server()
 		if err != nil {
 			fmt.Printf("%s\n", err.Error())
 			return 1
 		}
-		client, err = tryToConnect(*sock, addr)
+		client, err = try_to_connect(*g_sock, addr)
 		if err != nil {
 			fmt.Printf("%s\n", err.Error())
 			return 1
@@ -346,37 +345,37 @@ func clientFunc() int {
 	if flag.NArg() > 0 {
 		switch flag.Arg(0) {
 		case "autocomplete":
-			cmdAutoComplete(client)
+			cmd_auto_complete(client)
 		case "close":
-			cmdClose(client)
+			cmd_close(client)
 		case "status":
-			cmdStatus(client)
+			cmd_status(client)
 		case "drop-cache":
-			cmdDropCache(client)
+			cmd_drop_cache(client)
 		case "set":
-			cmdSet(client)
+			cmd_set(client)
 		}
 	}
 	return 0
 }
 
-func charToByteOffset(s []byte, offsetC int) (offsetB int) {
-	for offsetB = 0; offsetC > 0 && offsetB < len(s); offsetB++ {
-		if utf8.RuneStart(s[offsetB]) {
-			offsetC--
+func char_to_byte_offset(s []byte, offset_c int) (offset_b int) {
+	for offset_b = 0; offset_c > 0 && offset_b < len(s); offset_b++ {
+		if utf8.RuneStart(s[offset_b]) {
+			offset_c--
 		}
 	}
-	return offsetB
+	return offset_b
 }
 
 func main() {
 	flag.Parse()
 
 	var retval int
-	if *server {
-		retval = serverFunc()
+	if *g_is_server {
+		retval = do_server()
 	} else {
-		retval = clientFunc()
+		retval = do_client()
 	}
 	os.Exit(retval)
 }

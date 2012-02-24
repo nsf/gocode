@@ -13,35 +13,35 @@ import (
 )
 
 //-------------------------------------------------------------------------
-// PackageImport
+// package_import
 //
 // Contains import information from a single file
 //-------------------------------------------------------------------------
 
-type PackageImport struct {
-	Alias string
-	Path  string
+type package_import struct {
+	alias string
+	path  string
 }
 
-type PackageImports []PackageImport
+type package_imports []package_import
 
-func NewPackageImports(filename string, decls []ast.Decl) PackageImports {
-	mi := make(PackageImports, 0, 16)
-	mi.appendImports(filename, decls)
+func new_package_imports(filename string, decls []ast.Decl) package_imports {
+	mi := make(package_imports, 0, 16)
+	mi.append_imports(filename, decls)
 	return mi
 }
 
 // Parses import declarations until the first non-import declaration and fills
 // 'pi' array with import information.
-func (pi *PackageImports) appendImports(filename string, decls []ast.Decl) {
+func (pi *package_imports) append_imports(filename string, decls []ast.Decl) {
 	for _, decl := range decls {
 		if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.IMPORT {
 			for _, spec := range gd.Specs {
 				imp := spec.(*ast.ImportSpec)
-				path, alias := pathAndAlias(imp)
-				path, ok := absPathForPackage(filename, path)
+				path, alias := path_and_alias(imp)
+				path, ok := abs_path_for_package(filename, path)
 				if ok {
-					pi.appendImport(alias, path)
+					pi.append_import(alias, path)
 				}
 			}
 		} else {
@@ -51,45 +51,45 @@ func (pi *PackageImports) appendImports(filename string, decls []ast.Decl) {
 }
 
 // Simple vector-like append.
-func (pi *PackageImports) appendImport(alias, path string) {
+func (pi *package_imports) append_import(alias, path string) {
 	if alias == "_" {
 		return
 	}
 
-	*pi = append(*pi, PackageImport{alias, path})
+	*pi = append(*pi, package_import{alias, path})
 }
 
 //-------------------------------------------------------------------------
-// DeclFileCache
+// decl_file_cache
 //
 // Contains cache for top-level declarations of a file as well as its
 // contents, AST and import information. Used in both autocompletion
 // and refactoring utilities.
 //-------------------------------------------------------------------------
 
-type DeclFileCache struct {
+type decl_file_cache struct {
 	name  string // file name
 	mtime int64  // last modification time
 
-	Decls     map[string]*Decl // top-level declarations
-	Error     error            // last error
-	Packages  PackageImports   // import information
-	FileScope *Scope
+	decls     map[string]*decl // top-level declarations
+	error     error            // last error
+	packages  package_imports  // import information
+	filescope *scope
 
 	fset *token.FileSet
 }
 
-func NewDeclFileCache(name string) *DeclFileCache {
-	f := new(DeclFileCache)
+func new_decl_file_cache(name string) *decl_file_cache {
+	f := new(decl_file_cache)
 	f.name = name
 	return f
 }
 
-func (f *DeclFileCache) update() {
+func (f *decl_file_cache) update() {
 	stat, err := os.Stat(f.name)
 	if err != nil {
-		f.Decls = nil
-		f.Error = err
+		f.decls = nil
+		f.error = err
 		f.fset = nil
 		return
 	}
@@ -100,69 +100,69 @@ func (f *DeclFileCache) update() {
 	}
 
 	f.mtime = statmtime
-	f.readFile(f.name)
+	f.read_file(f.name)
 }
 
-func (f *DeclFileCache) readFile(filename string) {
+func (f *decl_file_cache) read_file(filename string) {
 	var data []byte
-	data, f.Error = ioutil.ReadFile(f.name)
-	if f.Error != nil {
+	data, f.error = ioutil.ReadFile(f.name)
+	if f.error != nil {
 		return
 	}
-	data, _ = filterOutShebang(data)
+	data, _ = filter_out_shebang(data)
 
-	f.processData(data)
+	f.process_data(data)
 }
 
-func (f *DeclFileCache) processData(data []byte) {
+func (f *decl_file_cache) process_data(data []byte) {
 	var file *ast.File
 	f.fset = token.NewFileSet()
-	file, f.Error = parser.ParseFile(f.fset, "", data, 0)
-	f.FileScope = NewScope(nil)
+	file, f.error = parser.ParseFile(f.fset, "", data, 0)
+	f.filescope = new_scope(nil)
 	for _, d := range file.Decls {
-		anonymifyAst(d, 0, f.FileScope)
+		anonymify_ast(d, 0, f.filescope)
 	}
-	f.Packages = NewPackageImports(f.name, file.Decls)
-	f.Decls = make(map[string]*Decl, len(file.Decls))
+	f.packages = new_package_imports(f.name, file.Decls)
+	f.decls = make(map[string]*decl, len(file.Decls))
 	for _, decl := range file.Decls {
-		appendToTopDecls(f.Decls, decl, f.FileScope)
+		append_to_top_decls(f.decls, decl, f.filescope)
 	}
 }
 
-func appendToTopDecls(decls map[string]*Decl, decl ast.Decl, scope *Scope) {
-	foreachDecl(decl, func(data *foreachDeclStruct) {
-		class := astDeclClass(data.decl)
+func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
+	foreach_decl(decl, func(data *foreach_decl_struct) {
+		class := ast_decl_class(data.decl)
 		for i, name := range data.names {
-			typ, v, vi := data.typeValueIndex(i, 0)
+			typ, v, vi := data.type_value_index(i, 0)
 
-			d := NewDecl2(name.Name, class, 0, typ, v, vi, scope)
+			d := new_decl_full(name.Name, class, 0, typ, v, vi, scope)
 			if d == nil {
 				return
 			}
 
-			methodof := MethodOf(decl)
+			methodof := method_of(decl)
 			if methodof != "" {
 				decl, ok := decls[methodof]
 				if ok {
-					decl.AddChild(d)
+					decl.add_child(d)
 				} else {
-					decl = NewDecl(methodof, DECL_METHODS_STUB, scope)
+					decl = new_decl(methodof, decl_methods_stub, scope)
 					decls[methodof] = decl
-					decl.AddChild(d)
+					decl.add_child(d)
 				}
 			} else {
-				decl, ok := decls[d.Name]
+				decl, ok := decls[d.name]
 				if ok {
-					decl.ExpandOrReplace(d)
+					decl.expand_or_replace(d)
 				} else {
-					decls[d.Name] = d
+					decls[d.name] = d
 				}
 			}
 		}
 	})
 }
 
-func absPathForPackage(filename, p string) (string, bool) {
+func abs_path_for_package(filename, p string) (string, bool) {
 	dir, _ := filepath.Split(filename)
 	if len(p) == 0 {
 		return "", false
@@ -170,14 +170,14 @@ func absPathForPackage(filename, p string) (string, bool) {
 	if p[0] == '.' {
 		return fmt.Sprintf("%s.a", filepath.Join(dir, p)), true
 	}
-	pkg, ok := findGoDagPackage(p, dir)
+	pkg, ok := find_go_dag_package(p, dir)
 	if ok {
 		return pkg, true
 	}
-	return findGlobalFile(p)
+	return find_global_file(p)
 }
 
-func pathAndAlias(imp *ast.ImportSpec) (string, string) {
+func path_and_alias(imp *ast.ImportSpec) (string, string) {
 	path := ""
 	if imp.Path != nil {
 		path = string(imp.Path.Value)
@@ -190,17 +190,17 @@ func pathAndAlias(imp *ast.ImportSpec) (string, string) {
 	return path, alias
 }
 
-func findGoDagPackage(imp, filedir string) (string, bool) {
+func find_go_dag_package(imp, filedir string) (string, bool) {
 	// Support godag directory structure
 	dir, pkg := filepath.Split(imp)
 	godag_pkg := filepath.Join(filedir, "..", dir, "_obj", pkg+".a")
-	if fileExists(godag_pkg) {
+	if file_exists(godag_pkg) {
 		return godag_pkg, true
 	}
 	return "", false
 }
 
-func findGlobalFile(imp string) (string, bool) {
+func find_global_file(imp string) (string, bool) {
 	// gocode synthetically generates the builtin package
 	// "unsafe", since the "unsafe.a" package doesn't really exist.
 	// Thus, when the user request for the package "unsafe" we
@@ -213,10 +213,10 @@ func findGlobalFile(imp string) (string, bool) {
 	pkgfile := fmt.Sprintf("%s.a", imp)
 
 	// if lib-path is defined, use it
-	if Config.LibPath != "" {
-		for _, p := range filepath.SplitList(Config.LibPath) {
+	if g_config.LibPath != "" {
+		for _, p := range filepath.SplitList(g_config.LibPath) {
 			pkg_path := filepath.Join(p, pkgfile)
-			if fileExists(pkg_path) {
+			if file_exists(pkg_path) {
 				return pkg_path, true
 			}
 		}
@@ -243,16 +243,16 @@ func findGlobalFile(imp string) (string, bool) {
 	if gopath != "" {
 		for _, p := range filepath.SplitList(gopath) {
 			gopath_pkg := filepath.Join(p, pkgpath)
-			if fileExists(gopath_pkg) {
+			if file_exists(gopath_pkg) {
 				return gopath_pkg, true
 			}
 		}
 	}
 	goroot_pkg := filepath.Join(goroot, pkgpath)
-	return goroot_pkg, fileExists(goroot_pkg)
+	return goroot_pkg, file_exists(goroot_pkg)
 }
 
-func packageName(file *ast.File) string {
+func package_name(file *ast.File) string {
 	if file.Name != nil {
 		return file.Name.Name
 	}
@@ -260,35 +260,35 @@ func packageName(file *ast.File) string {
 }
 
 //-------------------------------------------------------------------------
-// DeclCache
+// decl_cache
 //
 // Thread-safe collection of DeclFileCache entities.
 //-------------------------------------------------------------------------
 
-type DeclCache struct {
-	cache map[string]*DeclFileCache
+type decl_cache struct {
+	cache map[string]*decl_file_cache
 	sync.Mutex
 }
 
-func NewDeclCache() *DeclCache {
-	c := new(DeclCache)
-	c.cache = make(map[string]*DeclFileCache)
+func new_decl_cache() *decl_cache {
+	c := new(decl_cache)
+	c.cache = make(map[string]*decl_file_cache)
 	return c
 }
 
-func (c *DeclCache) get(filename string) *DeclFileCache {
+func (c *decl_cache) get(filename string) *decl_file_cache {
 	c.Lock()
 	defer c.Unlock()
 
 	f, ok := c.cache[filename]
 	if !ok {
-		f = NewDeclFileCache(filename)
+		f = new_decl_file_cache(filename)
 		c.cache[filename] = f
 	}
 	return f
 }
 
-func (c *DeclCache) Get(filename string) *DeclFileCache {
+func (c *decl_cache) get_and_update(filename string) *decl_file_cache {
 	f := c.get(filename)
 	f.update()
 	return f

@@ -1,35 +1,35 @@
 package main
 
 //-------------------------------------------------------------------------
-// Scope
+// scope
 //-------------------------------------------------------------------------
 
-type Scope struct {
-	parent   *Scope // nil for universe scope
-	entities map[string]*Decl
+type scope struct {
+	parent   *scope // nil for universe scope
+	entities map[string]*decl
 }
 
-func NewScope(outer *Scope) *Scope {
-	s := new(Scope)
+func new_scope(outer *scope) *scope {
+	s := new(scope)
 	s.parent = outer
-	s.entities = make(map[string]*Decl)
+	s.entities = make(map[string]*decl)
 	return s
 }
 
 // returns: new, prev
-func AdvanceScope(s *Scope) (*Scope, *Scope) {
+func advance_scope(s *scope) (*scope, *scope) {
 	if len(s.entities) == 0 {
 		return s, s.parent
 	}
-	return NewScope(s), s
+	return new_scope(s), s
 }
 
 // adds declaration or returns an existing one
-func (s *Scope) addNamedDecl(d *Decl) *Decl {
-	return s.addDecl(d.Name, d)
+func (s *scope) add_named_decl(d *decl) *decl {
+	return s.add_decl(d.name, d)
 }
 
-func (s *Scope) addDecl(name string, d *Decl) *Decl {
+func (s *scope) add_decl(name string, d *decl) *decl {
 	decl, ok := s.entities[name]
 	if !ok {
 		s.entities[name] = d
@@ -38,22 +38,22 @@ func (s *Scope) addDecl(name string, d *Decl) *Decl {
 	return decl
 }
 
-func (s *Scope) replaceDecl(name string, d *Decl) {
+func (s *scope) replace_decl(name string, d *decl) {
 	s.entities[name] = d
 }
 
-func (s *Scope) mergeDecl(d *Decl) {
-	decl, ok := s.entities[d.Name]
+func (s *scope) merge_decl(d *decl) {
+	decl, ok := s.entities[d.name]
 	if !ok {
-		s.entities[d.Name] = d
+		s.entities[d.name] = d
 	} else {
-		decl := decl.DeepCopy()
-		decl.ExpandOrReplace(d)
-		s.entities[d.Name] = decl
+		decl := decl.deep_copy()
+		decl.expand_or_replace(d)
+		s.entities[d.name] = decl
 	}
 }
 
-func (s *Scope) lookup(name string) *Decl {
+func (s *scope) lookup(name string) *decl {
 	decl, ok := s.entities[name]
 	if !ok {
 		if s.parent != nil {

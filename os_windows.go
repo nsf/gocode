@@ -8,12 +8,12 @@ import (
 	"unsafe"
 )
 
-func CreateSockFlag(name, desc string) *string {
+func create_sock_flag(name, desc string) *string {
 	return flag.String(name, "tcp", desc)
 }
 
 // Full path of the current executable
-func GetExecutableFileName() string {
+func get_executable_filename() string {
 	kernel32, _ := syscall.LoadLibrary("kernel32.dll")
 	defer syscall.FreeLibrary(kernel32)
 	b := make([]uint16, syscall.MAX_PATH)

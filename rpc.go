@@ -6,129 +6,129 @@ import (
 	"net/rpc"
 )
 
-type RPCRemote struct {
+type RPC struct {
 }
 
-// wrapper for: Server_AutoComplete
+// wrapper for: server_auto_complete
 
-type Args_AutoComplete struct {
+type Args_auto_complete struct {
 	Arg0 []byte
 	Arg1 string
 	Arg2 int
 }
-type Reply_AutoComplete struct {
+type Reply_auto_complete struct {
 	Arg0, Arg1, Arg2 []string
 	Arg3             int
 }
 
-func (r *RPCRemote) RPCServer_AutoComplete(args *Args_AutoComplete, reply *Reply_AutoComplete) error {
-	reply.Arg0, reply.Arg1, reply.Arg2, reply.Arg3 = Server_AutoComplete(args.Arg0, args.Arg1, args.Arg2)
+func (r *RPC) RPC_auto_complete(args *Args_auto_complete, reply *Reply_auto_complete) error {
+	reply.Arg0, reply.Arg1, reply.Arg2, reply.Arg3 = server_auto_complete(args.Arg0, args.Arg1, args.Arg2)
 	return nil
 }
-func Client_AutoComplete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int) (a, b, c []string, d int) {
-	var args Args_AutoComplete
-	var reply Reply_AutoComplete
+func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int) (a, b, c []string, d int) {
+	var args Args_auto_complete
+	var reply Reply_auto_complete
 	args.Arg0 = Arg0
 	args.Arg1 = Arg1
 	args.Arg2 = Arg2
-	err := cli.Call("RPCRemote.RPCServer_AutoComplete", &args, &reply)
+	err := cli.Call("RPC.RPC_auto_complete", &args, &reply)
 	if err != nil {
 		panic(err)
 	}
 	return reply.Arg0, reply.Arg1, reply.Arg2, reply.Arg3
 }
 
-// wrapper for: Server_Close
+// wrapper for: server_close
 
-type Args_Close struct {
+type Args_close struct {
 	Arg0 int
 }
-type Reply_Close struct {
+type Reply_close struct {
 	Arg0 int
 }
 
-func (r *RPCRemote) RPCServer_Close(args *Args_Close, reply *Reply_Close) error {
-	reply.Arg0 = Server_Close(args.Arg0)
+func (r *RPC) RPC_close(args *Args_close, reply *Reply_close) error {
+	reply.Arg0 = server_close(args.Arg0)
 	return nil
 }
-func Client_Close(cli *rpc.Client, Arg0 int) int {
-	var args Args_Close
-	var reply Reply_Close
+func client_close(cli *rpc.Client, Arg0 int) int {
+	var args Args_close
+	var reply Reply_close
 	args.Arg0 = Arg0
-	err := cli.Call("RPCRemote.RPCServer_Close", &args, &reply)
+	err := cli.Call("RPC.RPC_close", &args, &reply)
 	if err != nil {
 		panic(err)
 	}
 	return reply.Arg0
 }
 
-// wrapper for: Server_Status
+// wrapper for: server_status
 
-type Args_Status struct {
+type Args_status struct {
 	Arg0 int
 }
-type Reply_Status struct {
+type Reply_status struct {
 	Arg0 string
 }
 
-func (r *RPCRemote) RPCServer_Status(args *Args_Status, reply *Reply_Status) error {
-	reply.Arg0 = Server_Status(args.Arg0)
+func (r *RPC) RPC_status(args *Args_status, reply *Reply_status) error {
+	reply.Arg0 = server_status(args.Arg0)
 	return nil
 }
-func Client_Status(cli *rpc.Client, Arg0 int) string {
-	var args Args_Status
-	var reply Reply_Status
+func client_status(cli *rpc.Client, Arg0 int) string {
+	var args Args_status
+	var reply Reply_status
 	args.Arg0 = Arg0
-	err := cli.Call("RPCRemote.RPCServer_Status", &args, &reply)
+	err := cli.Call("RPC.RPC_status", &args, &reply)
 	if err != nil {
 		panic(err)
 	}
 	return reply.Arg0
 }
 
-// wrapper for: Server_DropCache
+// wrapper for: server_drop_cache
 
-type Args_DropCache struct {
+type Args_drop_cache struct {
 	Arg0 int
 }
-type Reply_DropCache struct {
+type Reply_drop_cache struct {
 	Arg0 int
 }
 
-func (r *RPCRemote) RPCServer_DropCache(args *Args_DropCache, reply *Reply_DropCache) error {
-	reply.Arg0 = Server_DropCache(args.Arg0)
+func (r *RPC) RPC_drop_cache(args *Args_drop_cache, reply *Reply_drop_cache) error {
+	reply.Arg0 = server_drop_cache(args.Arg0)
 	return nil
 }
-func Client_DropCache(cli *rpc.Client, Arg0 int) int {
-	var args Args_DropCache
-	var reply Reply_DropCache
+func client_drop_cache(cli *rpc.Client, Arg0 int) int {
+	var args Args_drop_cache
+	var reply Reply_drop_cache
 	args.Arg0 = Arg0
-	err := cli.Call("RPCRemote.RPCServer_DropCache", &args, &reply)
+	err := cli.Call("RPC.RPC_drop_cache", &args, &reply)
 	if err != nil {
 		panic(err)
 	}
 	return reply.Arg0
 }
 
-// wrapper for: Server_Set
+// wrapper for: server_set
 
-type Args_Set struct {
+type Args_set struct {
 	Arg0, Arg1 string
 }
-type Reply_Set struct {
+type Reply_set struct {
 	Arg0 string
 }
 
-func (r *RPCRemote) RPCServer_Set(args *Args_Set, reply *Reply_Set) error {
-	reply.Arg0 = Server_Set(args.Arg0, args.Arg1)
+func (r *RPC) RPC_set(args *Args_set, reply *Reply_set) error {
+	reply.Arg0 = server_set(args.Arg0, args.Arg1)
 	return nil
 }
-func Client_Set(cli *rpc.Client, Arg0, Arg1 string) string {
-	var args Args_Set
-	var reply Reply_Set
+func client_set(cli *rpc.Client, Arg0, Arg1 string) string {
+	var args Args_set
+	var reply Reply_set
 	args.Arg0 = Arg0
 	args.Arg1 = Arg1
-	err := cli.Call("RPCRemote.RPCServer_Set", &args, &reply)
+	err := cli.Call("RPC.RPC_set", &args, &reply)
 	if err != nil {
 		panic(err)
 	}

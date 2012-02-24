@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"bytes"
 )
 
-func parseDeclList(fset *token.FileSet, data []byte) ([]ast.Decl, error) {
+func parse_decl_list(fset *token.FileSet, data []byte) ([]ast.Decl, error) {
 	var buf bytes.Buffer
 	buf.WriteString("package p;")
 	buf.Write(data)
@@ -19,303 +19,303 @@ func parseDeclList(fset *token.FileSet, data []byte) ([]ast.Decl, error) {
 }
 
 //-------------------------------------------------------------------------
-// AutoCompleteFile
+// auto_complete_file
 //-------------------------------------------------------------------------
 
-type AutoCompleteFile struct {
-	name        string
-	packageName string
+type auto_complete_file struct {
+	name         string
+	package_name string
 
-	decls     map[string]*Decl
-	packages  PackageImports
-	filescope *Scope
-	scope     *Scope
+	decls     map[string]*decl
+	packages  package_imports
+	filescope *scope
+	scope     *scope
 
 	cursor int // for current file buffer only
 	fset   *token.FileSet
 }
 
-func NewAutoCompleteFile(name string) *AutoCompleteFile {
-	p := new(AutoCompleteFile)
+func new_auto_complete_file(name string) *auto_complete_file {
+	p := new(auto_complete_file)
 	p.name = name
 	p.cursor = -1
 	p.fset = token.NewFileSet()
 	return p
 }
 
-func (f *AutoCompleteFile) offset(p token.Pos) int {
+func (f *auto_complete_file) offset(p token.Pos) int {
 	const fixlen = len("package p;")
 	return f.fset.Position(p).Offset - fixlen
 }
 
 // this one is used for current file buffer exclusively
-func (f *AutoCompleteFile) processData(data []byte) {
-	cur, filedata, block := RipOffDecl(data, f.cursor)
+func (f *auto_complete_file) process_data(data []byte) {
+	cur, filedata, block := rip_off_decl(data, f.cursor)
 	file, _ := parser.ParseFile(f.fset, "", filedata, 0)
-	f.packageName = packageName(file)
+	f.package_name = package_name(file)
 
-	f.decls = make(map[string]*Decl)
-	f.packages = NewPackageImports(f.name, file.Decls)
-	f.filescope = NewScope(nil)
+	f.decls = make(map[string]*decl)
+	f.packages = new_package_imports(f.name, file.Decls)
+	f.filescope = new_scope(nil)
 	f.scope = f.filescope
 
 	for _, d := range file.Decls {
-		anonymifyAst(d, 0, f.filescope)
+		anonymify_ast(d, 0, f.filescope)
 	}
 
 	// process all top-level declarations
 	for _, decl := range file.Decls {
-		appendToTopDecls(f.decls, decl, f.scope)
+		append_to_top_decls(f.decls, decl, f.scope)
 	}
 	if block != nil {
 		// process local function as top-level declaration
-		decls, _ := parseDeclList(f.fset, block)
+		decls, _ := parse_decl_list(f.fset, block)
 
 		for _, d := range decls {
-			anonymifyAst(d, 0, f.filescope)
+			anonymify_ast(d, 0, f.filescope)
 		}
 
 		for _, decl := range decls {
-			appendToTopDecls(f.decls, decl, f.scope)
+			append_to_top_decls(f.decls, decl, f.scope)
 		}
 
 		// process function internals
 		f.cursor = cur
 		for _, decl := range decls {
-			f.processDeclLocals(decl)
+			f.process_decl_locals(decl)
 		}
 	}
 
 }
 
-func (f *AutoCompleteFile) processDeclLocals(decl ast.Decl) {
+func (f *auto_complete_file) process_decl_locals(decl ast.Decl) {
 	switch t := decl.(type) {
 	case *ast.FuncDecl:
-		if f.cursorIn(t.Body) {
+		if f.cursor_in(t.Body) {
 			s := f.scope
-			f.scope = NewScope(f.scope)
+			f.scope = new_scope(f.scope)
 
-			f.processFieldList(t.Recv, s)
-			f.processFieldList(t.Type.Params, s)
-			f.processFieldList(t.Type.Results, s)
-			f.processBlockStmt(t.Body)
+			f.process_field_list(t.Recv, s)
+			f.process_field_list(t.Type.Params, s)
+			f.process_field_list(t.Type.Results, s)
+			f.process_block_stmt(t.Body)
 
 		}
 	}
 }
 
-func (f *AutoCompleteFile) processDecl(decl ast.Decl) {
+func (f *auto_complete_file) process_decl(decl ast.Decl) {
 	if t, ok := decl.(*ast.GenDecl); ok && f.offset(t.TokPos) > f.cursor {
 		return
 	}
 	prevscope := f.scope
-	foreachDecl(decl, func(data *foreachDeclStruct) {
-		class := astDeclClass(data.decl)
-		if class != DECL_TYPE {
-			f.scope, prevscope = AdvanceScope(f.scope)
+	foreach_decl(decl, func(data *foreach_decl_struct) {
+		class := ast_decl_class(data.decl)
+		if class != decl_type {
+			f.scope, prevscope = advance_scope(f.scope)
 		}
 		for i, name := range data.names {
-			typ, v, vi := data.typeValueIndex(i, 0)
+			typ, v, vi := data.type_value_index(i, 0)
 
-			d := NewDecl2(name.Name, class, 0, typ, v, vi, prevscope)
+			d := new_decl_full(name.Name, class, 0, typ, v, vi, prevscope)
 			if d == nil {
 				return
 			}
 
-			f.scope.addNamedDecl(d)
+			f.scope.add_named_decl(d)
 		}
 	})
 }
 
-func (f *AutoCompleteFile) processBlockStmt(block *ast.BlockStmt) {
-	if block != nil && f.cursorIn(block) {
-		f.scope, _ = AdvanceScope(f.scope)
+func (f *auto_complete_file) process_block_stmt(block *ast.BlockStmt) {
+	if block != nil && f.cursor_in(block) {
+		f.scope, _ = advance_scope(f.scope)
 
 		for _, stmt := range block.List {
-			f.processStmt(stmt)
+			f.process_stmt(stmt)
 		}
 
 		// hack to process all func literals
-		v := new(funcLitVisitor)
+		v := new(func_lit_visitor)
 		v.ctx = f
 		ast.Walk(v, block)
 	}
 }
 
-type funcLitVisitor struct {
-	ctx *AutoCompleteFile
+type func_lit_visitor struct {
+	ctx *auto_complete_file
 }
 
-func (v *funcLitVisitor) Visit(node ast.Node) ast.Visitor {
-	if t, ok := node.(*ast.FuncLit); ok && v.ctx.cursorIn(t.Body) {
+func (v *func_lit_visitor) Visit(node ast.Node) ast.Visitor {
+	if t, ok := node.(*ast.FuncLit); ok && v.ctx.cursor_in(t.Body) {
 		s := v.ctx.scope
-		v.ctx.scope, _ = AdvanceScope(v.ctx.scope)
+		v.ctx.scope, _ = advance_scope(v.ctx.scope)
 
-		v.ctx.processFieldList(t.Type.Params, s)
-		v.ctx.processFieldList(t.Type.Results, s)
-		v.ctx.processBlockStmt(t.Body)
+		v.ctx.process_field_list(t.Type.Params, s)
+		v.ctx.process_field_list(t.Type.Results, s)
+		v.ctx.process_block_stmt(t.Body)
 
 		return nil
 	}
 	return v
 }
 
-func (f *AutoCompleteFile) processStmt(stmt ast.Stmt) {
+func (f *auto_complete_file) process_stmt(stmt ast.Stmt) {
 	switch t := stmt.(type) {
 	case *ast.DeclStmt:
-		f.processDecl(t.Decl)
+		f.process_decl(t.Decl)
 	case *ast.AssignStmt:
-		f.processAssignStmt(t)
+		f.process_assign_stmt(t)
 	case *ast.IfStmt:
-		if f.cursorIn(t.Body) {
-			f.scope, _ = AdvanceScope(f.scope)
+		if f.cursor_in(t.Body) {
+			f.scope, _ = advance_scope(f.scope)
 
-			f.processStmt(t.Init)
-			f.processBlockStmt(t.Body)
+			f.process_stmt(t.Init)
+			f.process_block_stmt(t.Body)
 		}
-		f.processStmt(t.Else)
+		f.process_stmt(t.Else)
 	case *ast.BlockStmt:
-		f.processBlockStmt(t)
+		f.process_block_stmt(t)
 	case *ast.RangeStmt:
-		f.processRangeStmt(t)
+		f.process_range_stmt(t)
 	case *ast.ForStmt:
-		if f.cursorIn(t.Body) {
-			f.scope, _ = AdvanceScope(f.scope)
+		if f.cursor_in(t.Body) {
+			f.scope, _ = advance_scope(f.scope)
 
-			f.processStmt(t.Init)
-			f.processBlockStmt(t.Body)
+			f.process_stmt(t.Init)
+			f.process_block_stmt(t.Body)
 		}
 	case *ast.SwitchStmt:
-		f.processSwitchStmt(t)
+		f.process_switch_stmt(t)
 	case *ast.TypeSwitchStmt:
-		f.processTypeSwitchStmt(t)
+		f.process_type_switch_stmt(t)
 	case *ast.SelectStmt:
-		f.processSelectStmt(t)
+		f.process_select_stmt(t)
 	case *ast.LabeledStmt:
-		f.processStmt(t.Stmt)
+		f.process_stmt(t.Stmt)
 	}
 }
 
-func (f *AutoCompleteFile) processSelectStmt(a *ast.SelectStmt) {
-	if !f.cursorIn(a.Body) {
+func (f *auto_complete_file) process_select_stmt(a *ast.SelectStmt) {
+	if !f.cursor_in(a.Body) {
 		return
 	}
-	var prevscope *Scope
-	f.scope, prevscope = AdvanceScope(f.scope)
+	var prevscope *scope
+	f.scope, prevscope = advance_scope(f.scope)
 
-	var lastCursorAfter *ast.CommClause
+	var last_cursor_after *ast.CommClause
 	for _, s := range a.Body.List {
 		if cc := s.(*ast.CommClause); f.cursor > f.offset(cc.Colon) {
-			lastCursorAfter = cc
+			last_cursor_after = cc
 		}
 	}
 
-	if lastCursorAfter != nil {
-		if lastCursorAfter.Comm != nil {
+	if last_cursor_after != nil {
+		if last_cursor_after.Comm != nil {
 			//if lastCursorAfter.Lhs != nil && lastCursorAfter.Tok == token.DEFINE {
-			if astmt, ok := lastCursorAfter.Comm.(*ast.AssignStmt); ok && astmt.Tok == token.DEFINE {
+			if astmt, ok := last_cursor_after.Comm.(*ast.AssignStmt); ok && astmt.Tok == token.DEFINE {
 				vname := astmt.Lhs[0].(*ast.Ident).Name
-				v := NewDeclVar(vname, nil, astmt.Rhs[0], -1, prevscope)
-				f.scope.addNamedDecl(v)
+				v := new_decl_var(vname, nil, astmt.Rhs[0], -1, prevscope)
+				f.scope.add_named_decl(v)
 			}
 		}
-		for _, s := range lastCursorAfter.Body {
-			f.processStmt(s)
+		for _, s := range last_cursor_after.Body {
+			f.process_stmt(s)
 		}
 	}
 }
 
-func (f *AutoCompleteFile) processTypeSwitchStmt(a *ast.TypeSwitchStmt) {
-	if !f.cursorIn(a.Body) {
+func (f *auto_complete_file) process_type_switch_stmt(a *ast.TypeSwitchStmt) {
+	if !f.cursor_in(a.Body) {
 		return
 	}
-	var prevscope *Scope
-	f.scope, prevscope = AdvanceScope(f.scope)
+	var prevscope *scope
+	f.scope, prevscope = advance_scope(f.scope)
 
-	f.processStmt(a.Init)
+	f.process_stmt(a.Init)
 	// type var
-	var tv *Decl
+	var tv *decl
 	if a, ok := a.Assign.(*ast.AssignStmt); ok {
 		lhs := a.Lhs
 		rhs := a.Rhs
 		if lhs != nil && len(lhs) == 1 {
 			tvname := lhs[0].(*ast.Ident).Name
-			tv = NewDeclVar(tvname, nil, rhs[0], -1, prevscope)
+			tv = new_decl_var(tvname, nil, rhs[0], -1, prevscope)
 		}
 	}
 
-	var lastCursorAfter *ast.CaseClause
+	var last_cursor_after *ast.CaseClause
 	for _, s := range a.Body.List {
 		if cc := s.(*ast.CaseClause); f.cursor > f.offset(cc.Colon) {
-			lastCursorAfter = cc
+			last_cursor_after = cc
 		}
 	}
 
-	if lastCursorAfter != nil {
+	if last_cursor_after != nil {
 		if tv != nil {
-			if lastCursorAfter.List != nil && len(lastCursorAfter.List) == 1 {
-				tv.Type = lastCursorAfter.List[0]
-				tv.Value = nil
+			if last_cursor_after.List != nil && len(last_cursor_after.List) == 1 {
+				tv.typ = last_cursor_after.List[0]
+				tv.value = nil
 			}
-			f.scope.addNamedDecl(tv)
+			f.scope.add_named_decl(tv)
 		}
-		for _, s := range lastCursorAfter.Body {
-			f.processStmt(s)
+		for _, s := range last_cursor_after.Body {
+			f.process_stmt(s)
 		}
 	}
 }
 
-func (f *AutoCompleteFile) processSwitchStmt(a *ast.SwitchStmt) {
-	if !f.cursorIn(a.Body) {
+func (f *auto_complete_file) process_switch_stmt(a *ast.SwitchStmt) {
+	if !f.cursor_in(a.Body) {
 		return
 	}
-	f.scope, _ = AdvanceScope(f.scope)
+	f.scope, _ = advance_scope(f.scope)
 
-	f.processStmt(a.Init)
-	var lastCursorAfter *ast.CaseClause
+	f.process_stmt(a.Init)
+	var last_cursor_after *ast.CaseClause
 	for _, s := range a.Body.List {
 		if cc := s.(*ast.CaseClause); f.cursor > f.offset(cc.Colon) {
-			lastCursorAfter = cc
+			last_cursor_after = cc
 		}
 	}
-	if lastCursorAfter != nil {
-		for _, s := range lastCursorAfter.Body {
-			f.processStmt(s)
+	if last_cursor_after != nil {
+		for _, s := range last_cursor_after.Body {
+			f.process_stmt(s)
 		}
 	}
 }
 
-func (f *AutoCompleteFile) processRangeStmt(a *ast.RangeStmt) {
-	if !f.cursorIn(a.Body) {
+func (f *auto_complete_file) process_range_stmt(a *ast.RangeStmt) {
+	if !f.cursor_in(a.Body) {
 		return
 	}
-	var prevscope *Scope
-	f.scope, prevscope = AdvanceScope(f.scope)
+	var prevscope *scope
+	f.scope, prevscope = advance_scope(f.scope)
 
 	if a.Tok == token.DEFINE {
 		if t, ok := a.Key.(*ast.Ident); ok {
-			d := NewDeclVar(t.Name, nil, a.X, 0, prevscope)
+			d := new_decl_var(t.Name, nil, a.X, 0, prevscope)
 			if d != nil {
-				d.Flags |= DECL_RANGEVAR
-				f.scope.addNamedDecl(d)
+				d.flags |= decl_rangevar
+				f.scope.add_named_decl(d)
 			}
 		}
 
 		if a.Value != nil {
 			if t, ok := a.Value.(*ast.Ident); ok {
-				d := NewDeclVar(t.Name, nil, a.X, 1, prevscope)
+				d := new_decl_var(t.Name, nil, a.X, 1, prevscope)
 				if d != nil {
-					d.Flags |= DECL_RANGEVAR
-					f.scope.addNamedDecl(d)
+					d.flags |= decl_rangevar
+					f.scope.add_named_decl(d)
 				}
 			}
 		}
 	}
 
-	f.processBlockStmt(a.Body)
+	f.process_block_stmt(a.Body)
 }
 
-func (f *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
+func (f *auto_complete_file) process_assign_stmt(a *ast.AssignStmt) {
 	if a.Tok != token.DEFINE || f.offset(a.TokPos) > f.cursor {
 		return
 	}
@@ -330,31 +330,31 @@ func (f *AutoCompleteFile) processAssignStmt(a *ast.AssignStmt) {
 		names[i] = id
 	}
 
-	var prevscope *Scope
-	f.scope, prevscope = AdvanceScope(f.scope)
+	var prevscope *scope
+	f.scope, prevscope = advance_scope(f.scope)
 
-	pack := declPack{names, nil, a.Rhs}
+	pack := decl_pack{names, nil, a.Rhs}
 	for i, name := range pack.names {
-		typ, v, vi := pack.typeValueIndex(i, 0)
-		d := NewDeclVar(name.Name, typ, v, vi, prevscope)
+		typ, v, vi := pack.type_value_index(i, 0)
+		d := new_decl_var(name.Name, typ, v, vi, prevscope)
 		if d == nil {
 			continue
 		}
 
-		f.scope.addNamedDecl(d)
+		f.scope.add_named_decl(d)
 	}
 }
 
-func (f *AutoCompleteFile) processFieldList(fieldList *ast.FieldList, s *Scope) {
-	if fieldList != nil {
-		decls := astFieldListToDecls(fieldList, DECL_VAR, 0, s)
+func (f *auto_complete_file) process_field_list(field_list *ast.FieldList, s *scope) {
+	if field_list != nil {
+		decls := ast_field_list_to_decls(field_list, decl_var, 0, s)
 		for _, d := range decls {
-			f.scope.addNamedDecl(d)
+			f.scope.add_named_decl(d)
 		}
 	}
 }
 
-func (f *AutoCompleteFile) cursorIn(block *ast.BlockStmt) bool {
+func (f *auto_complete_file) cursor_in(block *ast.BlockStmt) bool {
 	if f.cursor == -1 || block == nil {
 		return false
 	}

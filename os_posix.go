@@ -9,12 +9,12 @@ import (
 	"path/filepath"
 )
 
-func CreateSockFlag(name, desc string) *string {
+func create_sock_flag(name, desc string) *string {
 	return flag.String(name, "unix", desc)
 }
 
 // Full path of the current executable
-func GetExecutableFileName() string {
+func get_executable_filename() string {
 	// try readlink first
 	path, err := os.Readlink("/proc/self/exe")
 	if err == nil {
@@ -26,7 +26,7 @@ func GetExecutableFileName() string {
 		cwd, _ := os.Getwd()
 		path = filepath.Join(cwd, path)
 	}
-	if fileExists(path) {
+	if file_exists(path) {
 		return path
 	}
 	// Fallback : use "gocode" and assume we are in the PATH...
