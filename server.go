@@ -4,7 +4,32 @@ import (
 	"net"
 	"net/rpc"
 	"runtime"
+	"fmt"
+	"os"
 )
+
+func do_server() int {
+	g_config.read()
+
+	addr := *g_addr
+	if *g_sock == "unix" {
+		addr = get_socket_filename()
+		if file_exists(addr) {
+			fmt.Printf("unix socket: '%s' already exists\n", addr)
+			return 1
+		}
+	}
+	g_daemon = new_daemon(*g_sock, addr)
+	if *g_sock == "unix" {
+		// cleanup unix socket file
+		defer os.Remove(addr)
+	}
+
+	rpc.Register(new(RPC))
+
+	g_daemon.loop()
+	return 0
+}
 
 //-------------------------------------------------------------------------
 // daemon
