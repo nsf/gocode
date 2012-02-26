@@ -57,7 +57,7 @@ func (*nice_formatter) write_candidates(candidates []candidate, num int) {
 	fmt.Printf("Found %d candidates:\n", len(candidates))
 	for _, c := range candidates {
 		abbr := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
-		if c.Class == "func" {
+		if c.Class == decl_func {
 			abbr = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
 		}
 		fmt.Printf("  %s\n", abbr)
@@ -83,7 +83,7 @@ func (*vim_formatter) write_candidates(candidates []candidate, num int) {
 		}
 
 		word := c.Name
-		if c.Class == "func" {
+		if c.Class == decl_func {
 			word += "("
 			if strings.HasPrefix(c.Type, "func()") {
 				word += ")"
@@ -91,7 +91,7 @@ func (*vim_formatter) write_candidates(candidates []candidate, num int) {
 		}
 
 		abbr := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
-		if c.Class == "func" {
+		if c.Class == decl_func {
 			abbr = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
 		}
 		fmt.Printf("{'word': '%s', 'abbr': '%s'}", word, abbr)
@@ -107,8 +107,8 @@ type emacs_formatter struct{}
 
 func (*emacs_formatter) write_candidates(candidates []candidate, num int) {
 	for _, c := range candidates {
-		hint := c.Class + " " + c.Type
-		if c.Class == "func" {
+		hint := c.Class.String() + " " + c.Type
+		if c.Class == decl_func {
 			hint = c.Type
 		}
 		fmt.Printf("%s,,%s\n", c.Name, hint)

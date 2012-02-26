@@ -133,7 +133,7 @@ func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
 	foreach_decl(decl, func(data *foreach_decl_struct) {
 		class := ast_decl_class(data.decl)
 		for i, name := range data.names {
-			typ, v, vi := data.type_value_index(i, 0)
+			typ, v, vi := data.type_value_index(i)
 
 			d := new_decl_full(name.Name, class, 0, typ, v, vi, scope)
 			if d == nil {

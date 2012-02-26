@@ -154,7 +154,7 @@ func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
 	foreach_decl(decl, func(data *foreach_decl_struct) {
 		class := ast_decl_class(data.decl)
 		for i, name := range data.names {
-			typ, v, vi := data.type_value_index(i, decl_foreign)
+			typ, v, vi := data.type_value_index(i)
 
 			d := new_decl_full(name.Name, class, decl_foreign, typ, v, vi, scope)
 			if d == nil {

@@ -115,7 +115,7 @@ func (f *auto_complete_file) process_decl(decl ast.Decl) {
 			f.scope, prevscope = advance_scope(f.scope)
 		}
 		for i, name := range data.names {
-			typ, v, vi := data.type_value_index(i, 0)
+			typ, v, vi := data.type_value_index(i)
 
 			d := new_decl_full(name.Name, class, 0, typ, v, vi, prevscope)
 			if d == nil {
@@ -335,7 +335,7 @@ func (f *auto_complete_file) process_assign_stmt(a *ast.AssignStmt) {
 
 	pack := decl_pack{names, nil, a.Rhs}
 	for i, name := range pack.names {
-		typ, v, vi := pack.type_value_index(i, 0)
+		typ, v, vi := pack.type_value_index(i)
 		d := new_decl_var(name.Name, typ, v, vi, prevscope)
 		if d == nil {
 			continue

@@ -25,7 +25,7 @@ import (
 type candidate struct {
 	Name  string
 	Type  string
-	Class string
+	Class decl_class
 }
 
 type out_buffers struct {
@@ -50,7 +50,7 @@ func (b *out_buffers) Len() int {
 func (b *out_buffers) Less(i, j int) bool {
 	x := b.candidates[i]
 	y := b.candidates[j]
-	if x.Class[0] == y.Class[0] {
+	if x.Class == y.Class {
 		return x.Name < y.Name
 	}
 	return x.Class < y.Class
@@ -60,10 +60,10 @@ func (b *out_buffers) Swap(i, j int) {
 	b.candidates[i], b.candidates[j] = b.candidates[j], b.candidates[i]
 }
 
-func (b *out_buffers) append_decl(p, name string, decl *decl, class int) {
+func (b *out_buffers) append_decl(p, name string, decl *decl, class decl_class) {
 	c1 := !g_config.ProposeBuiltins && decl.scope == g_universe_scope && decl.name != "Error"
-	c2 := class != -1 && !match_class(int(decl.class), class)
-	c3 := class == -1 && !strings.HasPrefix(name, p)
+	c2 := class != decl_invalid && decl.class != class
+	c3 := class == decl_invalid && !strings.HasPrefix(name, p)
 	c4 := !decl.matches()
 	c5 := !check_type_expr(decl.typ)
 
@@ -75,12 +75,12 @@ func (b *out_buffers) append_decl(p, name string, decl *decl, class int) {
 	b.candidates = append(b.candidates, candidate{
 		Name:  name,
 		Type:  b.tmpbuf.String(),
-		Class: decl.class_name(),
+		Class: decl.class,
 	})
 	b.tmpbuf.Reset()
 }
 
-func (b *out_buffers) append_embedded(p string, decl *decl, class int) {
+func (b *out_buffers) append_embedded(p string, decl *decl, class decl_class) {
 	if decl.embedded == nil {
 		return
 	}
@@ -115,13 +115,6 @@ func (b *out_buffers) append_embedded(p string, decl *decl, class int) {
 		// remove tmp namespace
 		b.tmpns = nil
 	}
-}
-
-func match_class(declclass int, class int) bool {
-	if class == declclass {
-		return true
-	}
-	return false
 }
 
 //-------------------------------------------------------------------------
@@ -219,7 +212,7 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	partial := 0
 	da := c.deduce_decl(file, cursor)
 	if da != nil {
-		class := -1
+		class := decl_invalid
 		switch da.partial {
 		case "const":
 			class = decl_const
@@ -471,10 +464,10 @@ func check_type_expr(e ast.Expr) bool {
 type decl_slice []*decl
 
 func (s decl_slice) Less(i, j int) bool {
-	if s[i].class_name()[0] == s[j].class_name()[0] {
+	if s[i].class != s[j].class {
 		return s[i].name < s[j].name
 	}
-	return s[i].class_name() < s[j].class_name()
+	return s[i].class < s[j].class
 }
 func (s decl_slice) Len() int      { return len(s) }
 func (s decl_slice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }

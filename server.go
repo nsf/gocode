@@ -112,7 +112,7 @@ func server_auto_complete(file []byte, filename string, cursor int) (c []candida
 		if err := recover(); err != nil {
 			print_backtrace(err)
 			c = []candidate{
-				{"PANIC", "PANIC", "PANIC"},
+				{"PANIC", "PANIC", decl_invalid},
 			}
 
 			// drop cache

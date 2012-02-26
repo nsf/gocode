@@ -12,35 +12,53 @@ import (
 )
 
 // decl.class
+type decl_class int16
+
 const (
-	decl_const = iota
-	decl_var
-	decl_type
+	decl_invalid = decl_class(-1 + iota)
+
+	// these are in a sorted order
+	decl_const
 	decl_func
 	decl_package
+	decl_type
+	decl_var
 
 	// this one serves as a temporary type for those methods that were
 	// declared before their actual owner
 	decl_methods_stub
 )
 
+func (this decl_class) String() string {
+	switch this {
+	case decl_invalid:
+		return "PANIC"
+	case decl_const:
+		return "const"
+	case decl_func:
+		return "func"
+	case decl_package:
+		return "package"
+	case decl_type:
+		return "type"
+	case decl_var:
+		return "var"
+	case decl_methods_stub:
+		return "IF YOU SEE THIS, REPORT A BUG" // :D
+	}
+	panic("unreachable")
+}
+
 // decl.flags
+type decl_flags int16
+
 const (
-	decl_foreign = 1 << iota // imported from another package
+	decl_foreign = decl_flags(1 << iota) // imported from another package
 
 	// means that the decl is a part of the range statement
 	// its type is inferred in a special way
 	decl_rangevar
 )
-
-var g_decl_class_to_string = [...]string{
-	decl_const:        "const",
-	decl_var:          "var",
-	decl_type:         "type",
-	decl_func:         "func",
-	decl_package:      "package",
-	decl_methods_stub: "IF YOU SEE THIS, REPORT A BUG", // :D
-}
 
 //-------------------------------------------------------------------------
 // decl
@@ -55,8 +73,8 @@ type decl struct {
 	// '$i_%d' for anonymous interface types
 	name  string
 	typ   ast.Expr
-	class int16
-	flags int16
+	class decl_class
+	flags decl_flags
 
 	// functions for interface type, fields+methods for struct type
 	children map[string]*decl
@@ -94,7 +112,7 @@ func ast_decl_type(d ast.Decl) ast.Expr {
 	return nil
 }
 
-func ast_decl_class(d ast.Decl) int {
+func ast_decl_class(d ast.Decl) decl_class {
 	switch t := d.(type) {
 	case *ast.GenDecl:
 		switch t.Tok {
@@ -109,7 +127,6 @@ func ast_decl_class(d ast.Decl) int {
 		return decl_func
 	}
 	panic("unreachable")
-	return 0
 }
 
 func ast_decl_convertable(d ast.Decl) bool {
@@ -125,7 +142,7 @@ func ast_decl_convertable(d ast.Decl) bool {
 	return false
 }
 
-func ast_field_list_to_decls(f *ast.FieldList, class int, flags int, scope *scope) map[string]*decl {
+func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flags, scope *scope) map[string]*decl {
 	count := 0
 	for _, field := range f.List {
 		count += len(field.Names)
@@ -144,8 +161,8 @@ func ast_field_list_to_decls(f *ast.FieldList, class int, flags int, scope *scop
 			d := &decl{
 				name:        name.Name,
 				typ:         field.Type,
-				class:       int16(class),
-				flags:       int16(flags),
+				class:       class,
+				flags:       flags,
 				scope:       scope,
 				value_index: -1,
 			}
@@ -161,8 +178,8 @@ func ast_field_list_to_decls(f *ast.FieldList, class int, flags int, scope *scop
 			d := &decl{
 				name:        tp.name,
 				typ:         field.Type,
-				class:       int16(class),
-				flags:       int16(flags),
+				class:       class,
+				flags:       flags,
 				scope:       scope,
 				value_index: -1,
 			}
@@ -206,7 +223,7 @@ func ast_type_to_embedded(ty ast.Expr) []ast.Expr {
 	return nil
 }
 
-func ast_type_to_children(ty ast.Expr, flags int, scope *scope) map[string]*decl {
+func ast_type_to_children(ty ast.Expr, flags decl_flags, scope *scope) map[string]*decl {
 	switch t := ty.(type) {
 	case *ast.StructType:
 		return ast_field_list_to_decls(t.Fields, decl_var, flags, scope)
@@ -239,7 +256,7 @@ var g_anon_gen anonymous_id_gen
 
 //-------------------------------------------------------------------------
 
-func check_for_anon_type(t ast.Expr, flags int, s *scope) ast.Expr {
+func check_for_anon_type(t ast.Expr, flags decl_flags, s *scope) ast.Expr {
 	if t == nil {
 		return nil
 	}
@@ -263,11 +280,11 @@ func check_for_anon_type(t ast.Expr, flags int, s *scope) ast.Expr {
 
 //-------------------------------------------------------------------------
 
-func new_decl_full(name string, class, flags int, typ, v ast.Expr, vi int, s *scope) *decl {
+func new_decl_full(name string, class decl_class, flags decl_flags, typ, v ast.Expr, vi int, s *scope) *decl {
 	d := new(decl)
 	d.name = name
-	d.class = int16(class)
-	d.flags = int16(flags)
+	d.class = class
+	d.flags = flags
 	d.typ = typ
 	d.value = v
 	d.value_index = vi
@@ -277,10 +294,10 @@ func new_decl_full(name string, class, flags int, typ, v ast.Expr, vi int, s *sc
 	return d
 }
 
-func new_decl(name string, class int, scope *scope) *decl {
+func new_decl(name string, class decl_class, scope *scope) *decl {
 	decl := new(decl)
 	decl.name = name
-	decl.class = int16(class)
+	decl.class = class
 	decl.value_index = -1
 	decl.scope = scope
 	return decl
@@ -346,10 +363,6 @@ func (other *decl) deep_copy() *decl {
 	}
 	d.scope = other.scope
 	return d
-}
-
-func (d *decl) class_name() string {
-	return g_decl_class_to_string[d.class]
 }
 
 func (d *decl) expand_or_replace(other *decl) {
@@ -608,7 +621,7 @@ func range_predicate(v ast.Expr) bool {
 }
 
 type anonymous_typer struct {
-	flags int
+	flags decl_flags
 	scope *scope
 }
 
@@ -643,7 +656,7 @@ func (a *anonymous_typer) Visit(node ast.Node) ast.Visitor {
 	return a
 }
 
-func anonymify_ast(node ast.Node, flags int, scope *scope) {
+func anonymify_ast(node ast.Node, flags decl_flags, scope *scope) {
 	v := anonymous_typer{flags, scope}
 	ast.Walk(&v, node)
 }
@@ -1206,7 +1219,7 @@ func (f *decl_pack) value_index(i int) (v ast.Expr, vi int) {
 	return
 }
 
-func (f *decl_pack) type_value_index(i, flags int) (ast.Expr, ast.Expr, int) {
+func (f *decl_pack) type_value_index(i int) (ast.Expr, ast.Expr, int) {
 	if f.typ != nil {
 		// If there is a type, we don't care about value, just return the type
 		// and zero value.
