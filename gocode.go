@@ -40,7 +40,7 @@ func filter_out_shebang(data []byte) ([]byte, int) {
 
 type formatter interface {
 	write_empty()
-	write_candidates(names, types, classes []string, num int)
+	write_candidates(candidates []candidate, num int)
 }
 
 //-------------------------------------------------------------------------
@@ -53,12 +53,12 @@ func (*nice_formatter) write_empty() {
 	fmt.Printf("Nothing to complete.\n")
 }
 
-func (*nice_formatter) write_candidates(names, types, classes []string, num int) {
-	fmt.Printf("Found %d candidates:\n", len(names))
-	for i := 0; i < len(names); i++ {
-		abbr := fmt.Sprintf("%s %s %s", classes[i], names[i], types[i])
-		if classes[i] == "func" {
-			abbr = fmt.Sprintf("%s %s%s", classes[i], names[i], types[i][len("func"):])
+func (*nice_formatter) write_candidates(candidates []candidate, num int) {
+	fmt.Printf("Found %d candidates:\n", len(candidates))
+	for _, c := range candidates {
+		abbr := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
+		if c.Class == "func" {
+			abbr = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
 		}
 		fmt.Printf("  %s\n", abbr)
 	}
@@ -74,26 +74,26 @@ func (*vim_formatter) write_empty() {
 	fmt.Print("[0, []]")
 }
 
-func (*vim_formatter) write_candidates(names, types, classes []string, num int) {
+func (*vim_formatter) write_candidates(candidates []candidate, num int) {
 	fmt.Printf("[%d, [", num)
-	for i := 0; i < len(names); i++ {
-		word := names[i]
-		if classes[i] == "func" {
+	for i, c := range candidates {
+		if i != 0 {
+			fmt.Printf(", ")
+		}
+
+		word := c.Name
+		if c.Class == "func" {
 			word += "("
-			if strings.HasPrefix(types[i], "func()") {
+			if strings.HasPrefix(c.Type, "func()") {
 				word += ")"
 			}
 		}
 
-		abbr := fmt.Sprintf("%s %s %s", classes[i], names[i], types[i])
-		if classes[i] == "func" {
-			abbr = fmt.Sprintf("%s %s%s", classes[i], names[i], types[i][len("func"):])
+		abbr := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
+		if c.Class == "func" {
+			abbr = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
 		}
 		fmt.Printf("{'word': '%s', 'abbr': '%s'}", word, abbr)
-		if i != len(names)-1 {
-			fmt.Printf(", ")
-		}
-
 	}
 	fmt.Printf("]]")
 }
@@ -107,14 +107,13 @@ type emacs_formatter struct{}
 func (*emacs_formatter) write_empty() {
 }
 
-func (*emacs_formatter) write_candidates(names, types, classes []string, num int) {
-	for i := 0; i < len(names); i++ {
-		name := names[i]
-		hint := classes[i] + " " + types[i]
-		if classes[i] == "func" {
-			hint = types[i]
+func (*emacs_formatter) write_candidates(candidates []candidate, num int) {
+	for _, c := range candidates {
+		hint := c.Class + " " + c.Type
+		if c.Class == "func" {
+			hint = c.Type
 		}
-		fmt.Printf("%s,,%s\n", name, hint)
+		fmt.Printf("%s,,%s\n", c.Name, hint)
 	}
 }
 
@@ -127,9 +126,9 @@ type csv_formatter struct{}
 func (*csv_formatter) write_empty() {
 }
 
-func (*csv_formatter) write_candidates(names, types, classes []string, num int) {
-	for i := 0; i < len(names); i++ {
-		fmt.Printf("%s,,%s,,%s\n", classes[i], names[i], types[i])
+func (*csv_formatter) write_candidates(candidates []candidate, num int) {
+	for _, c := range candidates {
+		fmt.Printf("%s,,%s,,%s\n", c.Class, c.Name, c.Type)
 	}
 }
 
@@ -143,14 +142,14 @@ func (*json_formatter) write_empty() {
 	fmt.Print("[]")
 }
 
-func (*json_formatter) write_candidates(names, types, classes []string, num int) {
+func (*json_formatter) write_candidates(candidates []candidate, num int) {
 	fmt.Printf(`[%d, [`, num)
-	for i := 0; i < len(names); i++ {
-		fmt.Printf(`{"class": "%s", "name": "%s", "type": "%s"}`,
-			classes[i], names[i], types[i])
-		if i != len(names)-1 {
+	for i, c := range candidates {
+		if i != 0 {
 			fmt.Printf(", ")
 		}
+		fmt.Printf(`{"class": "%s", "name": "%s", "type": "%s"}`,
+			c.Class, c.Name, c.Type)
 	}
 	fmt.Print("]]")
 }
@@ -261,12 +260,12 @@ func cmd_auto_complete(c *rpc.Client) {
 	}
 
 	formatter := get_formatter()
-	names, types, classes, partial := client_auto_complete(c, file, filename, cursor)
-	if names == nil {
+	candidates, partial := client_auto_complete(c, file, filename, cursor)
+	if candidates == nil {
 		formatter.write_empty()
 		return
 	}
-	formatter.write_candidates(names, types, classes, partial)
+	formatter.write_candidates(candidates, partial)
 }
 
 func cmd_close(c *rpc.Client) {

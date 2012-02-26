@@ -17,15 +17,15 @@ type Args_auto_complete struct {
 	Arg2 int
 }
 type Reply_auto_complete struct {
-	Arg0, Arg1, Arg2 []string
-	Arg3             int
+	Arg0 []candidate
+	Arg1 int
 }
 
 func (r *RPC) RPC_auto_complete(args *Args_auto_complete, reply *Reply_auto_complete) error {
-	reply.Arg0, reply.Arg1, reply.Arg2, reply.Arg3 = server_auto_complete(args.Arg0, args.Arg1, args.Arg2)
+	reply.Arg0, reply.Arg1 = server_auto_complete(args.Arg0, args.Arg1, args.Arg2)
 	return nil
 }
-func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int) (a, b, c []string, d int) {
+func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int) (c []candidate, d int) {
 	var args Args_auto_complete
 	var reply Reply_auto_complete
 	args.Arg0 = Arg0
@@ -35,7 +35,7 @@ func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int) (
 	if err != nil {
 		panic(err)
 	}
-	return reply.Arg0, reply.Arg1, reply.Arg2, reply.Arg3
+	return reply.Arg0, reply.Arg1
 }
 
 // wrapper for: server_close

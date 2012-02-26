@@ -21,40 +21,43 @@ import (
 // Temporary structure for writing autocomplete response.
 //-------------------------------------------------------------------------
 
+// fields must be exported for RPC
+type candidate struct {
+	Name  string
+	Type  string
+	Class string
+}
+
 type out_buffers struct {
-	tmpbuf  *bytes.Buffer
-	names   []string
-	types   []string
-	classes []string
-	ctx     *auto_complete_context
-	tmpns   map[string]bool
+	tmpbuf     *bytes.Buffer
+	candidates []candidate
+	ctx        *auto_complete_context
+	tmpns      map[string]bool
 }
 
 func new_out_buffers(ctx *auto_complete_context) *out_buffers {
 	b := new(out_buffers)
 	b.tmpbuf = bytes.NewBuffer(make([]byte, 0, 1024))
-	b.names = make([]string, 0, 1024)
-	b.types = make([]string, 0, 1024)
-	b.classes = make([]string, 0, 1024)
+	b.candidates = make([]candidate, 0, 64)
 	b.ctx = ctx
 	return b
 }
 
 func (b *out_buffers) Len() int {
-	return len(b.names)
+	return len(b.candidates)
 }
 
 func (b *out_buffers) Less(i, j int) bool {
-	if b.classes[i][0] == b.classes[j][0] {
-		return b.names[i] < b.names[j]
+	x := b.candidates[i]
+	y := b.candidates[j]
+	if x.Class[0] == y.Class[0] {
+		return x.Name < y.Name
 	}
-	return b.classes[i] < b.classes[j]
+	return x.Class < y.Class
 }
 
 func (b *out_buffers) Swap(i, j int) {
-	b.names[i], b.names[j] = b.names[j], b.names[i]
-	b.types[i], b.types[j] = b.types[j], b.types[i]
-	b.classes[i], b.classes[j] = b.classes[j], b.classes[i]
+	b.candidates[i], b.candidates[j] = b.candidates[j], b.candidates[i]
 }
 
 func (b *out_buffers) append_decl(p, name string, decl *decl, class int) {
@@ -68,13 +71,13 @@ func (b *out_buffers) append_decl(p, name string, decl *decl, class int) {
 		return
 	}
 
-	b.names = append(b.names, name)
-
 	decl.pretty_print_type(b.tmpbuf)
-	b.types = append(b.types, b.tmpbuf.String())
+	b.candidates = append(b.candidates, candidate{
+		Name:  name,
+		Type:  b.tmpbuf.String(),
+		Class: decl.class_name(),
+	})
 	b.tmpbuf.Reset()
-
-	b.classes = append(b.classes, decl.class_name())
 }
 
 func (b *out_buffers) append_embedded(p string, decl *decl, class int) {
@@ -191,7 +194,7 @@ func (c *auto_complete_context) make_decl_set(scope *scope) map[string]*decl {
 // 2. apropos types (pretty-printed)
 // 3. apropos classes
 // and length of the part that should be replaced (if any)
-func (c *auto_complete_context) apropos(file []byte, filename string, cursor int) ([]string, []string, []string, int) {
+func (c *auto_complete_context) apropos(file []byte, filename string, cursor int) ([]candidate, int) {
 	c.current.cursor = cursor
 	c.current.name = filename
 
@@ -262,12 +265,12 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 		partial = len(da.partial)
 	}
 
-	if len(b.names) == 0 || len(b.types) == 0 || len(b.classes) == 0 {
-		return nil, nil, nil, 0
+	if len(b.candidates) == 0 {
+		return nil, 0
 	}
 
 	sort.Sort(b)
-	return b.names, b.types, b.classes, partial
+	return b.candidates, partial
 }
 
 func update_packages(ps map[string]*package_file_cache) {
