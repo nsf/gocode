@@ -210,10 +210,10 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	b := new_out_buffers(c)
 
 	partial := 0
-	da := c.deduce_decl(file, cursor)
-	if da != nil {
+	cc := c.deduce_cursor_context(file, cursor)
+	if cc != nil {
 		class := decl_invalid
-		switch da.partial {
+		switch cc.partial {
 		case "const":
 			class = decl_const
 		case "var":
@@ -225,7 +225,7 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 		case "package":
 			class = decl_package
 		}
-		if da.decl == nil {
+		if cc.decl == nil {
 			// In case if no declaraion is a subject of completion, propose all:
 			set := c.make_decl_set(c.current.scope)
 			for key, value := range set {
@@ -233,29 +233,29 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 					continue
 				}
 				value.infer_type()
-				b.append_decl(da.partial, key, value, class)
+				b.append_decl(cc.partial, key, value, class)
 			}
 		} else {
 			// propose all children of a subject declaration and
-			for _, decl := range da.decl.children {
-				if da.decl.class == decl_package && !ast.IsExported(decl.name) {
+			for _, decl := range cc.decl.children {
+				if cc.decl.class == decl_package && !ast.IsExported(decl.name) {
 					continue
 				}
-				b.append_decl(da.partial, decl.name, decl, class)
+				b.append_decl(cc.partial, decl.name, decl, class)
 			}
 			// propose all children of an underlying struct/interface type
-			adecl := advance_to_struct_or_interface(da.decl)
-			if adecl != nil && adecl != da.decl {
+			adecl := advance_to_struct_or_interface(cc.decl)
+			if adecl != nil && adecl != cc.decl {
 				for _, decl := range adecl.children {
 					if decl.class == decl_var {
-						b.append_decl(da.partial, decl.name, decl, class)
+						b.append_decl(cc.partial, decl.name, decl, class)
 					}
 				}
 			}
 			// propose all children of its embedded types
-			b.append_embedded(da.partial, da.decl, class)
+			b.append_embedded(cc.partial, cc.decl, class)
 		}
-		partial = len(da.partial)
+		partial = len(cc.partial)
 	}
 
 	if len(b.candidates) == 0 {
