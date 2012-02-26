@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -10,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
-	"unicode/utf8"
 )
 
 var (
@@ -21,32 +19,12 @@ var (
 	g_addr      = flag.String("addr", "localhost:37373", "address for tcp socket")
 )
 
-// TODO: find a better place for this function
-// returns truncated 'data' and amount of bytes skipped (for cursor pos adjustment)
-func filter_out_shebang(data []byte) ([]byte, int) {
-	if len(data) > 2 && data[0] == '#' && data[1] == '!' {
-		newline := bytes.Index(data, []byte("\n"))
-		if newline != -1 && len(data) > newline+1 {
-			return data[newline+1:], newline + 1
-		}
-	}
-	return data, 0
-}
-
 func get_socket_filename() string {
 	user := os.Getenv("USER")
 	if user == "" {
 		user = "all"
 	}
 	return fmt.Sprintf("%s/gocode-daemon.%s", os.TempDir(), user)
-}
-
-func file_exists(filename string) bool {
-	_, err := os.Stat(filename)
-	if err != nil {
-		return false
-	}
-	return true
 }
 
 func do_server() int {
@@ -212,15 +190,6 @@ func do_client() int {
 		}
 	}
 	return 0
-}
-
-func char_to_byte_offset(s []byte, offset_c int) (offset_b int) {
-	for offset_b = 0; offset_c > 0 && offset_b < len(s); offset_b++ {
-		if utf8.RuneStart(s[offset_b]) {
-			offset_c--
-		}
-	}
-	return offset_b
 }
 
 func main() {

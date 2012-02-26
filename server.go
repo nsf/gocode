@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"net/rpc"
 	"runtime"
-	"sync"
 )
 
 //-------------------------------------------------------------------------
@@ -77,29 +75,6 @@ func (this *daemon) close() {
 }
 
 var g_daemon *daemon
-
-//-------------------------------------------------------------------------
-// print_backtrace
-//-------------------------------------------------------------------------
-
-var g_backtrace_mutex sync.Mutex
-
-func print_backtrace(err interface{}) {
-	g_backtrace_mutex.Lock()
-	defer g_backtrace_mutex.Unlock()
-	fmt.Printf("panic: %v\n", err)
-	i := 2
-	for {
-		pc, file, line, ok := runtime.Caller(i)
-		if !ok {
-			break
-		}
-		f := runtime.FuncForPC(pc)
-		fmt.Printf("%d(%s): %s:%d\n", i-1, f.Name(), file, line)
-		i++
-	}
-	fmt.Println("")
-}
 
 //-------------------------------------------------------------------------
 // server_* functions

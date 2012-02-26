@@ -12,14 +12,6 @@ import (
 	"strconv"
 )
 
-func xdg_home_dir() string {
-	xdghome := os.Getenv("XDG_CONFIG_HOME")
-	if xdghome == "" {
-		xdghome = filepath.Join(os.Getenv("HOME"), ".config")
-	}
-	return xdghome
-}
-
 func config_file() string {
 	return filepath.Join(xdg_home_dir(), "gocode", "config.json")
 }
