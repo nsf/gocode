@@ -21,9 +21,10 @@ func (this *bytes_iterator) char() byte {
 	return this.data[this.cursor]
 }
 
-// return the slice starting from cursor position to the end of the data slice
-func (this *bytes_iterator) slice() []byte {
-	return this.data[this.cursor:]
+// return the rune under the cursor
+func (this *bytes_iterator) rune() rune {
+	r, _ := utf8.DecodeRune(this.data[this.cursor:])
+	return r
 }
 
 // move cursor backwards to the next valid utf8 rune start, or 0
@@ -39,7 +40,7 @@ func (this *bytes_iterator) move_backwards() {
 // move cursor backwards, stop at the first rune that is not 'is_ident', or 0
 func (this *bytes_iterator) skip_ident() {
 	for this.cursor != 0 {
-		r, _ := utf8.DecodeRune(this.slice())
+		r := this.rune()
 
 		// stop if 'r' is not [a-zA-Z0-9_] (unicode correct though)
 		if !unicode.IsDigit(r) && !unicode.IsLetter(r) && r != '_' {
@@ -88,9 +89,8 @@ func (this *bytes_iterator) extract_go_expr() []byte {
 	this.move_backwards()
 loop:
 	for {
-		c := this.char()
-		r, _ := utf8.DecodeRune(this.slice())
-		switch c {
+		r := this.rune()
+		switch r {
 		case '.':
 			this.move_backwards()
 			last = last_dot
@@ -114,7 +114,7 @@ loop:
 }
 
 // this function is called when the cursor is at the '.' and you need to get the
-// declarations before that dot
+// declaration before that dot
 func (c *auto_complete_context) deduce_cursor_decl(iter *bytes_iterator) *decl {
 	e := string(iter.extract_go_expr())
 	expr, err := parser.ParseExpr(e)
@@ -126,13 +126,9 @@ func (c *auto_complete_context) deduce_cursor_decl(iter *bytes_iterator) *decl {
 
 // deduce cursor context, it includes the declaration under the cursor and partial identifier
 // (usually a part of the name of the child declaration)
-func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) *cursor_context {
-	if cursor < 0 {
-		return nil
-	}
-
-	if cursor == 0 {
-		return &cursor_context{nil, ""}
+func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) cursor_context {
+	if cursor <= 0 {
+		return cursor_context{nil, ""}
 	}
 
 	orig := cursor
@@ -143,21 +139,21 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) *
 	if iter.char() == '.' {
 		// we're '<whatever>.'
 		// figure out decl, Parital is ""
-		return &cursor_context{c.deduce_cursor_decl(&iter), ""}
+		return cursor_context{c.deduce_cursor_decl(&iter), ""}
 	}
 
-	r, _ := utf8.DecodeRune(iter.slice())
+	r := iter.rune()
 	if unicode.IsDigit(r) || unicode.IsLetter(r) || r == '_' {
 		// we're '<whatever>.<ident>'
 		// parse <ident> as Partial and figure out decl
 		iter.skip_ident()
 		partial := string(iter.data[iter.cursor+1 : orig])
 		if iter.char() == '.' {
-			return &cursor_context{c.deduce_cursor_decl(&iter), partial}
+			return cursor_context{c.deduce_cursor_decl(&iter), partial}
 		} else {
-			return &cursor_context{nil, partial}
+			return cursor_context{nil, partial}
 		}
 	}
 
-	return &cursor_context{nil, ""}
+	return cursor_context{nil, ""}
 }

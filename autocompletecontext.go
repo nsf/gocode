@@ -211,52 +211,52 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 
 	partial := 0
 	cc := c.deduce_cursor_context(file, cursor)
-	if cc != nil {
-		class := decl_invalid
-		switch cc.partial {
-		case "const":
-			class = decl_const
-		case "var":
-			class = decl_var
-		case "type":
-			class = decl_type
-		case "func":
-			class = decl_func
-		case "package":
-			class = decl_package
-		}
-		if cc.decl == nil {
-			// In case if no declaraion is a subject of completion, propose all:
-			set := c.make_decl_set(c.current.scope)
-			for key, value := range set {
-				if value == nil {
-					continue
-				}
-				value.infer_type()
-				b.append_decl(cc.partial, key, value, class)
-			}
-		} else {
-			// propose all children of a subject declaration and
-			for _, decl := range cc.decl.children {
-				if cc.decl.class == decl_package && !ast.IsExported(decl.name) {
-					continue
-				}
-				b.append_decl(cc.partial, decl.name, decl, class)
-			}
-			// propose all children of an underlying struct/interface type
-			adecl := advance_to_struct_or_interface(cc.decl)
-			if adecl != nil && adecl != cc.decl {
-				for _, decl := range adecl.children {
-					if decl.class == decl_var {
-						b.append_decl(cc.partial, decl.name, decl, class)
-					}
-				}
-			}
-			// propose all children of its embedded types
-			b.append_embedded(cc.partial, cc.decl, class)
-		}
-		partial = len(cc.partial)
+
+	class := decl_invalid
+	switch cc.partial {
+	case "const":
+		class = decl_const
+	case "var":
+		class = decl_var
+	case "type":
+		class = decl_type
+	case "func":
+		class = decl_func
+	case "package":
+		class = decl_package
 	}
+
+	if cc.decl == nil {
+		// In case if no declaraion is a subject of completion, propose all:
+		set := c.make_decl_set(c.current.scope)
+		for key, value := range set {
+			if value == nil {
+				continue
+			}
+			value.infer_type()
+			b.append_decl(cc.partial, key, value, class)
+		}
+	} else {
+		// propose all children of a subject declaration and
+		for _, decl := range cc.decl.children {
+			if cc.decl.class == decl_package && !ast.IsExported(decl.name) {
+				continue
+			}
+			b.append_decl(cc.partial, decl.name, decl, class)
+		}
+		// propose all children of an underlying struct/interface type
+		adecl := advance_to_struct_or_interface(cc.decl)
+		if adecl != nil && adecl != cc.decl {
+			for _, decl := range adecl.children {
+				if decl.class == decl_var {
+					b.append_decl(cc.partial, decl.name, decl, class)
+				}
+			}
+		}
+		// propose all children of its embedded types
+		b.append_embedded(cc.partial, cc.decl, class)
+	}
+	partial = len(cc.partial)
 
 	if len(b.candidates) == 0 {
 		return nil, 0
