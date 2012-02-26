@@ -12,7 +12,7 @@ type cursor_context struct {
 }
 
 type bytes_iterator struct {
-	data []byte
+	data   []byte
 	cursor int
 }
 
@@ -37,13 +37,20 @@ func (this *bytes_iterator) move_backwards() {
 	}
 }
 
-// move cursor backwards, stop at the first rune that is not 'is_ident', or 0
+var g_unicode_ident_set = []*unicode.RangeTable{
+	unicode.Letter,
+	unicode.Digit,
+	{R16: []unicode.Range16{{'_', '_', 1}}},
+}
+
+// move cursor backwards, stop at the first rune that is not from
+// 'g_unicode_ident_set', or 0
 func (this *bytes_iterator) skip_ident() {
 	for this.cursor != 0 {
 		r := this.rune()
 
 		// stop if 'r' is not [a-zA-Z0-9_] (unicode correct though)
-		if !unicode.IsDigit(r) && !unicode.IsLetter(r) && r != '_' {
+		if !unicode.IsOneOf(g_unicode_ident_set, r) {
 			return
 		}
 		this.move_backwards()
@@ -102,7 +109,7 @@ loop:
 			this.move_backwards()
 			last = last_paren
 		default:
-			if unicode.IsDigit(r) || unicode.IsLetter(r) || r == '_' {
+			if unicode.IsOneOf(g_unicode_ident_set, r) {
 				this.skip_ident()
 				last = last_ident
 			} else {
@@ -110,7 +117,7 @@ loop:
 			}
 		}
 	}
-	return this.data[this.cursor+1:orig]
+	return this.data[this.cursor+1 : orig]
 }
 
 // this function is called when the cursor is at the '.' and you need to get the
@@ -143,7 +150,7 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) c
 	}
 
 	r := iter.rune()
-	if unicode.IsDigit(r) || unicode.IsLetter(r) || r == '_' {
+	if unicode.IsOneOf(g_unicode_ident_set, r) {
 		// we're '<whatever>.<ident>'
 		// parse <ident> as Partial and figure out decl
 		iter.skip_ident()
