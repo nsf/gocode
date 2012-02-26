@@ -11,34 +11,6 @@ import (
 	"strconv"
 )
 
-func try_run_server() error {
-	path := get_executable_filename()
-	args := []string{os.Args[0], "-s", "-sock", *g_sock, "-addr", *g_addr}
-	cwd, _ := os.Getwd()
-	procattr := os.ProcAttr{Dir: cwd, Env: os.Environ(), Files: []*os.File{nil, nil, nil}}
-	p, err := os.StartProcess(path, args, &procattr)
-
-	if err != nil {
-		return err
-	}
-	return p.Release()
-}
-
-func try_to_connect(network, address string) (client *rpc.Client, err error) {
-	t := 0
-	for {
-		client, err = rpc.Dial(network, address)
-		if err != nil && t < 1000 {
-			time.Sleep(10 * time.Millisecond)
-			t += 10
-			continue
-		}
-		break
-	}
-
-	return
-}
-
 func do_client() int {
 	addr := *g_addr
 	if *g_sock == "unix" {
@@ -80,6 +52,34 @@ func do_client() int {
 		}
 	}
 	return 0
+}
+
+func try_run_server() error {
+	path := get_executable_filename()
+	args := []string{os.Args[0], "-s", "-sock", *g_sock, "-addr", *g_addr}
+	cwd, _ := os.Getwd()
+	procattr := os.ProcAttr{Dir: cwd, Env: os.Environ(), Files: []*os.File{nil, nil, nil}}
+	p, err := os.StartProcess(path, args, &procattr)
+
+	if err != nil {
+		return err
+	}
+	return p.Release()
+}
+
+func try_to_connect(network, address string) (client *rpc.Client, err error) {
+	t := 0
+	for {
+		client, err = rpc.Dial(network, address)
+		if err != nil && t < 1000 {
+			time.Sleep(10 * time.Millisecond)
+			t += 10
+			continue
+		}
+		break
+	}
+
+	return
 }
 
 //-------------------------------------------------------------------------
