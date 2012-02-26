@@ -507,8 +507,7 @@ func (p *gc_parser) parse_interface_type() ast.Expr {
 
 // StructType = "struct" "{" [ FieldList ] "}" .
 // FieldList = Field { ";" Field } .
-func (p *gc_parser) parse_struc_type() ast.Expr {
-	// TODO: fix name (struc -> struct)
+func (p *gc_parser) parse_struct_type() ast.Expr {
 	var fields []*ast.Field
 	parse_field := func() {
 		fld := p.parse_field()
@@ -591,7 +590,7 @@ func (p *gc_parser) parse_type() ast.Expr {
 	case scanner.Ident:
 		switch p.lit {
 		case "struct":
-			return p.parse_struc_type()
+			return p.parse_struct_type()
 		case "func":
 			p.next()
 			return p.parse_signature()

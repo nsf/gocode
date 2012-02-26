@@ -333,19 +333,6 @@ func method_of(d ast.Decl) string {
 	return ""
 }
 
-// complete copy
-func (d *decl) copy(other *decl) {
-	// TODO: Go has struct assignment now, remove this
-	d.name = other.name
-	d.class = other.class
-	d.typ = other.typ
-	d.value = other.value
-	d.value_index = other.value_index
-	d.children = other.children
-	d.embedded = other.embedded
-	d.scope = other.scope
-}
-
 func (other *decl) deep_copy() *decl {
 	d := new(decl)
 	d.name = other.name
@@ -368,7 +355,7 @@ func (other *decl) deep_copy() *decl {
 func (d *decl) expand_or_replace(other *decl) {
 	// expand only if it's a methods stub, otherwise simply copy
 	if d.class != decl_methods_stub && other.class != decl_methods_stub {
-		d.copy(other)
+		d = other
 		return
 	}
 
