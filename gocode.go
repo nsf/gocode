@@ -39,7 +39,6 @@ func filter_out_shebang(data []byte) ([]byte, int) {
 //-------------------------------------------------------------------------
 
 type formatter interface {
-	write_empty()
 	write_candidates(candidates []candidate, num int)
 }
 
@@ -49,11 +48,12 @@ type formatter interface {
 
 type nice_formatter struct{}
 
-func (*nice_formatter) write_empty() {
-	fmt.Printf("Nothing to complete.\n")
-}
-
 func (*nice_formatter) write_candidates(candidates []candidate, num int) {
+	if candidates == nil {
+		fmt.Printf("Nothing to complete.\n")
+		return
+	}
+
 	fmt.Printf("Found %d candidates:\n", len(candidates))
 	for _, c := range candidates {
 		abbr := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
@@ -70,11 +70,12 @@ func (*nice_formatter) write_candidates(candidates []candidate, num int) {
 
 type vim_formatter struct{}
 
-func (*vim_formatter) write_empty() {
-	fmt.Print("[0, []]")
-}
-
 func (*vim_formatter) write_candidates(candidates []candidate, num int) {
+	if candidates == nil {
+		fmt.Print("[0, []]")
+		return
+	}
+
 	fmt.Printf("[%d, [", num)
 	for i, c := range candidates {
 		if i != 0 {
@@ -104,9 +105,6 @@ func (*vim_formatter) write_candidates(candidates []candidate, num int) {
 
 type emacs_formatter struct{}
 
-func (*emacs_formatter) write_empty() {
-}
-
 func (*emacs_formatter) write_candidates(candidates []candidate, num int) {
 	for _, c := range candidates {
 		hint := c.Class + " " + c.Type
@@ -123,9 +121,6 @@ func (*emacs_formatter) write_candidates(candidates []candidate, num int) {
 
 type csv_formatter struct{}
 
-func (*csv_formatter) write_empty() {
-}
-
 func (*csv_formatter) write_candidates(candidates []candidate, num int) {
 	for _, c := range candidates {
 		fmt.Printf("%s,,%s,,%s\n", c.Class, c.Name, c.Type)
@@ -138,11 +133,12 @@ func (*csv_formatter) write_candidates(candidates []candidate, num int) {
 
 type json_formatter struct{}
 
-func (*json_formatter) write_empty() {
-	fmt.Print("[]")
-}
-
 func (*json_formatter) write_candidates(candidates []candidate, num int) {
+	if candidates == nil {
+		fmt.Print("[]")
+		return
+	}
+
 	fmt.Printf(`[%d, [`, num)
 	for i, c := range candidates {
 		if i != 0 {
@@ -259,13 +255,7 @@ func cmd_auto_complete(c *rpc.Client) {
 		filename = filepath.Join(cwd, filename)
 	}
 
-	formatter := get_formatter()
-	candidates, partial := client_auto_complete(c, file, filename, cursor)
-	if candidates == nil {
-		formatter.write_empty()
-		return
-	}
-	formatter.write_candidates(candidates, partial)
+	get_formatter().write_candidates(client_auto_complete(c, file, filename, cursor))
 }
 
 func cmd_close(c *rpc.Client) {
