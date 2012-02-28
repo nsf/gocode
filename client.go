@@ -1,14 +1,14 @@
 package main
 
 import (
-	"net/rpc"
-	"os"
-	"time"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/rpc"
+	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 )
 
 func do_client() int {

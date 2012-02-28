@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/rpc"
-	"runtime"
-	"fmt"
 	"os"
+	"runtime"
 )
 
 func do_server() int {
