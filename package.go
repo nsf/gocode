@@ -7,7 +7,6 @@ import (
 	"go/ast"
 	"go/token"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"text/scanner"
@@ -84,7 +83,7 @@ func (m *package_file_cache) update_cache() {
 	if m.mtime != statmtime {
 		m.mtime = statmtime
 
-		data, err := ioutil.ReadFile(fname)
+		data, err := file_reader.read_file(fname)
 		if err != nil {
 			return
 		}

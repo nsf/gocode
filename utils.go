@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -70,3 +71,51 @@ func print_backtrace(err interface{}) {
 	}
 	fmt.Println("")
 }
+
+//-------------------------------------------------------------------------
+// File reader goroutine
+//
+// It's a bad idea to block multiple goroutines on file I/O. Creates many
+// threads which fight for HDD. Therefore only single goroutine should read HDD
+// at the same time.
+// -------------------------------------------------------------------------
+
+type file_read_request struct {
+	filename string
+	out      chan file_read_response
+}
+
+type file_read_response struct {
+	data  []byte
+	error error
+}
+
+type file_reader_type struct {
+	in chan file_read_request
+}
+
+func new_file_reader() *file_reader_type {
+	this := new(file_reader_type)
+	this.in = make(chan file_read_request)
+	go func() {
+		var rsp file_read_response
+		for {
+			req := <-this.in
+			rsp.data, rsp.error = ioutil.ReadFile(req.filename)
+			req.out <- rsp
+		}
+	}()
+	return this
+}
+
+func (this *file_reader_type) read_file(filename string) ([]byte, error) {
+	req := file_read_request{
+		filename,
+		make(chan file_read_response),
+	}
+	this.in <- req
+	rsp := <-req.out
+	return rsp.data, rsp.error
+}
+
+var file_reader = new_file_reader()

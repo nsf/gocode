@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -100,12 +99,12 @@ func (f *decl_file_cache) update() {
 	}
 
 	f.mtime = statmtime
-	f.read_file(f.name)
+	f.read_file()
 }
 
-func (f *decl_file_cache) read_file(filename string) {
+func (f *decl_file_cache) read_file() {
 	var data []byte
-	data, f.error = ioutil.ReadFile(f.name)
+	data, f.error = file_reader.read_file(f.name)
 	if f.error != nil {
 		return
 	}
