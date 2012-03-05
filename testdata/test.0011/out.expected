@@ -18,7 +18,7 @@ Found 56 candidates:
   func Float() float64
   func Index(i int) reflect.Value
   func Int() int64
-  func Interface() interface{}
+  func Interface() (i interface{})
   func InterfaceData() [2]uintptr
   func IsNil() bool
   func IsValid() bool

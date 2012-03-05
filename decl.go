@@ -1012,7 +1012,7 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 		nresults := pretty_print_func_field_list(buf, t.Results)
 		if nresults > 0 {
 			results := buf.String()
-			if strings.Index(results, ",") != -1 {
+			if strings.IndexAny(results, ", ") != -1 {
 				results = "(" + results + ")"
 			}
 			fmt.Fprintf(out, " %s", results)
