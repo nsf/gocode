@@ -23,7 +23,11 @@ func get_socket_filename() string {
 	return filepath.Join(os.TempDir(), fmt.Sprintf("gocode-daemon.%s", user))
 }
 
+var flag_usage func()
+
 func main() {
+	flag_usage = flag.Usage
+	flag.Usage = usage
 	flag.Parse()
 
 	var retval int
@@ -33,4 +37,17 @@ func main() {
 		retval = do_client()
 	}
 	os.Exit(retval)
+}
+
+func usage() {
+	flag_usage()
+	fmt.Fprintln(os.Stderr, `
+  autocomplete
+  close:
+	kill the gocode server
+  status
+  drop-cache
+  set
+`)
+	os.Exit(2)
 }
