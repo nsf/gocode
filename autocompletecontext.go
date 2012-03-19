@@ -210,7 +210,10 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	b := new_out_buffers(c)
 
 	partial := 0
-	cc := c.deduce_cursor_context(file, cursor)
+	cc, ok := c.deduce_cursor_context(file, cursor)
+	if !ok {
+		return nil, 0
+	}
 
 	class := decl_invalid
 	switch cc.partial {

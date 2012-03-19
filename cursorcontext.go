@@ -133,9 +133,9 @@ func (c *auto_complete_context) deduce_cursor_decl(iter *bytes_iterator) *decl {
 
 // deduce cursor context, it includes the declaration under the cursor and partial identifier
 // (usually a part of the name of the child declaration)
-func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) cursor_context {
+func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (cursor_context, bool) {
 	if cursor <= 0 {
-		return cursor_context{nil, ""}
+		return cursor_context{nil, ""}, true
 	}
 
 	orig := cursor
@@ -146,7 +146,8 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) c
 	if iter.char() == '.' {
 		// we're '<whatever>.'
 		// figure out decl, Parital is ""
-		return cursor_context{c.deduce_cursor_decl(&iter), ""}
+		decl := c.deduce_cursor_decl(&iter)
+		return cursor_context{decl, ""}, decl != nil
 	}
 
 	r := iter.rune()
@@ -156,11 +157,12 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) c
 		iter.skip_ident()
 		partial := string(iter.data[iter.cursor+1 : orig])
 		if iter.char() == '.' {
-			return cursor_context{c.deduce_cursor_decl(&iter), partial}
+			decl := c.deduce_cursor_decl(&iter)
+			return cursor_context{decl, partial}, decl != nil
 		} else {
-			return cursor_context{nil, partial}
+			return cursor_context{nil, partial}, true
 		}
 	}
 
-	return cursor_context{nil, ""}
+	return cursor_context{nil, ""}, true
 }
