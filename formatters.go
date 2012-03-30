@@ -65,7 +65,7 @@ func (*vim_formatter) write_candidates(candidates []candidate, num int) {
 		if c.Class == decl_func {
 			abbr = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
 		}
-		fmt.Printf("{'word': '%s', 'abbr': '%s'}", word, abbr)
+		fmt.Printf("{'word': '%s', 'abbr': '%s', 'info': '%s'}", word, abbr, abbr)
 	}
 	fmt.Printf("]]")
 }
