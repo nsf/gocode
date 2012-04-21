@@ -1,4 +1,4 @@
-Found 132 candidates:
+Found 124 candidates:
   func main()
   package adler32 
   package aes 
@@ -30,7 +30,6 @@ Found 132 candidates:
   package driver 
   package dsa 
   package dwarf 
-  package ebnf 
   package ecdsa 
   package elf 
   package elliptic 
@@ -56,7 +55,6 @@ Found 132 candidates:
   package httptest 
   package httputil 
   package image 
-  package inotify 
   package io 
   package iotest 
   package ioutil 
@@ -73,8 +71,6 @@ Found 132 candidates:
   package mime 
   package multipart 
   package net 
-  package netchan 
-  package norm 
   package os 
   package parse 
   package parser 
@@ -85,7 +81,6 @@ Found 132 candidates:
   package png 
   package pprof 
   package printer 
-  package proxy 
   package quick 
   package rand 
   package rc4 
@@ -114,19 +109,16 @@ Found 132 candidates:
   package tabwriter 
   package tar 
   package template 
-  package terminal 
   package testing 
   package textproto 
   package time 
   package tls 
   package token 
-  package types 
   package unicode 
   package url 
   package user 
   package utf16 
   package utf8 
-  package utf8string 
   package x509 
   package xml 
   package zip 
