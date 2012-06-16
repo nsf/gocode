@@ -148,10 +148,6 @@ func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flag
 		count += len(field.Names)
 	}
 
-	if count == 0 {
-		return nil
-	}
-
 	decls := make(map[string]*decl, count)
 	for _, field := range f.List {
 		for _, name := range field.Names {
