@@ -167,7 +167,9 @@ func (f *auto_complete_file) process_stmt(stmt ast.Stmt) {
 	case *ast.AssignStmt:
 		f.process_assign_stmt(t)
 	case *ast.IfStmt:
-		if f.cursor_in(t.Body) {
+		if f.cursor_in_if_head(t) {
+			f.process_stmt(t.Init)
+		} else if f.cursor_in(t.Body) {
 			f.scope, _ = advance_scope(f.scope)
 
 			f.process_stmt(t.Init)
@@ -179,7 +181,9 @@ func (f *auto_complete_file) process_stmt(stmt ast.Stmt) {
 	case *ast.RangeStmt:
 		f.process_range_stmt(t)
 	case *ast.ForStmt:
-		if f.cursor_in(t.Body) {
+		if f.cursor_in_for_head(t) {
+			f.process_stmt(t.Init)
+		} else if f.cursor_in(t.Body) {
 			f.scope, _ = advance_scope(f.scope)
 
 			f.process_stmt(t.Init)
@@ -354,12 +358,26 @@ func (f *auto_complete_file) process_field_list(field_list *ast.FieldList, s *sc
 	}
 }
 
+func (f *auto_complete_file) cursor_in_if_head(s *ast.IfStmt) bool {
+	if f.cursor > f.offset(s.If) && f.cursor <= f.offset(s.Body.Lbrace) {
+		return true
+	}
+	return false
+}
+
+func (f *auto_complete_file) cursor_in_for_head(s *ast.ForStmt) bool {
+	if f.cursor > f.offset(s.For) && f.cursor <= f.offset(s.Body.Lbrace) {
+		return true
+	}
+	return false
+}
+
 func (f *auto_complete_file) cursor_in(block *ast.BlockStmt) bool {
 	if f.cursor == -1 || block == nil {
 		return false
 	}
 
-	if f.cursor >= f.offset(block.Lbrace) && f.cursor <= f.offset(block.Rbrace) {
+	if f.cursor > f.offset(block.Lbrace) && f.cursor <= f.offset(block.Rbrace) {
 		return true
 	}
 	return false
