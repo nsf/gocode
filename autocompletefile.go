@@ -162,10 +162,10 @@ func (f *AutoCompleteFile) processStmt(stmt ast.Stmt) {
 	case *ast.RangeStmt:
 		f.processRangeStmt(t)
 	case *ast.ForStmt:
+		f.processStmt(t.Init)
 		if f.cursorIn(t.Body) {
 			f.scope, _ = AdvanceScope(f.scope)
 
-			f.processStmt(t.Init)
 			f.processBlockStmt(t.Body)
 		}
 	case *ast.SwitchStmt:
