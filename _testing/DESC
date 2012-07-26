@@ -33,3 +33,4 @@ test.0032 - import all packages (tests package parser)
 test.0033 - varargs type as a slice type in different contexts
 test.0034 - interface with methods imported from another package
 test.0035 - built-in "error" interface
+test.0036 - embedded struct in a package as an ordinary field

@@ -26,18 +26,18 @@ func get_socket_filename() string {
 func show_usage() {
 	fmt.Fprintf(os.Stderr,
 		"Usage: %s [-s] [-f=<format>] [-in=<path>] [-sock=<type>] [-addr=<addr>]\n"+
-		"       <command> [<args>]\n\n",
+			"       <command> [<args>]\n\n",
 		os.Args[0])
 	fmt.Fprintf(os.Stderr,
 		"Flags:\n")
 	flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr,
 		"\nCommands:\n"+
-		"  autocomplete [<path>] <offset>     main autocompletion command\n"+
-		"  close                              close the gocode daemon\n"+
-		"  status                             gocode daemon status report\n"+
-		"  drop-cache                         drop gocode daemon's cache\n"+
-		"  set [<name> [<value>]]             list or set config options\n")
+			"  autocomplete [<path>] <offset>     main autocompletion command\n"+
+			"  close                              close the gocode daemon\n"+
+			"  status                             gocode daemon status report\n"+
+			"  drop-cache                         drop gocode daemon's cache\n"+
+			"  set [<name> [<value>]]             list or set config options\n")
 }
 
 func main() {

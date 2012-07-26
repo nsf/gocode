@@ -369,8 +369,13 @@ func (p *gc_parser) parse_field() *ast.Field {
 		tag = p.expect(scanner.String)
 	}
 
+	var names []*ast.Ident
+	if name != "?" {
+		names = []*ast.Ident{ast.NewIdent(name)}
+	}
+
 	return &ast.Field{
-		Names: []*ast.Ident{ast.NewIdent(name)},
+		Names: names,
 		Type:  typ,
 		Tag:   &ast.BasicLit{Kind: token.STRING, Value: tag},
 	}
