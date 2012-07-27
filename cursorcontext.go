@@ -96,6 +96,9 @@ func (this *bytes_iterator) extract_go_expr() []byte {
 	this.move_backwards()
 loop:
 	for {
+		if this.cursor == 0 {
+			return this.data[:orig]
+		}
 		r := this.rune()
 		switch r {
 		case '.':
