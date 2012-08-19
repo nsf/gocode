@@ -71,6 +71,31 @@ func (*vim_formatter) write_candidates(candidates []candidate, num int) {
 }
 
 //-------------------------------------------------------------------------
+// godit_formatter
+//-------------------------------------------------------------------------
+
+type godit_formatter struct{}
+
+func (*godit_formatter) write_candidates(candidates []candidate, num int) {
+	fmt.Printf("%d,,%d\n", num, len(candidates))
+	for _, c := range candidates {
+		contents := c.Name
+		if c.Class == decl_func {
+			contents += "("
+			if strings.HasPrefix(c.Type, "func()") {
+				contents += ")"
+			}
+		}
+
+		display := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
+		if c.Class == decl_func {
+			display = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
+		}
+		fmt.Printf("%s,,%s\n", display, contents)
+	}
+}
+
+//-------------------------------------------------------------------------
 // emacs_formatter
 //-------------------------------------------------------------------------
 
@@ -135,6 +160,8 @@ func get_formatter(name string) formatter {
 		return new(csv_formatter)
 	case "json":
 		return new(json_formatter)
+	case "godit":
+		return new(godit_formatter)
 	}
 	return new(vim_formatter)
 }
