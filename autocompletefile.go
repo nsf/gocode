@@ -148,8 +148,8 @@ type func_lit_visitor struct {
 
 func (v *func_lit_visitor) Visit(node ast.Node) ast.Visitor {
 	if t, ok := node.(*ast.FuncLit); ok && v.ctx.cursor_in(t.Body) {
-		s := v.ctx.scope
-		v.ctx.scope, _ = advance_scope(v.ctx.scope)
+		var s *scope
+		v.ctx.scope, s = advance_scope(v.ctx.scope)
 
 		v.ctx.process_field_list(t.Type.Params, s)
 		v.ctx.process_field_list(t.Type.Results, s)
