@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -33,6 +32,7 @@ type out_buffers struct {
 	candidates []candidate
 	ctx        *auto_complete_context
 	tmpns      map[string]bool
+	ignorecase bool
 }
 
 func new_out_buffers(ctx *auto_complete_context) *out_buffers {
@@ -63,7 +63,7 @@ func (b *out_buffers) Swap(i, j int) {
 func (b *out_buffers) append_decl(p, name string, decl *decl, class decl_class) {
 	c1 := !g_config.ProposeBuiltins && decl.scope == g_universe_scope && decl.name != "Error"
 	c2 := class != decl_invalid && decl.class != class
-	c3 := class == decl_invalid && !strings.HasPrefix(name, p)
+	c3 := class == decl_invalid && !has_prefix(name, p, b.ignorecase)
 	c4 := !decl.matches()
 	c5 := !check_type_expr(decl.typ)
 
@@ -182,6 +182,37 @@ func (c *auto_complete_context) make_decl_set(scope *scope) map[string]*decl {
 	return set
 }
 
+func (c *auto_complete_context) get_candidates_from_set(set map[string]*decl, partial string, class decl_class, b *out_buffers) {
+	for key, value := range set {
+		if value == nil {
+			continue
+		}
+		value.infer_type()
+		b.append_decl(partial, key, value, class)
+	}
+}
+
+func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, class decl_class, b *out_buffers) {
+	// propose all children of a subject declaration and
+	for _, decl := range cc.decl.children {
+		if cc.decl.class == decl_package && !ast.IsExported(decl.name) {
+			continue
+		}
+		b.append_decl(cc.partial, decl.name, decl, class)
+	}
+	// propose all children of an underlying struct/interface type
+	adecl := advance_to_struct_or_interface(cc.decl)
+	if adecl != nil && adecl != cc.decl {
+		for _, decl := range adecl.children {
+			if decl.class == decl_var {
+				b.append_decl(cc.partial, decl.name, decl, class)
+			}
+		}
+	}
+	// propose all children of its embedded types
+	b.append_embedded(cc.partial, cc.decl, class)
+}
+
 // returns three slices of the same length containing:
 // 1. apropos names
 // 2. apropos types (pretty-printed)
@@ -232,32 +263,19 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	if cc.decl == nil {
 		// In case if no declaraion is a subject of completion, propose all:
 		set := c.make_decl_set(c.current.scope)
-		for key, value := range set {
-			if value == nil {
-				continue
-			}
-			value.infer_type()
-			b.append_decl(cc.partial, key, value, class)
+		c.get_candidates_from_set(set, cc.partial, class, b)
+		if cc.partial != "" && len(b.candidates) == 0 {
+			// as a fallback, try case insensitive approach
+			b.ignorecase = true
+			c.get_candidates_from_set(set, cc.partial, class, b)
 		}
 	} else {
-		// propose all children of a subject declaration and
-		for _, decl := range cc.decl.children {
-			if cc.decl.class == decl_package && !ast.IsExported(decl.name) {
-				continue
-			}
-			b.append_decl(cc.partial, decl.name, decl, class)
+		c.get_candidates_from_decl(cc, class, b)
+		if cc.partial != "" && len(b.candidates) == 0 {
+			// as a fallback, try case insensitive approach
+			b.ignorecase = true
+			c.get_candidates_from_decl(cc, class, b)
 		}
-		// propose all children of an underlying struct/interface type
-		adecl := advance_to_struct_or_interface(cc.decl)
-		if adecl != nil && adecl != cc.decl {
-			for _, decl := range adecl.children {
-				if decl.class == decl_var {
-					b.append_decl(cc.partial, decl.name, decl, class)
-				}
-			}
-		}
-		// propose all children of its embedded types
-		b.append_embedded(cc.partial, cc.decl, class)
 	}
 	partial = len(cc.partial)
 

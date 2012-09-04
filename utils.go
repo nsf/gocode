@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"unicode/utf8"
 )
@@ -45,6 +46,14 @@ func xdg_home_dir() string {
 		xdghome = filepath.Join(os.Getenv("HOME"), ".config")
 	}
 	return xdghome
+}
+
+func has_prefix(s, prefix string, ignorecase bool) bool {
+	if ignorecase {
+		s = strings.ToLower(s)
+		prefix = strings.ToLower(prefix)
+	}
+	return strings.HasPrefix(s, prefix)
 }
 
 //-------------------------------------------------------------------------
