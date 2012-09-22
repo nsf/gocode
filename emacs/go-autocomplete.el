@@ -109,7 +109,7 @@
 
 (add-hook 'go-mode-hook '(lambda()
 			   (auto-complete-mode 1)
-			   (setq ac-sources '(ac-source-go))))
+			   (setq ac-sources (append ac-sources '(ac-source-go)))))
 
 (add-to-list 'ac-modes 'go-mode)
 
