@@ -41,6 +41,8 @@ func do_client() int {
 		switch flag.Arg(0) {
 		case "autocomplete":
 			cmd_auto_complete(client)
+		case "cursortype":
+			cmd_cursor_type_pkg(client)
 		case "close":
 			cmd_close(client)
 		case "status":
@@ -82,15 +84,7 @@ func try_to_connect(network, address string) (client *rpc.Client, err error) {
 	return
 }
 
-//-------------------------------------------------------------------------
-// commands
-//-------------------------------------------------------------------------
-
-func cmd_status(c *rpc.Client) {
-	fmt.Printf("%s\n", client_status(c, 0))
-}
-
-func cmd_auto_complete(c *rpc.Client) {
+func prepare_file_filename_cursor() ([]byte, string, int) {
 	var file []byte
 	var err error
 
@@ -133,9 +127,27 @@ func cmd_auto_complete(c *rpc.Client) {
 		cwd, _ := os.Getwd()
 		filename = filepath.Join(cwd, filename)
 	}
+	return file, filename, cursor
+}
 
+//-------------------------------------------------------------------------
+// commands
+//-------------------------------------------------------------------------
+
+func cmd_status(c *rpc.Client) {
+	fmt.Printf("%s\n", client_status(c, 0))
+}
+
+func cmd_auto_complete(c *rpc.Client) {
+	file, filename, cursor := prepare_file_filename_cursor()
 	f := get_formatter(*g_format)
 	f.write_candidates(client_auto_complete(c, file, filename, cursor))
+}
+
+func cmd_cursor_type_pkg(c *rpc.Client) {
+	file, filename, cursor := prepare_file_filename_cursor()
+	typ, pkg := client_cursor_type_pkg(c, file, filename, cursor)
+	fmt.Printf("%s,,%s\n", typ, pkg)
 }
 
 func cmd_close(c *rpc.Client) {

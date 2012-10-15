@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go/ast"
 	"go/parser"
 	"unicode"
 	"unicode/utf8"
@@ -168,4 +169,48 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 	}
 
 	return cursor_context{nil, ""}, true
+}
+
+// deduce the type of the expression under the cursor, a bit of copy & paste from the method
+// above, returns true if deduction was successful (even if the result of it is nil)
+func (c *auto_complete_context) deduce_cursor_type_pkg(file []byte, cursor int) (ast.Expr, string, bool) {
+	deduce := func(iter *bytes_iterator) (ast.Expr, string) {
+		e := string(iter.extract_go_expr())
+		expr, err := parser.ParseExpr(e)
+		if err != nil {
+			return nil, ""
+		}
+		t, scope, _ := infer_type(expr, c.current.scope, -1)
+		return t, lookup_pkg(get_type_path(t), scope)
+	}
+
+	if cursor <= 0 {
+		return nil, "", true
+	}
+
+	iter := bytes_iterator{file, cursor}
+
+	// figure out what is just before the cursor
+	iter.move_backwards()
+	if iter.char() == '.' {
+		// we're '<whatever>.'
+		// figure out decl, Parital is ""
+		decl, pkg := deduce(&iter)
+		return decl, pkg, decl != nil
+	}
+
+	r := iter.rune()
+	if unicode.IsOneOf(g_unicode_ident_set, r) {
+		// we're '<whatever>.<ident>'
+		// parse <ident> as Partial and figure out decl
+		iter.skip_ident()
+		if iter.char() == '.' {
+			decl, pkg := deduce(&iter)
+			return decl, pkg, decl != nil
+		} else {
+			return nil, "", true
+		}
+	}
+
+	return nil, "", true
 }

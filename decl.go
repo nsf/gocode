@@ -506,6 +506,20 @@ func lookup_path(tp type_path, scope *scope) *decl {
 	return scope.lookup(tp.name)
 }
 
+func lookup_pkg(tp type_path, scope *scope) string {
+	if tp.is_nil() {
+		return ""
+	}
+	if tp.pkg == "" {
+		return ""
+	}
+	decl := scope.lookup(tp.pkg)
+	if decl == nil {
+		return ""
+	}
+	return decl.name
+}
+
 func type_to_decl(t ast.Expr, scope *scope) *decl {
 	tp := get_type_path(t)
 	return lookup_path(tp, scope)
