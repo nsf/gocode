@@ -19,12 +19,22 @@ fu! s:system(str, ...)
 	return (a:0 == 0 ? system(a:str) : system(a:str, join(a:000)))
 endf
 
+fu! s:gocodeShellescape(arg)
+	try
+		let ssl_save = &shellslash
+		set noshellslash
+		return shellescape(a:arg)
+	finally
+		let &shellslash = ssl_save
+	endtry
+endf
+
 fu! s:gocodeCommand(cmd, preargs, args)
 	for i in range(0, len(a:args) - 1)
-		let a:args[i] = shellescape(a:args[i])
+		let a:args[i] = s:gocodeShellescape(a:args[i])
 	endfor
 	for i in range(0, len(a:preargs) - 1)
-		let a:preargs[i] = shellescape(a:preargs[i])
+		let a:preargs[i] = s:gocodeShellescape(a:preargs[i])
 	endfor
 	let result = s:system(printf('gocode %s %s %s', join(a:preargs), a:cmd, join(a:args)))
 	if v:shell_error != 0
