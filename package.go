@@ -303,13 +303,24 @@ func (p *gc_parser) expect_special(what string) {
 func (p *gc_parser) parse_dot_ident() string {
 	ident := ""
 	sep := 'x'
+	i, j := 0, -1
 	for (p.tok == scanner.Ident || p.tok == scanner.Int || p.tok == '·') && sep > ' ' {
 		ident += p.lit
 		if p.tok == '·' {
 			ident += "·"
+			j = i
+			i++
 		}
+		i += len(p.lit)
 		sep = p.scanner.Peek()
 		p.next()
+	}
+	// middot = \xc2\xb7
+	if j != -1 && i > j+1 {
+		c := ident[j+2]
+		if c >= '0' && c <= '9' {
+			ident = ident[0:j]
+		}
 	}
 	return ident
 }
