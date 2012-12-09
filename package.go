@@ -111,6 +111,8 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	buf := bytes.NewBuffer(data)
 	var p gc_parser
 	p.init(buf, m)
+	// main package
+	m.main = new_decl(m.name, decl_package, nil)
 	// and the built-in "unsafe" package to the pathToAlias map
 	p.path_to_alias["unsafe"] = "unsafe"
 	// create map for other packages
@@ -118,9 +120,6 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	p.parse_export(func(pkg string, decl ast.Decl) {
 		if pkg == "" {
 			// main package
-			if m.main == nil {
-				m.main = new_decl(m.name, decl_package, nil)
-			}
 			add_ast_decl_to_package(m.main, decl, m.scope)
 		} else {
 			// others
