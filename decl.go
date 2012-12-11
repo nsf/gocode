@@ -384,8 +384,10 @@ func (d *decl) pretty_print_type(out io.Writer) {
 	case decl_type:
 		switch d.typ.(type) {
 		case *ast.StructType:
+			// TODO: not used due to anonymify?
 			fmt.Fprintf(out, "struct")
 		case *ast.InterfaceType:
+			// TODO: not used due to anonymify?
 			fmt.Fprintf(out, "interface")
 		default:
 			if d.typ != nil {
@@ -994,7 +996,10 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 			case 's':
 				fmt.Fprintf(out, "struct")
 			case 'i':
-				fmt.Fprintf(out, "interface")
+				// ok, in most cases anonymous interface is an
+				// empty interface, I'll just pretend that
+				// it's always true
+				fmt.Fprintf(out, "interface{}")
 			}
 		} else {
 			fmt.Fprintf(out, t.Name)

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -118,6 +119,7 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	// create map for other packages
 	m.others = make(map[string]*decl)
 	p.parse_export(func(pkg string, decl ast.Decl) {
+		anonymify_ast(decl, decl_foreign, m.scope)
 		if pkg == "" {
 			// main package
 			add_ast_decl_to_package(m.main, decl, m.scope)
@@ -135,6 +137,9 @@ func (m *package_file_cache) process_package_data(data []byte) {
 
 	// WTF is that? :D
 	for key, value := range m.scope.entities {
+		if strings.HasPrefix(key, "$") {
+			continue
+		}
 		pkg, ok := m.others[value.name]
 		if !ok && value.name == m.name {
 			pkg = m.main
@@ -420,7 +425,7 @@ func (p *gc_parser) parse_parameter() *ast.Field {
 // Parameters = "(" [ ParameterList ] ")" .
 // ParameterList = { Parameter "," } Parameter .
 func (p *gc_parser) parse_parameters() *ast.FieldList {
-	var flds []*ast.Field
+	flds := []*ast.Field{}
 	parse_parameter := func() {
 		par := p.parse_parameter()
 		flds = append(flds, par)
@@ -435,10 +440,6 @@ func (p *gc_parser) parse_parameters() *ast.FieldList {
 		}
 	}
 	p.expect(')')
-
-	if flds == nil {
-		return nil
-	}
 	return &ast.FieldList{List: flds}
 }
 
