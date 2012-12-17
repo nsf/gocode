@@ -415,18 +415,36 @@ func check_for_builtin_funcs(typ *ast.Ident, c *ast.CallExpr, scope *scope) (ast
 		if t, ok := c.Fun.(*ast.Ident); ok {
 			switch t.Name {
 			case "new":
-				e := new(ast.StarExpr)
-				e.X = c.Args[0]
-				return e, scope
+				if len(c.Args) > 0 {
+					e := new(ast.StarExpr)
+					e.X = c.Args[0]
+					return e, scope
+				}
 			case "make":
-				return c.Args[0], scope
+				if len(c.Args) > 0 {
+					return c.Args[0], scope
+				}
 			case "append":
-				return c.Args[0], scope
-			case "cmplx":
+				if len(c.Args) > 0 {
+					t, scope, _ := infer_type(c.Args[0], scope, -1)
+					return t, scope
+				}
+			case "complex":
+				// TODO: fix it
 				return ast.NewIdent("complex"), g_universe_scope
 			case "closed":
 				return ast.NewIdent("bool"), g_universe_scope
+			case "cap":
+				return ast.NewIdent("int"), g_universe_scope
+			case "copy":
+				return ast.NewIdent("int"), g_universe_scope
+			case "len":
+				return ast.NewIdent("int"), g_universe_scope
 			}
+			// TODO:
+			// func recover() interface{}
+			// func imag(c ComplexType) FloatType
+			// func real(c ComplexType) FloatType
 		}
 	}
 	return nil, nil
@@ -1304,7 +1322,7 @@ func init() {
 	add_func("append", "func([]type, ...type) []type")
 	add_func("cap", "func(container) int")
 	add_func("close", "func(channel)")
-	add_func("complex", "func(real, imag)")
+	add_func("complex", "func(real, imag) complex")
 	add_func("copy", "func(dst, src)")
 	add_func("delete", "func(map[typeA]typeB, typeA)")
 	add_func("imag", "func(complex)")
