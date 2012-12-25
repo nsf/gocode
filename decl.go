@@ -353,8 +353,6 @@ func (other *decl) deep_copy() *decl {
 
 func (d *decl) clear_visited() {
 	d.flags &^= decl_visited
-	// don't clear children, because only package level decls are subject
-	// to possible loops
 }
 
 func (d *decl) expand_or_replace(other *decl) {
@@ -898,12 +896,6 @@ func (d *decl) infer_type() (ast.Expr, *scope) {
 		return d.typ, scope
 	}
 
-	if d.flags&decl_visited != 0 {
-		return nil, nil
-	}
-	d.flags |= decl_visited
-	defer d.clear_visited()
-
 	switch d.class {
 	case decl_package:
 		// package is handled specially in inferType
@@ -916,6 +908,13 @@ func (d *decl) infer_type() (ast.Expr, *scope) {
 	if d.typ != nil && d.value == nil {
 		return d.typ, d.scope
 	}
+
+	// prevent loops
+	if d.flags&decl_visited != 0 {
+		return nil, nil
+	}
+	d.flags |= decl_visited
+	defer d.clear_visited()
 
 	var scope *scope
 	d.typ, scope, _ = infer_type(d.value, d.scope, d.value_index)
