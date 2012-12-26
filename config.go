@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 )
