@@ -36,3 +36,13 @@ func get_executable_filename() string {
 	}
 	return ""
 }
+
+// config location
+
+func config_dir() string {
+	return filepath.Join(xdg_home_dir(), "gocode")
+}
+
+func config_file() string {
+	return filepath.Join(xdg_home_dir(), "gocode", "config.json")
+}
