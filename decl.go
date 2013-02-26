@@ -458,6 +458,10 @@ func check_for_builtin_funcs(typ *ast.Ident, c *ast.CallExpr, scope *scope) (ast
 }
 
 func func_return_type(f *ast.FuncType, index int) ast.Expr {
+	if f.Results == nil {
+		return nil
+	}
+
 	if index == -1 {
 		return f.Results.List[0].Type
 	}
