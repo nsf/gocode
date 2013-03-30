@@ -524,6 +524,11 @@ func lookup_path(tp type_path, scope *scope) *decl {
 	var decl *decl
 	if tp.pkg != "" {
 		decl = scope.lookup(tp.pkg)
+		// return nil early if the package wasn't found but it's part
+		// of the type specification
+		if decl == nil {
+			return nil
+		}
 	}
 
 	if decl != nil {

@@ -99,16 +99,25 @@ func (b *out_buffers) append_embedded(p string, decl *decl, class decl_class) {
 
 	for _, emb := range decl.embedded {
 		typedecl := type_to_decl(emb, decl.scope)
-		if typedecl != nil {
-			for _, c := range typedecl.children {
-				if _, has := b.tmpns[c.name]; has {
-					continue
-				}
-				b.append_decl(p, c.name, c, class)
-				b.tmpns[c.name] = true
-			}
-			b.append_embedded(p, typedecl, class)
+		if typedecl == nil {
+			continue
 		}
+
+		// prevent infinite recursion here
+		if typedecl.flags&decl_visited != 0 {
+			continue
+		}
+		typedecl.flags |= decl_visited
+		defer typedecl.clear_visited()
+
+		for _, c := range typedecl.children {
+			if _, has := b.tmpns[c.name]; has {
+				continue
+			}
+			b.append_decl(p, c.name, c, class)
+			b.tmpns[c.name] = true
+		}
+		b.append_embedded(p, typedecl, class)
 	}
 
 	if first_level {
