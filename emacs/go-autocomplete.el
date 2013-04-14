@@ -114,13 +114,19 @@
 (defun ac-go-candidates ()
   (ac-go-get-candidates (ac-go-format-autocomplete (ac-go-invoke-autocomplete))))
 
+(defun ac-go-prefix ()
+  (or (ac-prefix-symbol)
+      (let ((c (char-before)))
+        (when (eq ?\. c)
+          (point)))))
+
 (ac-define-source go
   '((candidates . ac-go-candidates)
     (candidate-face . ac-clang-candidate-face)
     (selection-face . ac-clang-selection-face)
     (document . ac-go-document)
     (action . ac-go-action)
-    (prefix . "\\.\\(.*\\)")
+    (prefix . ac-go-prefix)
     (requires . 0)
     (cache)
     (symbol . "g")))
