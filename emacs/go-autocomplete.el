@@ -78,7 +78,7 @@
 			     "-f=emacs"
 			     "autocomplete"
 			     (buffer-file-name)
-			     (int-to-string (- (point) 1)))
+			     (concat "c" (int-to-string (- (point) 1))))
 	(with-current-buffer temp-buffer (buffer-string))
       (kill-buffer temp-buffer))))
 
