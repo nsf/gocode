@@ -84,7 +84,7 @@
 
 (defun ac-go-format-autocomplete (buffer-contents)
   (sort
-   (split-string buffer-contents "\n")
+   (split-string buffer-contents "\n" t)
    '(lambda (a b) (string< (downcase a)
 			   (downcase b)))))
 
@@ -96,23 +96,39 @@
 			      'summary summary))))
 	(split (lambda (strings)
 		 (mapcar (lambda (str)
-			   (split-string str ",,"))
+			   (split-string str ",," t))
 			 strings))))
     (mapcar prop (funcall split strings))))
+
+(defun ac-go-action ()
+  (let ((item (cdr ac-last-completion)))
+    (if (stringp item)
+        (message "%s" (get-text-property 0 'summary item)))))
+
+(defun ac-go-document (item)
+  (if (stringp item)
+      (let ((s (get-text-property 0 'summary item)))
+        (message "%s" s)
+        "")))
 
 (defun ac-go-candidates ()
   (ac-go-get-candidates (ac-go-format-autocomplete (ac-go-invoke-autocomplete))))
 
-(defvar ac-source-go
+(ac-define-source go
   '((candidates . ac-go-candidates)
+    (candidate-face . ac-clang-candidate-face)
+    (selection-face . ac-clang-selection-face)
+    (document . ac-go-document)
+    (action . ac-go-action)
     (prefix . "\\.\\(.*\\)")
-    (requires . 0)))
-
-(add-hook 'go-mode-hook '(lambda()
-			   (auto-complete-mode 1)
-			   (setq ac-sources (append '(ac-source-go) ac-sources))))
+    (requires . 0)
+    (cache)
+    (symbol . "g")))
 
 (add-to-list 'ac-modes 'go-mode)
+
+(add-hook 'go-mode-hook #'(lambda ()
+                           (add-to-list 'ac-sources 'ac-source-go)))
 
 (provide 'go-autocomplete)
 ;;; go-autocomplete.el ends here
