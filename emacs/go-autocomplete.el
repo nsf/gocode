@@ -122,8 +122,8 @@
 
 (ac-define-source go
   '((candidates . ac-go-candidates)
-    (candidate-face . ac-clang-candidate-face)
-    (selection-face . ac-clang-selection-face)
+    (candidate-face . ac-candidate-face)
+    (selection-face . ac-selection-face)
     (document . ac-go-document)
     (action . ac-go-action)
     (prefix . ac-go-prefix)
