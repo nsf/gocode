@@ -26,6 +26,12 @@ Also watch the [demo screencast](http://nosmileface.ru/images/gocode-demo.swf).
 
     `go get -u github.com/nsf/gocode` (-u flag for "update")
 
+    Windows users should consider doing this instead:
+
+    `go get -u -ldflags -H=windowsgui github.com/nsf/gocode`
+
+    That way on the Windows OS gocode will be built as a GUI application and doing so solves hanging window issues with some of the editors.
+
  3. Next steps are editor specific. See below.
 
 ### Vim setup
