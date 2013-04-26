@@ -13,10 +13,11 @@ Here's how I use it in my .emacs:
 
 One thing to note here is the 'company-backends' list. By default company mode
 loads every backend it has. And while I could simply add company-go backend to
-that list using a hook, I'm leaving that to the user. Perhaps it would be
+that list using a hook, I'm leaving it to the end user. Perhaps it would be
 preferrable for you to use multiple backends at the same time, or maybe you
-just want the company-go only in the go-mode. I prefer to use the company-go
-mode only, that's the way you can do it:
+just want the company-go backend only in the go-mode. I prefer to use the
+company-go backend only and having company-mode enabled only for go-mode.
+That's the way you can do it:
 
 (add-hook 'go-mode-hook (lambda ()
                           (set (make-local-variable 'company-backends) '(company-go))
