@@ -1,28 +1,28 @@
 This is an alternative emacs plugin, uses company-mode:
-	http://nschum.de/src/emacs/company-mode
+	http://company-mode.github.io
 
 Here's how I use it in my .emacs:
 
 (require 'company)                                   ; load company mode
-(require 'company-go)                                ; load company mode go backend and hook it up
+(require 'company-go)                                ; load company mode go backend
 (setq company-tooltip-limit 20)                      ; bigger popup window
 (setq company-minimum-prefix-length 0)               ; autocomplete right after '.'
 (setq company-idle-delay .3)                         ; shorter delay before autocompletion popup
 (setq company-echo-delay 0)                          ; removes annoying blinking
 (setq company-begin-commands '(self-insert-command)) ; start autocompletion only after typing
 
-One thing to note here is 'company-backends'. By default company mode loads
-every backend it has and it takes a huge amount of time to do so. I don't like
-when my emacs takes more than 1 second to load, therefore I use a local variable
-in company-go.el which contains only one backend (that is company-go
-backend). Therefore if you want to use more company mode backends together with
-company-go backend, you'll have to change that in company-go.el.
-
-In other words, company-go.el does this:
+One thing to note here is the 'company-backends' list. By default company mode
+loads every backend it has. And while I could simply add company-go backend to
+that list using a hook, I'm leaving that to the user. Perhaps it would be
+preferrable for you to use multiple backends at the same time, or maybe you
+just want the company-go only in the go-mode. I prefer to use the company-go
+mode only, that's the way you can do it:
 
 (add-hook 'go-mode-hook (lambda ()
                           (set (make-local-variable 'company-backends) '(company-go))
                           (company-mode)))
+
+I hope you get the idea.
 
 P.S. Also, default company mode colors are kind of ugly, I took these from
 auto-complete-mode defaults:

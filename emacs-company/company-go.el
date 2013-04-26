@@ -53,9 +53,5 @@
     (meta (get-text-property 0 'meta arg))
     (sorted t)))
 
-(add-hook 'go-mode-hook (lambda ()
-			  (set (make-local-variable 'company-backends) '(company-go))
-			  (company-mode)))
-
 (provide 'company-go)
 ;;; company-go.el ends here
