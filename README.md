@@ -58,6 +58,8 @@ In order to install vim scripts, you need to fulfill the following steps:
 
  4. Autocompletion should work now. Use `<C-x><C-o>` for autocompletion (omnifunc autocompletion).
 
+Alternatively take a look at the vundle/pathogen friendly repo: https://github.com/Blackrush/vim-gocode.
+
 ### Emacs setup
 
 In order to install emacs script, you need to fulfill the following steps:
