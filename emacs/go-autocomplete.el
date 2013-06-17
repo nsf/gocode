@@ -85,8 +85,8 @@
 (defun ac-go-format-autocomplete (buffer-contents)
   (sort
    (split-string buffer-contents "\n" t)
-   '(lambda (a b) (string< (downcase a)
-			   (downcase b)))))
+   (lambda (a b) (string< (downcase a)
+                          (downcase b)))))
 
 (defun ac-go-get-candidates (strings)
   (let ((prop (lambda (entry)
