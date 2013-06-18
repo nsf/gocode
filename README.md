@@ -14,13 +14,13 @@ Also watch the [demo screencast](http://nosmileface.ru/images/gocode-demo.swf).
 
 ### Setup
 
- 1. At this step, please make sure that your **$GOBIN** is available in your **$PATH**. By default **$GOBIN** points to **$GOROOT/bin**. This is important, because editors assume that **gocode** executable is available in one of the directories, specified by your **$PATH** environment variable. Usually you've done that already while installing the Go compiler suite.
+ 1. You should have a correctly installed Go compiler environment and your personal workspace (**$GOPATH**). If you have no idea what **$GOPATH** is, take a look [here](http://golang.org/doc/code.html). Please make sure that your **$GOPATH/bin** is available in your **$PATH**. This is important, because most editors assume that **gocode** binary is available in one of the directories, specified by your **$PATH** environment variable. Otherwise manually copy the **gocode** binary from **$GOPATH/bin** to a location which is part of your **$PATH** after `go get` -ing it in step 2.
 
     Do these steps only if you know why do you need them:
 
-    `export GOBIN=$HOME/bin`
+    `export GOPATH=$HOME/goprojects`
 
-    `export PATH=$PATH:$HOME/bin`
+    `export PATH=$PATH:$GOPATH/bin`
 
  2. Then you need to get the appropriate version of the gocode, for 6g/8g/5g compiler you can do this:
 
