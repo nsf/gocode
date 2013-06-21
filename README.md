@@ -1,6 +1,6 @@
 ## An autocompletion daemon for the Go programming language
 
-Gocode is a helper tool which is intended to be integraded with your source code editor, like vim and emacs. It provides several advanced capabilities, which currently includes:
+Gocode is a helper tool which is intended to be integrated with your source code editor, like vim and emacs. It provides several advanced capabilities, which currently includes:
 
  - Context-sensitive autocompletion
 
