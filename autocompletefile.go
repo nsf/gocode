@@ -169,13 +169,12 @@ func (f *auto_complete_file) process_stmt(stmt ast.Stmt) {
 	case *ast.IfStmt:
 		if f.cursor_in_if_head(t) {
 			f.process_stmt(t.Init)
-		} else if f.cursor_in(t.Body) {
+		} else if f.cursor_in_if_stmt(t) {
 			f.scope, _ = advance_scope(f.scope)
-
 			f.process_stmt(t.Init)
 			f.process_block_stmt(t.Body)
+			f.process_stmt(t.Else)
 		}
-		f.process_stmt(t.Else)
 	case *ast.BlockStmt:
 		f.process_block_stmt(t)
 	case *ast.RangeStmt:
@@ -361,6 +360,17 @@ func (f *auto_complete_file) process_field_list(field_list *ast.FieldList, s *sc
 func (f *auto_complete_file) cursor_in_if_head(s *ast.IfStmt) bool {
 	if f.cursor > f.offset(s.If) && f.cursor <= f.offset(s.Body.Lbrace) {
 		return true
+	}
+	return false
+}
+
+func (f *auto_complete_file) cursor_in_if_stmt(s *ast.IfStmt) bool {
+	if f.cursor > f.offset(s.If) {
+		// magic -10 comes from auto_complete_file.offset method, see
+		// len() expr in there
+		if f.offset(s.End()) == -10 || f.cursor < f.offset(s.End()) {
+			return true
+		}
 	}
 	return false
 }

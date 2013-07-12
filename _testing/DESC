@@ -35,3 +35,5 @@ test.0034 - interface with methods imported from another package
 test.0035 - built-in "error" interface
 test.0036 - embedded struct in a package as an ordinary field
 test.0037 - slice expressions
+test.0038 - if init declaration inside else stmt
+test.0039 - addition to test 38, make sure decl doesn't leak
