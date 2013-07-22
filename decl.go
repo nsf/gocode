@@ -931,6 +931,12 @@ func (d *decl) infer_type() (ast.Expr, *scope) {
 }
 
 func (d *decl) find_child(name string) *decl {
+	if d.flags&decl_visited != 0 {
+		return nil
+	}
+	d.flags |= decl_visited
+	defer d.clear_visited()
+
 	if d.children != nil {
 		if c, ok := d.children[name]; ok {
 			return c
