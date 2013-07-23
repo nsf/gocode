@@ -558,7 +558,12 @@ func lookup_pkg(tp type_path, scope *scope) string {
 
 func type_to_decl(t ast.Expr, scope *scope) *decl {
 	tp := get_type_path(t)
-	return lookup_path(tp, scope)
+	d := lookup_path(tp, scope)
+	if d != nil && d.class == decl_var {
+		// weird variable declaration pointing to itself
+		return nil
+	}
+	return d
 }
 
 func expr_to_decl(e ast.Expr, scope *scope) *decl {
