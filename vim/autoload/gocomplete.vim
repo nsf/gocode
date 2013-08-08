@@ -60,7 +60,7 @@ fu! s:gocodeCursor()
 	if &encoding != 'utf-8'
 		let c = col('.')
 		let buf = line('.') == 1 ? "" : (join(getline(1, line('.')-1), "\n") . "\n")
-		let buf .= c < 1 ? "" : getline('.')[:c-1]
+		let buf .= c == 1 ? "" : getline('.')[:c-2]
 		return printf('%d', len(iconv(buf, &encoding, "utf-8")))
 	endif
 	return printf('%d', line2byte(line('.')) + (col('.')-2))
