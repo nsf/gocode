@@ -1,6 +1,6 @@
 ;;; go-autocomplete.el --- auto-complete-mode backend for go-mode
 
-;; Copyright (C) 2010  
+;; Copyright (C) 2010
 
 ;; Author: Mikhail <tensai@cirno.in> Kuryshev
 ;; Keywords: languages
@@ -21,12 +21,12 @@
 
 ;;; Commentary:
 
-;; Ensure that go-autocomplete in your load-path and add to your ~/.emacs 
+;; Ensure that go-autocomplete in your load-path and add to your ~/.emacs
 ;; following line:
 ;;
 ;; (require 'go-autocomplete)
 
-;; Also you could setup any combination (for example M-TAB) 
+;; Also you could setup any combination (for example M-TAB)
 ;; for invoking auto-complete:
 ;;
 ;; (require 'auto-complete-config)
@@ -40,7 +40,7 @@
 
 ;(defvar go-reserved-keywords
 ;  '("break" "case" "chan" "const" "continue" "default" "defer" "else"
-;    "fallthrough" "for" "func" "go" "goto" "if" "import" "interface" 
+;    "fallthrough" "for" "func" "go" "goto" "if" "import" "interface"
 ;    "map" "package" "range" "return" "select" "struct" "switch" "type" "var")
 ;  "Go reserved keywords.")
 
@@ -77,7 +77,7 @@
 			     nil
 			     "-f=emacs"
 			     "autocomplete"
-			     (buffer-file-name)
+			     (or (buffer-file-name) "")
 			     (concat "c" (int-to-string (- (point) 1))))
 	(with-current-buffer temp-buffer (buffer-string))
       (kill-buffer temp-buffer))))

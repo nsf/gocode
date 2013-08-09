@@ -24,7 +24,7 @@
 			     nil
 			     "-f=csv"
 			     "autocomplete"
-			     (buffer-file-name)
+			     (or (buffer-file-name) "")
 			     (concat "c" (int-to-string (- (point) 1))))
 	(with-current-buffer temp-buffer (buffer-string))
       (kill-buffer temp-buffer))))
