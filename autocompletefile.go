@@ -27,19 +27,21 @@ type auto_complete_file struct {
 	package_name string
 
 	decls     map[string]*decl
-	packages  package_imports
+	packages  []package_import
 	filescope *scope
 	scope     *scope
 
 	cursor int // for current file buffer only
 	fset   *token.FileSet
+	env    *gocode_env
 }
 
-func new_auto_complete_file(name string) *auto_complete_file {
+func new_auto_complete_file(name string, env *gocode_env) *auto_complete_file {
 	p := new(auto_complete_file)
 	p.name = name
 	p.cursor = -1
 	p.fset = token.NewFileSet()
+	p.env = env
 	return p
 }
 
@@ -55,7 +57,7 @@ func (f *auto_complete_file) process_data(data []byte) {
 	f.package_name = package_name(file)
 
 	f.decls = make(map[string]*decl)
-	f.packages = new_package_imports(f.name, file.Decls)
+	f.packages = collect_package_imports(f.name, file.Decls, f.env)
 	f.filescope = new_scope(nil)
 	f.scope = f.filescope
 

@@ -144,7 +144,7 @@ type auto_complete_context struct {
 
 func new_auto_complete_context(pcache package_cache, declcache *decl_cache) *auto_complete_context {
 	c := new(auto_complete_context)
-	c.current = new_auto_complete_file("")
+	c.current = new_auto_complete_file("", declcache.env)
 	c.pcache = pcache
 	c.declcache = declcache
 	return c
@@ -342,7 +342,7 @@ func merge_decls(filescope *scope, pkg *scope, decls map[string]*decl) {
 	filescope.parent = pkg
 }
 
-func merge_decls_from_packages(pkgscope *scope, pkgs package_imports, pcache package_cache) {
+func merge_decls_from_packages(pkgscope *scope, pkgs []package_import, pcache package_cache) {
 	for _, p := range pkgs {
 		path, alias := p.path, p.alias
 		if alias != "." {
@@ -360,7 +360,7 @@ func merge_decls_from_packages(pkgscope *scope, pkgs package_imports, pcache pac
 	}
 }
 
-func fixup_packages(filescope *scope, pkgs package_imports, pcache package_cache) {
+func fixup_packages(filescope *scope, pkgs []package_import, pcache package_cache) {
 	for _, p := range pkgs {
 		path, alias := p.path, p.alias
 		if alias == "" {

@@ -3,13 +3,13 @@ package main
 import (
 	"bytes"
 	"errors"
-	"strings"
 	"fmt"
 	"go/ast"
 	"go/token"
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"text/scanner"
 )
 
@@ -133,7 +133,7 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	})
 
 	// hack, add ourselves to the package scope
-	m.add_package_to_scope("#" + m.defalias, m.name)
+	m.add_package_to_scope("#"+m.defalias, m.name)
 
 	// WTF is that? :D
 	for key, value := range m.scope.entities {
@@ -875,7 +875,7 @@ func new_package_cache() package_cache {
 
 // Function fills 'ps' set with packages from 'packages' import information.
 // In case if package is not in the cache, it creates one and adds one to the cache.
-func (c package_cache) append_packages(ps map[string]*package_file_cache, pkgs package_imports) {
+func (c package_cache) append_packages(ps map[string]*package_file_cache, pkgs []package_import) {
 	for _, m := range pkgs {
 		if _, ok := ps[m.path]; ok {
 			continue
@@ -909,8 +909,7 @@ $$
 `)
 
 func (c package_cache) add_builtin_unsafe_package() {
-	name, _ := find_global_file("unsafe")
-	pkg := new_package_file_cache_forever(name, "unsafe")
+	pkg := new_package_file_cache_forever("unsafe", "unsafe")
 	pkg.process_package_data(g_builtin_unsafe_package)
-	c[name] = pkg
+	c["unsafe"] = pkg
 }
