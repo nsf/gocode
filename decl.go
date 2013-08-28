@@ -145,7 +145,7 @@ func ast_decl_convertable(d ast.Decl) bool {
 	return false
 }
 
-func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flags, scope *scope) map[string]*decl {
+func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flags, scope *scope, add_anonymous bool) map[string]*decl {
 	count := 0
 	for _, field := range f.List {
 		count += len(field.Names)
@@ -169,7 +169,7 @@ func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flag
 		}
 
 		// add anonymous field as a child (type embedding)
-		if class == decl_var && field.Names == nil {
+		if class == decl_var && field.Names == nil && add_anonymous {
 			tp := get_type_path(field.Type)
 			if flags&decl_foreign != 0 && !ast.IsExported(tp.name) {
 				continue
@@ -225,9 +225,9 @@ func ast_type_to_embedded(ty ast.Expr) []ast.Expr {
 func ast_type_to_children(ty ast.Expr, flags decl_flags, scope *scope) map[string]*decl {
 	switch t := ty.(type) {
 	case *ast.StructType:
-		return ast_field_list_to_decls(t.Fields, decl_var, flags, scope)
+		return ast_field_list_to_decls(t.Fields, decl_var, flags, scope, true)
 	case *ast.InterfaceType:
-		return ast_field_list_to_decls(t.Methods, decl_func, flags, scope)
+		return ast_field_list_to_decls(t.Methods, decl_func, flags, scope, false)
 	}
 	return nil
 }

@@ -350,7 +350,7 @@ func (f *auto_complete_file) process_assign_stmt(a *ast.AssignStmt) {
 
 func (f *auto_complete_file) process_field_list(field_list *ast.FieldList, s *scope) {
 	if field_list != nil {
-		decls := ast_field_list_to_decls(field_list, decl_var, 0, s)
+		decls := ast_field_list_to_decls(field_list, decl_var, 0, s, false)
 		for _, d := range decls {
 			f.scope.add_named_decl(d)
 		}
