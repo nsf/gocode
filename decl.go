@@ -1053,6 +1053,8 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 				// it's always true
 				fmt.Fprintf(out, "interface{}")
 			}
+		} else if strings.HasPrefix(t.Name, "#") {
+			fmt.Fprintf(out, t.Name[1:])
 		} else {
 			fmt.Fprintf(out, t.Name)
 		}

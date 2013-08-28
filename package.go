@@ -133,7 +133,7 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	})
 
 	// hack, add ourselves to the package scope
-	m.add_package_to_scope(m.defalias, m.name)
+	m.add_package_to_scope("#" + m.defalias, m.name)
 
 	// WTF is that? :D
 	for key, value := range m.scope.entities {
@@ -347,7 +347,7 @@ func (p *gc_parser) parse_exported_name() *ast.SelectorExpr {
 	pkg := p.parse_package()
 	if p.beautify {
 		if pkg.Name == "" {
-			pkg.Name = p.pfc.defalias
+			pkg.Name = "#" + p.pfc.defalias
 		} else {
 			pkg.Name = p.path_to_alias[pkg.Name]
 		}
