@@ -1331,7 +1331,6 @@ func init() {
 	add_type("uint16")
 	add_type("uint32")
 	add_type("uint64")
-	add_type("float")
 	add_type("int")
 	add_type("uint")
 	add_type("uintptr")
