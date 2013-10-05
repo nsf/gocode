@@ -302,9 +302,14 @@ func (p *gc_parser) expect_special(what string) {
 	}
 }
 
-// dotIdentifier = ( ident | '·' ) { ident | int | '·' } .
+// dotIdentifier = "?" | ( ident | '·' ) { ident | int | '·' } .
 // we're doing lexer job here, kind of
 func (p *gc_parser) parse_dot_ident() string {
+	if p.tok == '?' {
+		p.next()
+		return "?"
+	}
+
 	ident := ""
 	sep := 'x'
 	i, j := 0, -1
