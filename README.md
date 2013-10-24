@@ -48,9 +48,9 @@ In order to install vim scripts, you need to fulfill the following steps:
 
 		#!/bin/sh
 		mkdir -p "$HOME/.vim/autoload"
-		mkdir -p "$HOME/.vim/ftplugin"
+		mkdir -p "$HOME/.vim/ftplugin/go"
 		cp "${0%/*}/autoload/gocomplete.vim" "$HOME/.vim/autoload"
-		cp "${0%/*}/ftplugin/go.vim" "$HOME/.vim/ftplugin"
+		cp "${0%/*}/ftplugin/go/gocomplete.vim" "$HOME/.vim/ftplugin/go"
 
  3. Make sure vim has filetype plugin enabled. Simply add that to your **.vimrc**:
 
