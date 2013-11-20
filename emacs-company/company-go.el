@@ -4,6 +4,7 @@
 
 ;; Author: nsf <no.smile.face@gmail.com>
 ;; Keywords: languages
+;; Package-Requires: ((company "0.6.12"))
 
 ;; No license, this code is under public domain, do whatever you want.
 
