@@ -582,37 +582,36 @@ func advance_to_type(pred type_predicate, v ast.Expr, scope *scope) (ast.Expr, *
 		return v, scope
 	}
 
-	for {
-		decl := type_to_decl(v, scope)
-		if decl == nil {
-			return nil, nil
-		}
-
-		v = decl.typ
-		scope = decl.scope
-		if pred(v) {
-			break
-		}
+	decl := type_to_decl(v, scope)
+	if decl == nil {
+		return nil, nil
 	}
-	return v, scope
+
+	if decl.flags&decl_visited != 0 {
+		return nil, nil
+	}
+	decl.flags |= decl_visited
+	defer decl.clear_visited()
+
+	return advance_to_type(pred, decl.typ, decl.scope)
 }
 
 func advance_to_struct_or_interface(decl *decl) *decl {
+	if decl.flags&decl_visited != 0 {
+		return nil
+	}
+	decl.flags |= decl_visited
+	defer decl.clear_visited()
+
 	if struct_interface_predicate(decl.typ) {
 		return decl
 	}
 
-	for {
-		decl = type_to_decl(decl.typ, decl.scope)
-		if decl == nil {
-			return nil
-		}
-
-		if struct_interface_predicate(decl.typ) {
-			break
-		}
+	decl = type_to_decl(decl.typ, decl.scope)
+	if decl == nil {
+		return nil
 	}
-	return decl
+	return advance_to_struct_or_interface(decl)
 }
 
 func struct_interface_predicate(v ast.Expr) bool {
