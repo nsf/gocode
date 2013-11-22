@@ -77,7 +77,7 @@ Also, there is an alternative plugin for emacs using company-mode. See `emacs-co
 
 ### Options
 
-You can change all available options using `gocode set` command. The config file uses .ini-like format and usually stored somewhere in **~/.config/gocode** directory.
+You can change all available options using `gocode set` command. The config file uses json format and is usually stored somewhere in **~/.config/gocode** directory. On windows it's stored in the appropriate AppData folder. It's suggested to avoid modifying config file manually, do that using the `gocode set` command.
 
 `gocode set` lists all options and their values.
 
