@@ -1,4 +1,4 @@
-Found 56 candidates:
+Found 59 candidates:
   func Addr() reflect.Value
   func Bool() bool
   func Bytes() []byte
@@ -10,6 +10,7 @@ Found 56 candidates:
   func Cap() int
   func Close()
   func Complex() complex128
+  func Convert(t reflect.Type) reflect.Value
   func Elem() reflect.Value
   func Field(i int) reflect.Value
   func FieldByIndex(index []int) reflect.Value
@@ -40,6 +41,7 @@ Found 56 candidates:
   func Set(x reflect.Value)
   func SetBool(x bool)
   func SetBytes(x []byte)
+  func SetCap(n int)
   func SetComplex(x complex128)
   func SetFloat(x float64)
   func SetInt(x int64)
@@ -48,7 +50,8 @@ Found 56 candidates:
   func SetPointer(x unsafe.Pointer)
   func SetString(x string)
   func SetUint(x uint64)
-  func Slice(beg int, end int) reflect.Value
+  func Slice(i int, j int) reflect.Value
+  func Slice3(i int, j int, k int) reflect.Value
   func String() string
   func TryRecv() (x reflect.Value, ok bool)
   func TrySend(x reflect.Value) bool
