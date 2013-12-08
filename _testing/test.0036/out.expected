@@ -1,6 +1,7 @@
-Found 18 candidates:
+Found 20 candidates:
   func Close() error
   func DWARF() (*dwarf.Data, error)
+  func DynString(tag elf.DynTag) ([]string, error)
   func ImportedLibraries() ([]string, error)
   func ImportedSymbols() ([]elf.ImportedSymbol, error)
   func Section(name string) *elf.Section
@@ -10,6 +11,7 @@ Found 18 candidates:
   var ByteOrder binary.ByteOrder
   var Class elf.Class
   var Data elf.Data
+  var Entry uint64
   var FileHeader elf.FileHeader
   var Machine elf.Machine
   var OSABI elf.OSABI
