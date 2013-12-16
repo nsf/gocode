@@ -40,6 +40,34 @@ func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, A
 	return reply.Arg0, reply.Arg1
 }
 
+type Args_highlight struct {
+	Arg0 []byte
+	Arg1 string
+	Arg2 gocode_env
+}
+type Reply_highlight struct {
+	Arg0 []highlight_range
+	Arg1 int
+}
+
+func (r *RPC) RPC_highlight(args *Args_highlight, reply *Reply_highlight) error  {
+	reply.Arg0, reply.Arg1 = server_highlight(args.Arg0, args.Arg1, args.Arg2)
+	return nil
+}
+
+func client_highlight(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 gocode_env) (c []highlight_range, d int) {
+	var args Args_highlight
+	var reply Reply_highlight
+	args.Arg0 = Arg0
+	args.Arg1 = Arg1
+	args.Arg2 = Arg2
+	err := cli.Call("RPC.RPC_highlight", &args, &reply)
+	if err != nil {
+		panic(err)
+	}
+	return reply.Arg0, reply.Arg1
+}
+
 // wrapper for: server_cursor_type_pkg
 
 type Args_cursor_type_pkg struct {

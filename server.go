@@ -39,6 +39,7 @@ type daemon struct {
 	listener     net.Listener
 	cmd_in       chan int
 	autocomplete *auto_complete_context
+	highlighter  *highlight_context
 	pkgcache     package_cache
 	declcache    *decl_cache
 	env          gocode_env
@@ -57,6 +58,7 @@ func new_daemon(network, address string) *daemon {
 	d.pkgcache = new_package_cache()
 	d.declcache = new_decl_cache(&d.env)
 	d.autocomplete = new_auto_complete_context(d.pkgcache, d.declcache)
+	d.highlighter = new_highlight_context(&d.env)
 	d.env.get()
 	return d
 }
@@ -126,6 +128,25 @@ func server_auto_complete(file []byte, filename string, cursor int, env gocode_e
 		g_daemon.drop_cache()
 	}
 	return g_daemon.autocomplete.apropos(file, filename, cursor)
+}
+
+func server_highlight(file []byte, filename string, env gocode_env) (c []highlight_range, d int) {
+	defer func() {
+		if err := recover(); err != nil {
+			print_backtrace(err)
+			c = []highlight_range {
+				{"PANIC", 0, 0, 0},
+			}
+
+			// drop cache
+			g_daemon.drop_cache()
+		}
+	}()
+	if g_daemon.env != env {
+		g_daemon.env = env
+		g_daemon.drop_cache()
+	}
+	return g_daemon.highlighter.find_ranges(file, filename)
 }
 
 func server_cursor_type_pkg(file []byte, filename string, cursor int) (typ, pkg string) {
