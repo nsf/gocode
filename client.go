@@ -41,6 +41,8 @@ func do_client() int {
 		switch flag.Arg(0) {
 		case "autocomplete":
 			cmd_auto_complete(client)
+		case "highlight":
+			cmd_highlight(client)
 		case "cursortype":
 			cmd_cursor_type_pkg(client)
 		case "close":
@@ -82,6 +84,36 @@ func try_to_connect(network, address string) (client *rpc.Client, err error) {
 	}
 
 	return
+}
+
+func prepare_file_filename() ([]byte, string) {
+	var file []byte
+	var err error
+
+	if *g_input != "" {
+		file, err = ioutil.ReadFile(*g_input)
+	} else {
+		file, err = ioutil.ReadAll(os.Stdin)
+	}
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	file, _ = filter_out_shebang(file)
+
+	filename := *g_input
+
+	switch flag.NArg() {
+	case 2:
+		filename = flag.Arg(1)
+	}
+
+	if filename != "" && !filepath.IsAbs(filename) {
+		cwd, _ := os.Getwd()
+		filename = filepath.Join(cwd, filename)
+	}
+	return file, filename
 }
 
 func prepare_file_filename_cursor() ([]byte, string, int) {
@@ -144,6 +176,14 @@ func cmd_auto_complete(c *rpc.Client) {
 	file, filename, cursor := prepare_file_filename_cursor()
 	f := get_formatter(*g_format)
 	f.write_candidates(client_auto_complete(c, file, filename, cursor, env))
+}
+
+func cmd_highlight(c *rpc.Client) {
+	var env gocode_env
+	env.get()
+	file, filename := prepare_file_filename()
+	f := get_highlights_formatter(*g_format)
+	f.write_ranges(client_highlight(c, file, filename, env))
 }
 
 func cmd_cursor_type_pkg(c *rpc.Client) {
