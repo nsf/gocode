@@ -34,6 +34,10 @@ Also watch the [demo screencast](http://nosmileface.ru/images/gocode-demo.swf).
 
  3. Next steps are editor specific. See below.
 
+### Integrate into new editor
+
+[Guide for editor plugin writers.](docs/IDE_integration.md)
+
 ### Vim setup
 
 In order to install vim scripts, you need to fulfill the following steps:

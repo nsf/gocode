@@ -62,7 +62,7 @@ func (v *highlight_visitor) AddIdent(format string, id *ast.Ident) {
 // Produced ranges list
 //	error: bad expression, decl or stmt
 //  package: package name
-//  field: struct field names, or func params names, or func results names, or method receiver
+//  field: struct field name or anything accessed by dot (we mean expression at right side)
 //  func: function name
 //  label: jump label
 //  type: declarated type name

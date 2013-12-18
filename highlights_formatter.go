@@ -8,9 +8,9 @@ type highlights_formatter interface {
 	write_ranges(ranges []highlight_range, num int)
 }
 
-type json_highlights_formatter struct{}
+type qtjson_highlights_formatter struct{}
 
-func (*json_highlights_formatter) write_ranges(ranges []highlight_range, num int) {
+func (*qtjson_highlights_formatter) write_ranges(ranges []highlight_range, num int) {
 	if (ranges == nil) {
 		fmt.Print("[]")
 		return
@@ -28,5 +28,7 @@ func (*json_highlights_formatter) write_ranges(ranges []highlight_range, num int
 }
 
 func get_highlights_formatter(name string) highlights_formatter {
-	return new(json_highlights_formatter)
+	if (format == "qtjson")
+		return new(qtjson_highlights_formatter)
+	return new(qtjson_highlights_formatter)
 }
