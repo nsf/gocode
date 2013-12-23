@@ -6,8 +6,6 @@ Gocode is a helper tool which is intended to be integrated with your source code
 
 It is called *daemon*, because it uses client/server architecture for caching purposes. In particular, it makes autocompletions very fast. Typical autocompletion time with warm cache is 30ms, which is barely noticeable.
 
-There is [Guide for IDE/editor plugin developers](docs/IDE_integration.md).
-
 Also watch the [demo screencast](http://nosmileface.ru/images/gocode-demo.swf).
 
 ![Gocode in vim](http://nosmileface.ru/images/gocode-screenshot.png)
@@ -107,7 +105,9 @@ Please, report bugs, feature suggestions and other rants to the [github issue tr
 
 ### Developing
 
-If you want to integrate gocode in your editor, please, contact me and I will tell you exactly what do you need. You can send me a message via github or simply contact me via <a href="mailto:no.smile.face@gmail.com">email</a>.
+There is [Guide for IDE/editor plugin developers](docs/IDE_integration.md).
+
+If you have troubles, please, contact me and I will try to do my best answering your questions. You can contact me via <a href="mailto:no.smile.face@gmail.com">email</a>. Or for short question find me on IRC: #go-nuts @ freenode.
 
 ### Misc
 
