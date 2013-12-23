@@ -16,7 +16,7 @@ Also watch the [demo screencast](http://nosmileface.ru/images/gocode-demo.swf).
 
  1. You should have a correctly installed Go compiler environment and your personal workspace ($GOPATH). If you have no idea what **$GOPATH** is, take a look [here](http://golang.org/doc/code.html). Please make sure that your **$GOPATH/bin** is available in your **$PATH**. This is important, because most editors assume that **gocode** binary is available in one of the directories, specified by your **$PATH** environment variable. Otherwise manually copy the **gocode** binary from **$GOPATH/bin** to a location which is part of your **$PATH** after getting it in step 2.
 
-    Do these steps only if you know why do you need them:
+    Do these steps only if you understand why you need to do them:
 
     `export GOPATH=$HOME/goprojects`
 
