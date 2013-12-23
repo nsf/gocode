@@ -163,5 +163,5 @@ func get_formatter(name string) formatter {
 	case "godit":
 		return new(godit_formatter)
 	}
-	return new(vim_formatter)
+	return new(nice_formatter)
 }

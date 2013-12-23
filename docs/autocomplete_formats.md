@@ -1,7 +1,7 @@
 
 # Description of Completion Assistance Formats #
 
-Use `-f` parameter for `autocomplete` command to set format. VIM format is default and fallback.
+Use `-f` parameter for `autocomplete` command to set format. "nice" format is the default and fallback.
 
 Following formats supported:
 * json
