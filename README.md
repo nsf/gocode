@@ -42,7 +42,7 @@ In order to install vim scripts, you need to fulfill the following steps:
 
  2. Install gocode vim scripts. Usually it's enough to do the following:
 
-    `vim/update.sh`
+    2.1. `vim/update.sh`
 
     **update.sh** script does the following:
 
@@ -51,6 +51,18 @@ In order to install vim scripts, you need to fulfill the following steps:
 		mkdir -p "$HOME/.vim/ftplugin/go"
 		cp "${0%/*}/autoload/gocomplete.vim" "$HOME/.vim/autoload"
 		cp "${0%/*}/ftplugin/go/gocomplete.vim" "$HOME/.vim/ftplugin/go"
+
+    2.2. Alternatively, you can create symlinks using symlink.sh script in order to avoid running update.sh after every gocode update.
+
+    **symlink.sh** script does the following:
+
+		#!/bin/sh
+		cd "${0%/*}"
+		ROOTDIR=`pwd`
+		mkdir -p "$HOME/.vim/autoload"
+		mkdir -p "$HOME/.vim/ftplugin/go"
+		ln -s "$ROOTDIR/autoload/gocomplete.vim" "$HOME/.vim/autoload/"
+		ln -s "$ROOTDIR/ftplugin/go/gocomplete.vim" "$HOME/.vim/ftplugin/go/"
 
  3. Make sure vim has filetype plugin enabled. Simply add that to your **.vimrc**:
 
