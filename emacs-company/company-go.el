@@ -49,7 +49,7 @@
 
 (defun company-go (command &optional arg &rest ignored)
   (case command
-    (prefix (company-grab "\\.\\(\\w*\\)" 1))
+    (prefix (company-grab-word))
     (candidates (company-go--candidates))
     (meta (get-text-property 0 'meta arg))
     (sorted t)))
