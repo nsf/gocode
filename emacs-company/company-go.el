@@ -47,6 +47,7 @@
 (defun company-go--candidates ()
   (company-go--get-candidates (split-string (company-go--invoke-autocomplete) "\n" t)))
 
+;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
   (case command
     (prefix (company-grab-word))
