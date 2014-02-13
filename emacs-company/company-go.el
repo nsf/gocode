@@ -57,6 +57,7 @@
                 (directory-file-name
                  (expand-file-name "company-go--location"))))
          (buffer (current-buffer))
+         (prefix-len (length company-prefix))
          (point (point))
          (temp-buffer (find-file-noselect temp)))
     (unwind-protect
@@ -64,7 +65,7 @@
           (with-current-buffer temp-buffer
             (insert-buffer-substring buffer)
             (goto-char point)
-            (insert arg)
+            (insert (substring arg prefix-len))
             (goto-char point)
             (company-go--godef-jump point)))
       (ignore-errors
