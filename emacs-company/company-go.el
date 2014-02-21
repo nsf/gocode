@@ -15,6 +15,15 @@
   (require 'company)
   (require 'go-mode))
 
+(defgroup company-go nil
+  "Completion back-end for Go."
+  :group 'company)
+
+(defcustom company-go-show-annotation nil
+  "Show an annotation inline with the candidate."
+  :group 'company-go
+  :type 'boolean)
+
 (defun company-go--invoke-autocomplete ()
   (let ((temp-buffer (generate-new-buffer "*gocode*")))
     (prog2
@@ -104,6 +113,9 @@
     (prefix (company-grab-word))
     (candidates (company-go--candidates))
     (meta (get-text-property 0 'meta arg))
+    (annotation
+     (when company-go-show-annotation
+       (get-text-property 0 'meta arg)))
     (location (company-go--location arg))
     (sorted t)))
 
