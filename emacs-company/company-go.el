@@ -104,6 +104,7 @@
     (prefix (company-grab-word))
     (candidates (company-go--candidates))
     (meta (get-text-property 0 'meta arg))
+    (annotation (get-text-property 0 'meta arg))
     (location (company-go--location arg))
     (sorted t)))
 
