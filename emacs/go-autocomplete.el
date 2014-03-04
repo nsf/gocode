@@ -77,18 +77,19 @@
 
 (defun ac-go-invoke-autocomplete ()
   (let ((temp-buffer (generate-new-buffer "*gocode*")))
-    (prog2
-	(call-process-region (point-min)
-			     (point-max)
-			     "gocode"
-			     nil
-			     temp-buffer
-			     nil
-			     "-f=emacs"
-			     "autocomplete"
-			     (or (buffer-file-name) "")
-			     (concat "c" (int-to-string (- (point) 1))))
-	(with-current-buffer temp-buffer (buffer-string))
+    (unwind-protect
+        (progn
+          (call-process-region (point-min)
+                               (point-max)
+                               "gocode"
+                               nil
+                               temp-buffer
+                               nil
+                               "-f=emacs"
+                               "autocomplete"
+                               (or (buffer-file-name) "")
+                               (concat "c" (int-to-string (- (point) 1))))
+          (with-current-buffer temp-buffer (buffer-string)))
       (kill-buffer temp-buffer))))
 
 (defun ac-go-format-autocomplete (buffer-contents)
