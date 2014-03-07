@@ -38,6 +38,16 @@ func (this *bytes_iterator) move_backwards() {
 	}
 }
 
+// move cursor forwards to the next valid utf8 rune start
+func (this *bytes_iterator) move_forwards() {
+	for this.cursor < len(this.data) {
+		this.cursor++
+		if utf8.RuneStart(this.char()) {
+			return
+		}
+	}
+}
+
 var g_unicode_ident_set = []*unicode.RangeTable{
 	unicode.Letter,
 	unicode.Digit,
@@ -55,6 +65,18 @@ func (this *bytes_iterator) skip_ident() {
 			return
 		}
 		this.move_backwards()
+	}
+}
+
+func (this *bytes_iterator) skip_forward_ident() {
+	for this.cursor < len(this.data) {
+		r := this.rune()
+
+		// stop if 'r' is not [a-zA-Z0-9_] (unicode correct though)
+		if !unicode.IsOneOf(g_unicode_ident_set, r) {
+			return
+		}
+		this.move_forwards()
 	}
 }
 
@@ -174,43 +196,25 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 // deduce the type of the expression under the cursor, a bit of copy & paste from the method
 // above, returns true if deduction was successful (even if the result of it is nil)
 func (c *auto_complete_context) deduce_cursor_type_pkg(file []byte, cursor int) (ast.Expr, string, bool) {
-	deduce := func(iter *bytes_iterator) (ast.Expr, string) {
-		e := string(iter.extract_go_expr())
-		expr, err := parser.ParseExpr(e)
-		if err != nil {
-			return nil, ""
-		}
-		t, scope, _ := infer_type(expr, c.current.scope, -1)
-		return t, lookup_pkg(get_type_path(t), scope)
-	}
-
 	if cursor <= 0 {
 		return nil, "", true
 	}
 
 	iter := bytes_iterator{file, cursor}
 
-	// figure out what is just before the cursor
-	iter.move_backwards()
-	if iter.char() == '.' {
-		// we're '<whatever>.'
-		// figure out decl, Parital is ""
-		decl, pkg := deduce(&iter)
-		return decl, pkg, decl != nil
-	}
+	// move forward to the end of the current identifier
+	// so that we can grab the whole identifier when
+	// reading backwards
+	iter.skip_forward_ident()
 
-	r := iter.rune()
-	if unicode.IsOneOf(g_unicode_ident_set, r) {
-		// we're '<whatever>.<ident>'
-		// parse <ident> as Partial and figure out decl
-		iter.skip_ident()
-		if iter.char() == '.' {
-			decl, pkg := deduce(&iter)
-			return decl, pkg, decl != nil
-		} else {
-			return nil, "", true
-		}
-	}
+	// read backwards to extract expression
+	e := string(iter.extract_go_expr())
 
-	return nil, "", true
+	expr, err := parser.ParseExpr(e)
+	if err != nil {
+		return nil, "", false
+	} else {
+		t, scope, _ := infer_type(expr, c.current.scope, -1)
+		return t, lookup_pkg(get_type_path(t), scope), t != nil
+	}
 }
