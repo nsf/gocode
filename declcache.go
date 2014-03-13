@@ -226,6 +226,12 @@ func find_global_file(imp string, env *gocode_env) (string, bool) {
 			if file_exists(pkg_path) {
 				return pkg_path, true
 			}
+			// Also check the relevant pkg/OS_ARCH dir for the libpath, if provided.
+			pkgdir := fmt.Sprintf("%s_%s", env.GOOS, env.GOARCH)
+			pkg_path = filepath.Join(p, "pkg", pkgdir, pkgfile)
+			if file_exists(pkg_path) {
+				return pkg_path, true
+			}
 		}
 	}
 
