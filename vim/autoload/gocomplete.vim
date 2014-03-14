@@ -18,10 +18,10 @@ fu! s:gocodeCurrentBuffer()
 	return file
 endf
 
-let s:vim_system = get(g:, 'gocomplete#system_function', function('system'))
+let s:vim_system = get(g:, 'gocomplete#system_function', 'system')
 
 fu! s:system(str, ...)
-	return (a:0 == 0 ? s:vim_system(a:str) : s:vim_system(a:str, join(a:000)))
+	return call(s:vim_system, [a:str] + a:000)
 endf
 
 fu! s:gocodeShellescape(arg)
