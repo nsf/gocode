@@ -45,7 +45,8 @@
             (sock (format (concat temporary-file-directory "gocode-daemon.%s") user)))
        (unless (file-exists-p sock)
          (add-hook 'kill-emacs-hook #'(lambda ()
-                                        (call-process "gocode" nil nil nil "close")))))))
+                                        (ignore-errors
+                                          (call-process "gocode" nil nil nil "close"))))))))
 
 ;(defvar go-reserved-keywords
 ;  '("break" "case" "chan" "const" "continue" "default" "defer" "else"
