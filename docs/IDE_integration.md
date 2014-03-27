@@ -29,6 +29,8 @@ gocode -f=json autocomplete server.go 889
 gocode -f=json autocomplete server.go c619
 ```
 
+## Server-side Debug Mode ##
+
 There is a special server-side debug mode available in order to help developers with gocode integration. Invoke the gocode's server manually passing the following arguments:
 ```bash
 # make sure gocode server isn't running
