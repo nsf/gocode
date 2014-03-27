@@ -29,4 +29,36 @@ gocode -f=json autocomplete server.go 889
 gocode -f=json autocomplete server.go c619
 ```
 
+There is a special server-side debug mode available in order to help developers with gocode integration. Invoke the gocode's server manually passing the following arguments:
+```bash
+# make sure gocode server isn't running
+gocode close
+# -s for "server"
+# -debug for special server-side debug mode
+gocode -s -debug
+```
+
+After that when your editor sends autocompletion requests, the server will print some information about them to the stdout, for example:
+```
+Got autocompletion request for '/home/nsf/tmp/gobug/main.go'
+Cursor at: 52
+-------------------------------------------------------
+package main
+
+import "bytes"
+
+func main() {
+        bytes.F#
+}
+-------------------------------------------------------
+Offset: 1
+Number of candidates found: 2
+Candidates are:
+  func Fields(s []byte) [][]byte
+  func FieldsFunc(s []byte, f func(rune) bool) [][]byte
+=======================================================
+```
+
+Note that '#' symbol is inserted at the cursor location as gocode sees it. This debug mode is useful when you need to make sure your editor sends the right position in all cases. Keep in mind that Go source files are UTF-8 files, try inserting non-english comments before the completion location to check if everything works properly.
+
 [Output formats reference.](autocomplete_formats.md)

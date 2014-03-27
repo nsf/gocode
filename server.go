@@ -128,12 +128,27 @@ func server_auto_complete(file []byte, filename string, cursor int, env gocode_e
 	if *g_debug {
 		fmt.Printf("Got autocompletion request for '%s'\n", filename)
 		fmt.Printf("Cursor at: %d\n", cursor)
+		fmt.Println("-------------------------------------------------------")
 		fmt.Print(string(file[:cursor]))
 		fmt.Print("#")
 		fmt.Print(string(file[cursor:]))
 		fmt.Println("-------------------------------------------------------")
 	}
-	return g_daemon.autocomplete.apropos(file, filename, cursor)
+	candidates, d := g_daemon.autocomplete.apropos(file, filename, cursor)
+	if *g_debug {
+		fmt.Printf("Offset: %d\n", d)
+		fmt.Printf("Number of candidates found: %d\n", len(candidates))
+		fmt.Printf("Candidates are:\n")
+		for _, c := range candidates {
+			abbr := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
+			if c.Class == decl_func {
+				abbr = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
+			}
+			fmt.Printf("  %s\n", abbr)
+		}
+		fmt.Println("=======================================================")
+	}
+	return candidates, d
 }
 
 func server_cursor_type_pkg(file []byte, filename string, cursor int) (typ, pkg string) {
