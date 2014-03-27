@@ -13,6 +13,7 @@ var (
 	g_input     = flag.String("in", "", "use this file instead of stdin input")
 	g_sock      = create_sock_flag("sock", "socket type (unix | tcp)")
 	g_addr      = flag.String("addr", "localhost:37373", "address for tcp socket")
+	g_debug     = flag.Bool("debug", false, "enable server-side debug mode")
 )
 
 func get_socket_filename() string {

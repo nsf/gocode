@@ -125,6 +125,14 @@ func server_auto_complete(file []byte, filename string, cursor int, env gocode_e
 		g_daemon.env = env
 		g_daemon.drop_cache()
 	}
+	if *g_debug {
+		fmt.Printf("Got autocompletion request for '%s'\n", filename)
+		fmt.Printf("Cursor at: %d\n", cursor)
+		fmt.Print(string(file[:cursor]))
+		fmt.Print("#")
+		fmt.Print(string(file[cursor:]))
+		fmt.Println("-------------------------------------------------------")
+	}
 	return g_daemon.autocomplete.apropos(file, filename, cursor)
 }
 
