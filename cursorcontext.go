@@ -90,6 +90,10 @@ var g_bracket_pairs = map[byte]byte{
 func (this *bytes_iterator) skip_to_bracket_pair() {
 	right := this.char()
 	left := g_bracket_pairs[right]
+	this.skip_to_left_bracket(left, right)
+}
+
+func (this *bytes_iterator) skip_to_left_bracket(left, right byte) {
 	balance := 1
 	for balance != 0 {
 		this.cursor--
