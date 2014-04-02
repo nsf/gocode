@@ -82,19 +82,20 @@ func (this *bytes_iterator) skip_all_whitespace() bool {
 	return true
 }
 
-func (this *bytes_iterator) skip_forward_ident() {
+func (this *bytes_iterator) skip_forward_ident() bool {
 	for this.cursor < len(this.data) {
 		r := this.rune()
 
 		// stop if 'r' is not [a-zA-Z0-9_] (unicode correct though)
 		if !unicode.IsOneOf(g_unicode_ident_set, r) {
-			return
+			return true
 		}
 		this.move_forwards()
 	}
+	return false
 }
 
-var g_bracket_pairs = map[byte]byte{
+var g_bracket_pairs = map[rune]rune{
 	')': '(',
 	']': '[',
 }
@@ -102,19 +103,19 @@ var g_bracket_pairs = map[byte]byte{
 // when the cursor is at the ')' or ']', move the cursor to an opposite bracket
 // pair, this functions takes inner bracker pairs into account
 func (this *bytes_iterator) skip_to_bracket_pair() bool {
-	right := this.char()
+	right := this.rune()
 	left := g_bracket_pairs[right]
 	return this.skip_to_left_bracket(left, right)
 }
 
-func (this *bytes_iterator) skip_to_left_bracket(left, right byte) bool {
+func (this *bytes_iterator) skip_to_left_bracket(left, right rune) bool {
 	balance := 1
 	for balance != 0 {
 		this.move_backwards()
 		if this.cursor == 0 {
 			return false
 		}
-		switch this.char() {
+		switch this.rune() {
 		case right:
 			balance++
 		case left:
