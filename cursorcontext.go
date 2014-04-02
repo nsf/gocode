@@ -29,13 +29,14 @@ func (this *bytes_iterator) rune() rune {
 }
 
 // move cursor backwards to the next valid utf8 rune start, or 0
-func (this *bytes_iterator) move_backwards() {
+func (this *bytes_iterator) move_backwards() bool {
 	for this.cursor != 0 {
 		this.cursor--
 		if utf8.RuneStart(this.char()) {
-			return
+			return true
 		}
 	}
+	return false
 }
 
 // move cursor forwards to the next valid utf8 rune start
@@ -56,53 +57,108 @@ var g_unicode_ident_set = []*unicode.RangeTable{
 
 // move cursor backwards, stop at the first rune that is not from
 // 'g_unicode_ident_set', or 0
-func (this *bytes_iterator) skip_ident() {
+func (this *bytes_iterator) skip_ident() bool {
 	for this.cursor != 0 {
 		r := this.rune()
 
 		// stop if 'r' is not [a-zA-Z0-9_] (unicode correct though)
 		if !unicode.IsOneOf(g_unicode_ident_set, r) {
-			return
+			return true
 		}
 		this.move_backwards()
 	}
+	return true
 }
 
-func (this *bytes_iterator) skip_forward_ident() {
+func (this *bytes_iterator) skip_all_whitespace() bool {
+	for this.cursor != 0 {
+		r := this.rune()
+
+		if !unicode.IsSpace(r) {
+			return true
+		}
+		this.move_backwards()
+	}
+	return true
+}
+
+func (this *bytes_iterator) skip_forward_ident() bool {
 	for this.cursor < len(this.data) {
 		r := this.rune()
 
 		// stop if 'r' is not [a-zA-Z0-9_] (unicode correct though)
 		if !unicode.IsOneOf(g_unicode_ident_set, r) {
-			return
+			return true
 		}
 		this.move_forwards()
 	}
+	return false
 }
 
-var g_bracket_pairs = map[byte]byte{
+var g_bracket_pairs = map[rune]rune{
 	')': '(',
 	']': '[',
 }
 
 // when the cursor is at the ')' or ']', move the cursor to an opposite bracket
 // pair, this functions takes inner bracker pairs into account
-func (this *bytes_iterator) skip_to_bracket_pair() {
-	right := this.char()
+func (this *bytes_iterator) skip_to_bracket_pair() bool {
+	right := this.rune()
 	left := g_bracket_pairs[right]
+	return this.skip_to_left_bracket(left, right)
+}
+
+func (this *bytes_iterator) skip_to_left_bracket(left, right rune) bool {
 	balance := 1
 	for balance != 0 {
-		this.cursor--
+		this.move_backwards()
 		if this.cursor == 0 {
-			return
+			return false
 		}
-		switch this.char() {
+		switch this.rune() {
 		case right:
 			balance++
 		case left:
 			balance--
 		}
 	}
+	return true
+}
+
+// Move the cursor to the open brace of the current block, taking inner blocks
+// into account.
+func (this *bytes_iterator) skip_to_open_brace() bool {
+	return this.skip_to_left_bracket('{', '}')
+}
+
+// try_extract_struct_init_expr tries to match the current cursor position as being inside a struct
+// initialization expression of the form:
+// &X{
+// 	Xa: 1,
+// 	Xb: 2,
+// }
+// Note that this currently only works when:
+// - the type of the struct immediately precedes the opening '{'
+// - each field is declared on its own line
+// Nested struct initialization expressions are handled correctly.
+func (this *bytes_iterator) try_extract_struct_init_expr() []byte {
+	for this.cursor != 0 {
+		if !this.skip_to_open_brace() {
+			return nil
+		}
+
+		if !this.move_backwards() {
+			return nil
+		}
+
+		orig := this.cursor + 1
+		if !this.skip_ident() {
+			return nil
+		}
+
+		return this.data[this.cursor+1 : orig]
+	}
+	return nil
 }
 
 // starting from the end of the 'file', move backwards and return a slice of a
@@ -190,7 +246,45 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 		}
 	}
 
+	if unicode.IsSpace(iter.rune()) {
+		// Try to parse the current expression as a structure initialization.
+		data := iter.try_extract_struct_init_expr()
+		if data == nil {
+			return cursor_context{nil, ""}, true
+		}
+
+		expr, err := parser.ParseExpr(string(data))
+		if err != nil {
+			return cursor_context{nil, ""}, true
+		}
+		decl := expr_to_decl(expr, c.current.scope)
+		if decl == nil {
+			return cursor_context{nil, ""}, true
+		}
+
+		switch decl.typ.(type) {
+		case *ast.StructType:
+			// TODO: Return partial.
+			return cursor_context{struct_members_only(decl), ""}, true
+		}
+	}
+
 	return cursor_context{nil, ""}, true
+}
+
+// struct_members_only returns a copy of decl with all its children of type function stripped out.
+// This is used when returning matches for struct initialization expressions, for which it does not
+// make sense to suggest a function name associated with the struct.
+func struct_members_only(decl *decl) *decl {
+	new_decl := *decl
+	for k, d := range new_decl.children {
+		switch d.typ.(type) {
+		case *ast.FuncType:
+			// Strip functions from the list.
+			delete(new_decl.children, k)
+		}
+	}
+	return &new_decl
 }
 
 // deduce the type of the expression under the cursor, a bit of copy & paste from the method
