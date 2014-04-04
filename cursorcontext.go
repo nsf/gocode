@@ -12,15 +12,15 @@ type cursor_context struct {
 	partial string
 }
 
+type token_iterator struct {
+	tokens      []token_item
+	token_index int
+}
+
 type token_item struct {
 	off int
 	tok token.Token
 	lit string
-}
-
-type bytes_iterator struct {
-	tokens      []token_item
-	token_index int
 }
 
 func (i token_item) Literal() string {
@@ -31,11 +31,11 @@ func (i token_item) Literal() string {
 	}
 }
 
-func (this *bytes_iterator) token() token_item {
+func (this *token_iterator) token() token_item {
 	return this.tokens[this.token_index]
 }
 
-func (this *bytes_iterator) previous_token() bool {
+func (this *token_iterator) previous_token() bool {
 	if this.token_index <= 0 {
 		return false
 	}
@@ -50,13 +50,13 @@ var g_bracket_pairs = map[token.Token]token.Token{
 
 // when the cursor is at the ')' or ']', move the cursor to an opposite bracket
 // pair, this functions takes inner bracker pairs into account
-func (this *bytes_iterator) skip_to_bracket_pair() bool {
+func (this *token_iterator) skip_to_bracket_pair() bool {
 	right := this.token().tok
 	left := g_bracket_pairs[right]
 	return this.skip_to_left_bracket(left, right)
 }
 
-func (this *bytes_iterator) skip_to_left_bracket(left, right token.Token) bool {
+func (this *token_iterator) skip_to_left_bracket(left, right token.Token) bool {
 	// TODO: Make this functin recursive.
 	if this.token().tok == left {
 		return true
@@ -79,7 +79,7 @@ func (this *bytes_iterator) skip_to_left_bracket(left, right token.Token) bool {
 
 // Move the cursor to the open brace of the current block, taking inner blocks
 // into account.
-func (this *bytes_iterator) skip_to_open_brace() bool {
+func (this *token_iterator) skip_to_open_brace() bool {
 	return this.skip_to_left_bracket(token.LBRACE, token.RBRACE)
 }
 
@@ -90,7 +90,7 @@ func (this *bytes_iterator) skip_to_open_brace() bool {
 // 	Xb: 2,
 // }
 // Nested struct initialization expressions are handled correctly.
-func (this *bytes_iterator) try_extract_struct_init_expr() []byte {
+func (this *token_iterator) try_extract_struct_init_expr() []byte {
 	for this.token_index >= 0 {
 		if !this.skip_to_open_brace() {
 			return nil
@@ -107,7 +107,7 @@ func (this *bytes_iterator) try_extract_struct_init_expr() []byte {
 
 // starting from the end of the 'file', move backwards and return a slice of a
 // valid Go expression
-func (this *bytes_iterator) extract_go_expr() []byte {
+func (this *token_iterator) extract_go_expr() []byte {
 	// TODO: Make this function recursive.
 	last := token.ILLEGAL
 	orig := this.token_index
@@ -151,7 +151,7 @@ func make_expr(tokens []token_item) []byte {
 
 // this function is called when the cursor is at the '.' and you need to get the
 // declaration before that dot
-func (c *auto_complete_context) deduce_cursor_decl(iter *bytes_iterator) *decl {
+func (c *auto_complete_context) deduce_cursor_decl(iter *token_iterator) *decl {
 	e := string(iter.extract_go_expr())
 	expr, err := parser.ParseExpr(e)
 	if err != nil {
@@ -160,7 +160,7 @@ func (c *auto_complete_context) deduce_cursor_decl(iter *bytes_iterator) *decl {
 	return expr_to_decl(expr, c.current.scope)
 }
 
-func new_bytes_iterator(src []byte, cursor int) bytes_iterator {
+func new_token_iterator(src []byte, cursor int) token_iterator {
 	tokens := make([]token_item, 0, 1000)
 	var s scanner.Scanner
 	fset := token.NewFileSet()
@@ -182,7 +182,7 @@ func new_bytes_iterator(src []byte, cursor int) bytes_iterator {
 			token_index++
 		}
 	}
-	return bytes_iterator{
+	return token_iterator{
 		tokens:      tokens,
 		token_index: token_index,
 	}
@@ -195,7 +195,7 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 		return cursor_context{nil, ""}, true
 	}
 
-	iter := new_bytes_iterator(file, cursor)
+	iter := new_token_iterator(file, cursor)
 
 	// figure out what is just before the cursor
 	iter.previous_token()
@@ -269,7 +269,7 @@ func (c *auto_complete_context) deduce_cursor_type_pkg(file []byte, cursor int) 
 		return nil, "", true
 	}
 
-	iter := new_bytes_iterator(file, cursor)
+	iter := new_token_iterator(file, cursor)
 
 	// read backwards to extract expression
 	e := string(iter.extract_go_expr())
