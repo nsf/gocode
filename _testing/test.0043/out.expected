@@ -1,3 +1,5 @@
-Found 2 candidates:
-  var Ya int
-  var Yb int
+Found 4 candidates:
+  func foo()
+  var Xa int
+  var Xb int
+  var Xy Y
