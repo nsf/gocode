@@ -116,8 +116,7 @@ loop:
 		if this.token_index == 0 {
 			return make_expr(this.tokens[:orig])
 		}
-		r := this.token().tok
-		switch r {
+		switch r := this.token().tok; r {
 		case token.PERIOD:
 			this.previous_token()
 			last = r
@@ -199,16 +198,13 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 
 	// figure out what is just before the cursor
 	iter.previous_token()
-	if iter.token().tok == token.PERIOD {
+	switch r := iter.token().tok; r {
+	case token.PERIOD:
 		// we're '<whatever>.'
-		// figure out decl, Parital is ""
+		// figure out decl, Partial is ""
 		decl := c.deduce_cursor_decl(&iter)
 		return cursor_context{decl, ""}, decl != nil
-	}
-
-	// TODO: Merge with above case.
-	r := iter.token()
-	if (r.tok == token.IDENT) || (r.tok == token.VAR) {
+	case token.IDENT, token.VAR:
 		// we're '<whatever>.<ident>'
 		// parse <ident> as Partial and figure out decl
 		partial := iter.token().Literal()
@@ -219,9 +215,7 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 		} else {
 			return cursor_context{nil, partial}, true
 		}
-	}
-
-	if (r.tok == token.COMMA) || (r.tok == token.LBRACE) {
+	case token.COMMA, token.LBRACE:
 		// Try to parse the current expression as a structure initialization.
 		data := iter.try_extract_struct_init_expr()
 		if data == nil {
@@ -237,6 +231,7 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 			return cursor_context{nil, ""}, true
 		}
 
+		// Make sure whatever is before the opening brace is a struct.
 		switch decl.typ.(type) {
 		case *ast.StructType:
 			// TODO: Return partial.
