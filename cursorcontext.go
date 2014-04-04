@@ -3,8 +3,8 @@ package main
 import (
 	"go/ast"
 	"go/parser"
-	"unicode"
-	"unicode/utf8"
+	"go/scanner"
+	"go/token"
 )
 
 type cursor_context struct {
@@ -12,110 +12,62 @@ type cursor_context struct {
 	partial string
 }
 
-type bytes_iterator struct {
-	data   []byte
-	cursor int
+type token_iterator struct {
+	tokens      []token_item
+	token_index int
 }
 
-// return the character under the cursor
-func (this *bytes_iterator) char() byte {
-	return this.data[this.cursor]
+type token_item struct {
+	off int
+	tok token.Token
+	lit string
 }
 
-// return the rune under the cursor
-func (this *bytes_iterator) rune() rune {
-	r, _ := utf8.DecodeRune(this.data[this.cursor:])
-	return r
-}
-
-// move cursor backwards to the next valid utf8 rune start, or 0
-func (this *bytes_iterator) move_backwards() bool {
-	for this.cursor != 0 {
-		this.cursor--
-		if utf8.RuneStart(this.char()) {
-			return true
-		}
-	}
-	return false
-}
-
-// move cursor forwards to the next valid utf8 rune start
-func (this *bytes_iterator) move_forwards() {
-	for this.cursor < len(this.data) {
-		this.cursor++
-		if utf8.RuneStart(this.char()) {
-			return
-		}
+func (i token_item) Literal() string {
+	if i.tok.IsLiteral() {
+		return i.lit
+	} else {
+		return i.tok.String()
 	}
 }
 
-var g_unicode_ident_set = []*unicode.RangeTable{
-	unicode.Letter,
-	unicode.Digit,
-	{R16: []unicode.Range16{{'_', '_', 1}}},
+func (this *token_iterator) token() token_item {
+	return this.tokens[this.token_index]
 }
 
-// move cursor backwards, stop at the first rune that is not from
-// 'g_unicode_ident_set', or 0
-func (this *bytes_iterator) skip_ident() bool {
-	for this.cursor != 0 {
-		r := this.rune()
-
-		// stop if 'r' is not [a-zA-Z0-9_] (unicode correct though)
-		if !unicode.IsOneOf(g_unicode_ident_set, r) {
-			return true
-		}
-		this.move_backwards()
+func (this *token_iterator) previous_token() bool {
+	if this.token_index <= 0 {
+		return false
 	}
+	this.token_index--
 	return true
 }
 
-func (this *bytes_iterator) skip_all_whitespace() bool {
-	for this.cursor != 0 {
-		r := this.rune()
-
-		if !unicode.IsSpace(r) {
-			return true
-		}
-		this.move_backwards()
-	}
-	return true
-}
-
-func (this *bytes_iterator) skip_forward_ident() bool {
-	for this.cursor < len(this.data) {
-		r := this.rune()
-
-		// stop if 'r' is not [a-zA-Z0-9_] (unicode correct though)
-		if !unicode.IsOneOf(g_unicode_ident_set, r) {
-			return true
-		}
-		this.move_forwards()
-	}
-	return false
-}
-
-var g_bracket_pairs = map[rune]rune{
-	')': '(',
-	']': '[',
+var g_bracket_pairs = map[token.Token]token.Token{
+	token.RPAREN: token.LPAREN,
+	token.RBRACK: token.LBRACK,
 }
 
 // when the cursor is at the ')' or ']', move the cursor to an opposite bracket
 // pair, this functions takes inner bracker pairs into account
-func (this *bytes_iterator) skip_to_bracket_pair() bool {
-	right := this.rune()
+func (this *token_iterator) skip_to_bracket_pair() bool {
+	right := this.token().tok
 	left := g_bracket_pairs[right]
 	return this.skip_to_left_bracket(left, right)
 }
 
-func (this *bytes_iterator) skip_to_left_bracket(left, right rune) bool {
+func (this *token_iterator) skip_to_left_bracket(left, right token.Token) bool {
+	// TODO: Make this functin recursive.
+	if this.token().tok == left {
+		return true
+	}
 	balance := 1
 	for balance != 0 {
-		this.move_backwards()
-		if this.cursor == 0 {
+		this.previous_token()
+		if this.token_index == 0 {
 			return false
 		}
-		switch this.rune() {
+		switch this.token().tok {
 		case right:
 			balance++
 		case left:
@@ -127,8 +79,8 @@ func (this *bytes_iterator) skip_to_left_bracket(left, right rune) bool {
 
 // Move the cursor to the open brace of the current block, taking inner blocks
 // into account.
-func (this *bytes_iterator) skip_to_open_brace() bool {
-	return this.skip_to_left_bracket('{', '}')
+func (this *token_iterator) skip_to_open_brace() bool {
+	return this.skip_to_left_bracket(token.LBRACE, token.RBRACE)
 }
 
 // try_extract_struct_init_expr tries to match the current cursor position as being inside a struct
@@ -137,80 +89,102 @@ func (this *bytes_iterator) skip_to_open_brace() bool {
 // 	Xa: 1,
 // 	Xb: 2,
 // }
-// Note that this currently only works when:
-// - the type of the struct immediately precedes the opening '{'
-// - each field is declared on its own line
 // Nested struct initialization expressions are handled correctly.
-func (this *bytes_iterator) try_extract_struct_init_expr() []byte {
-	for this.cursor != 0 {
+func (this *token_iterator) try_extract_struct_init_expr() []byte {
+	for this.token_index >= 0 {
 		if !this.skip_to_open_brace() {
 			return nil
 		}
 
-		if !this.move_backwards() {
+		if !this.previous_token() {
 			return nil
 		}
 
-		orig := this.cursor + 1
-		if !this.skip_ident() {
-			return nil
-		}
-
-		return this.data[this.cursor+1 : orig]
+		return []byte(this.token().Literal())
 	}
 	return nil
 }
 
 // starting from the end of the 'file', move backwards and return a slice of a
 // valid Go expression
-func (this *bytes_iterator) extract_go_expr() []byte {
-	const (
-		last_none = iota
-		last_dot
-		last_paren
-		last_ident
-	)
-	last := last_none
-	orig := this.cursor
-	this.move_backwards()
+func (this *token_iterator) extract_go_expr() []byte {
+	// TODO: Make this function recursive.
+	last := token.ILLEGAL
+	orig := this.token_index
 loop:
 	for {
-		if this.cursor == 0 {
-			return this.data[:orig]
+		if this.token_index == 0 {
+			return make_expr(this.tokens[:orig])
 		}
-		r := this.rune()
-		switch r {
-		case '.':
-			this.move_backwards()
-			last = last_dot
-		case ')', ']':
-			if last == last_ident {
+		switch r := this.token().tok; r {
+		case token.PERIOD:
+			this.previous_token()
+			last = r
+		case token.RPAREN, token.RBRACK:
+			if last == token.IDENT {
+				// ")ident" or "]ident".
 				break loop
 			}
 			this.skip_to_bracket_pair()
-			this.move_backwards()
-			last = last_paren
+			this.previous_token()
+			last = r
+		case token.SEMICOLON, token.LPAREN, token.LBRACE, token.COLON, token.COMMA:
+			// If we reach one of these tokens, the expression is definitely over.
+			break loop
 		default:
-			if unicode.IsOneOf(g_unicode_ident_set, r) {
-				this.skip_ident()
-				last = last_ident
-			} else {
-				break loop
-			}
+			this.previous_token()
+			last = r
 		}
 	}
-	return this.data[this.cursor+1 : orig]
+	return make_expr(this.tokens[this.token_index+1 : orig])
+}
+
+// Given a slice of token_item, reassembles them into the original literal expression.
+func make_expr(tokens []token_item) []byte {
+	e := ""
+	for _, t := range tokens {
+		e += t.Literal()
+	}
+	return []byte(e)
 }
 
 // this function is called when the cursor is at the '.' and you need to get the
 // declaration before that dot
-func (c *auto_complete_context) deduce_cursor_decl(iter *bytes_iterator) *decl {
+func (c *auto_complete_context) deduce_cursor_decl(iter *token_iterator) *decl {
 	e := string(iter.extract_go_expr())
 	expr, err := parser.ParseExpr(e)
 	if err != nil {
 		return nil
 	}
 	return expr_to_decl(expr, c.current.scope)
+}
+
+func new_token_iterator(src []byte, cursor int) token_iterator {
+	tokens := make([]token_item, 0, 1000)
+	var s scanner.Scanner
+	fset := token.NewFileSet()
+	file := fset.AddFile("", fset.Base(), len(src))
+	s.Init(file, src, nil, 0)
+	token_index := 0
+	for {
+		pos, tok, lit := s.Scan()
+		if tok == token.EOF {
+			break
+		}
+		off := fset.Position(pos).Offset
+		tokens = append(tokens, token_item{
+			off: off,
+			tok: tok,
+			lit: lit,
+		})
+		if cursor > off {
+			token_index++
+		}
+	}
+	return token_iterator{
+		tokens:      tokens,
+		token_index: token_index,
+	}
 }
 
 // deduce cursor context, it includes the declaration under the cursor and partial identifier
@@ -220,33 +194,28 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 		return cursor_context{nil, ""}, true
 	}
 
-	orig := cursor
-	iter := bytes_iterator{file, cursor}
+	iter := new_token_iterator(file, cursor)
 
 	// figure out what is just before the cursor
-	iter.move_backwards()
-	if iter.char() == '.' {
+	iter.previous_token()
+	switch r := iter.token().tok; r {
+	case token.PERIOD:
 		// we're '<whatever>.'
-		// figure out decl, Parital is ""
+		// figure out decl, Partial is ""
 		decl := c.deduce_cursor_decl(&iter)
 		return cursor_context{decl, ""}, decl != nil
-	}
-
-	r := iter.rune()
-	if unicode.IsOneOf(g_unicode_ident_set, r) {
+	case token.IDENT, token.VAR:
 		// we're '<whatever>.<ident>'
 		// parse <ident> as Partial and figure out decl
-		iter.skip_ident()
-		partial := string(iter.data[iter.cursor+1 : orig])
-		if iter.char() == '.' {
+		partial := iter.token().Literal()
+		iter.previous_token()
+		if iter.token().tok == token.PERIOD {
 			decl := c.deduce_cursor_decl(&iter)
 			return cursor_context{decl, partial}, decl != nil
 		} else {
 			return cursor_context{nil, partial}, true
 		}
-	}
-
-	if unicode.IsSpace(iter.rune()) {
+	case token.COMMA, token.LBRACE:
 		// Try to parse the current expression as a structure initialization.
 		data := iter.try_extract_struct_init_expr()
 		if data == nil {
@@ -262,6 +231,7 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 			return cursor_context{nil, ""}, true
 		}
 
+		// Make sure whatever is before the opening brace is a struct.
 		switch decl.typ.(type) {
 		case *ast.StructType:
 			// TODO: Return partial.
@@ -294,12 +264,7 @@ func (c *auto_complete_context) deduce_cursor_type_pkg(file []byte, cursor int) 
 		return nil, "", true
 	}
 
-	iter := bytes_iterator{file, cursor}
-
-	// move forward to the end of the current identifier
-	// so that we can grab the whole identifier when
-	// reading backwards
-	iter.skip_forward_ident()
+	iter := new_token_iterator(file, cursor)
 
 	// read backwards to extract expression
 	e := string(iter.extract_go_expr())
