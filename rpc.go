@@ -9,156 +9,156 @@ import (
 type RPC struct {
 }
 
-// wrapper for: server_auto_complete
+// wrapper for: serverAutoComplete
 
-type Args_auto_complete struct {
+type ArgsAutoComplete struct {
 	Arg0 []byte
 	Arg1 string
 	Arg2 int
-	Arg3 gocode_env
+	Arg3 gocodeEnv
 }
-type Reply_auto_complete struct {
+type ReplyAutoComplete struct {
 	Arg0 []candidate
 	Arg1 int
 }
 
-func (r *RPC) RPC_auto_complete(args *Args_auto_complete, reply *Reply_auto_complete) error {
-	reply.Arg0, reply.Arg1 = server_auto_complete(args.Arg0, args.Arg1, args.Arg2, args.Arg3)
+func (r *RPC) RPCAutoComplete(args *ArgsAutoComplete, reply *ReplyAutoComplete) error {
+	reply.Arg0, reply.Arg1 = serverAutoComplete(args.Arg0, args.Arg1, args.Arg2, args.Arg3)
 	return nil
 }
-func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, Arg3 gocode_env) (c []candidate, d int) {
-	var args Args_auto_complete
-	var reply Reply_auto_complete
+func clientAutoComplete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, Arg3 gocodeEnv) (c []candidate, d int) {
+	var args ArgsAutoComplete
+	var reply ReplyAutoComplete
 	args.Arg0 = Arg0
 	args.Arg1 = Arg1
 	args.Arg2 = Arg2
 	args.Arg3 = Arg3
-	err := cli.Call("RPC.RPC_auto_complete", &args, &reply)
+	err := cli.Call("RPC.RPCAutoComplete", &args, &reply)
 	if err != nil {
 		panic(err)
 	}
 	return reply.Arg0, reply.Arg1
 }
 
-// wrapper for: server_cursor_type_pkg
+// wrapper for: serverCursorTypePkg
 
-type Args_cursor_type_pkg struct {
+type ArgsCursorTypePkg struct {
 	Arg0 []byte
 	Arg1 string
 	Arg2 int
 }
-type Reply_cursor_type_pkg struct {
+type ReplyCursorTypePkg struct {
 	Arg0, Arg1 string
 }
 
-func (r *RPC) RPC_cursor_type_pkg(args *Args_cursor_type_pkg, reply *Reply_cursor_type_pkg) error {
-	reply.Arg0, reply.Arg1 = server_cursor_type_pkg(args.Arg0, args.Arg1, args.Arg2)
+func (r *RPC) RPCCursorTypePkg(args *ArgsCursorTypePkg, reply *ReplyCursorTypePkg) error {
+	reply.Arg0, reply.Arg1 = serverCursorTypePkg(args.Arg0, args.Arg1, args.Arg2)
 	return nil
 }
-func client_cursor_type_pkg(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int) (typ, pkg string) {
-	var args Args_cursor_type_pkg
-	var reply Reply_cursor_type_pkg
+func clientCursorTypePkg(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int) (typ, pkg string) {
+	var args ArgsCursorTypePkg
+	var reply ReplyCursorTypePkg
 	args.Arg0 = Arg0
 	args.Arg1 = Arg1
 	args.Arg2 = Arg2
-	err := cli.Call("RPC.RPC_cursor_type_pkg", &args, &reply)
+	err := cli.Call("RPC.RPCCursorTypePkg", &args, &reply)
 	if err != nil {
 		panic(err)
 	}
 	return reply.Arg0, reply.Arg1
 }
 
-// wrapper for: server_close
+// wrapper for: serverClose
 
-type Args_close struct {
+type ArgsClose struct {
 	Arg0 int
 }
-type Reply_close struct {
+type ReplyClose struct {
 	Arg0 int
 }
 
-func (r *RPC) RPC_close(args *Args_close, reply *Reply_close) error {
-	reply.Arg0 = server_close(args.Arg0)
+func (r *RPC) RPCClose(args *ArgsClose, reply *ReplyClose) error {
+	reply.Arg0 = serverClose(args.Arg0)
 	return nil
 }
-func client_close(cli *rpc.Client, Arg0 int) int {
-	var args Args_close
-	var reply Reply_close
+func clientClose(cli *rpc.Client, Arg0 int) int {
+	var args ArgsClose
+	var reply ReplyClose
 	args.Arg0 = Arg0
-	err := cli.Call("RPC.RPC_close", &args, &reply)
+	err := cli.Call("RPC.RPCClose", &args, &reply)
 	if err != nil {
 		panic(err)
 	}
 	return reply.Arg0
 }
 
-// wrapper for: server_status
+// wrapper for: serverStatus
 
-type Args_status struct {
+type ArgsStatus struct {
 	Arg0 int
 }
-type Reply_status struct {
+type ReplyStatus struct {
 	Arg0 string
 }
 
-func (r *RPC) RPC_status(args *Args_status, reply *Reply_status) error {
-	reply.Arg0 = server_status(args.Arg0)
+func (r *RPC) RPCStatus(args *ArgsStatus, reply *ReplyStatus) error {
+	reply.Arg0 = serverStatus(args.Arg0)
 	return nil
 }
-func client_status(cli *rpc.Client, Arg0 int) string {
-	var args Args_status
-	var reply Reply_status
+func clientStatus(cli *rpc.Client, Arg0 int) string {
+	var args ArgsStatus
+	var reply ReplyStatus
 	args.Arg0 = Arg0
-	err := cli.Call("RPC.RPC_status", &args, &reply)
+	err := cli.Call("RPC.RPCStatus", &args, &reply)
 	if err != nil {
 		panic(err)
 	}
 	return reply.Arg0
 }
 
-// wrapper for: server_drop_cache
+// wrapper for: serverDropCache
 
-type Args_drop_cache struct {
+type ArgsDropCache struct {
 	Arg0 int
 }
-type Reply_drop_cache struct {
+type ReplyDropCache struct {
 	Arg0 int
 }
 
-func (r *RPC) RPC_drop_cache(args *Args_drop_cache, reply *Reply_drop_cache) error {
-	reply.Arg0 = server_drop_cache(args.Arg0)
+func (r *RPC) RPCDropCache(args *ArgsDropCache, reply *ReplyDropCache) error {
+	reply.Arg0 = serverDropCache(args.Arg0)
 	return nil
 }
-func client_drop_cache(cli *rpc.Client, Arg0 int) int {
-	var args Args_drop_cache
-	var reply Reply_drop_cache
+func clientDropCache(cli *rpc.Client, Arg0 int) int {
+	var args ArgsDropCache
+	var reply ReplyDropCache
 	args.Arg0 = Arg0
-	err := cli.Call("RPC.RPC_drop_cache", &args, &reply)
+	err := cli.Call("RPC.RPCDropCache", &args, &reply)
 	if err != nil {
 		panic(err)
 	}
 	return reply.Arg0
 }
 
-// wrapper for: server_set
+// wrapper for: serverSet
 
-type Args_set struct {
+type ArgsSet struct {
 	Arg0, Arg1 string
 }
-type Reply_set struct {
+type ReplySet struct {
 	Arg0 string
 }
 
-func (r *RPC) RPC_set(args *Args_set, reply *Reply_set) error {
-	reply.Arg0 = server_set(args.Arg0, args.Arg1)
+func (r *RPC) RPCSet(args *ArgsSet, reply *ReplySet) error {
+	reply.Arg0 = serverSet(args.Arg0, args.Arg1)
 	return nil
 }
-func client_set(cli *rpc.Client, Arg0, Arg1 string) string {
-	var args Args_set
-	var reply Reply_set
+func clientSet(cli *rpc.Client, Arg0, Arg1 string) string {
+	var args ArgsSet
+	var reply ReplySet
 	args.Arg0 = Arg0
 	args.Arg1 = Arg1
-	err := cli.Call("RPC.RPC_set", &args, &reply)
+	err := cli.Call("RPC.RPCSet", &args, &reply)
 	if err != nil {
 		panic(err)
 	}

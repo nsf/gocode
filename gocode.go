@@ -8,15 +8,15 @@ import (
 )
 
 var (
-	g_is_server = flag.Bool("s", false, "run a server instead of a client")
-	g_format    = flag.String("f", "nice", "output format (vim | emacs | nice | csv | json)")
-	g_input     = flag.String("in", "", "use this file instead of stdin input")
-	g_sock      = create_sock_flag("sock", "socket type (unix | tcp)")
-	g_addr      = flag.String("addr", "localhost:37373", "address for tcp socket")
-	g_debug     = flag.Bool("debug", false, "enable server-side debug mode")
+	gIsServer = flag.Bool("s", false, "run a server instead of a client")
+	gFormat    = flag.String("f", "nice", "output format (vim | emacs | nice | csv | json)")
+	gInput     = flag.String("in", "", "use this file instead of stdin input")
+	gSock      = createSockFlag("sock", "socket type (unix | tcp)")
+	gAddr      = flag.String("addr", "localhost:37373", "address for tcp socket")
+	gDebug     = flag.Bool("debug", false, "enable server-side debug mode")
 )
 
-func get_socket_filename() string {
+func getSocketFilename() string {
 	user := os.Getenv("USER")
 	if user == "" {
 		user = "all"
@@ -24,7 +24,7 @@ func get_socket_filename() string {
 	return filepath.Join(os.TempDir(), fmt.Sprintf("gocode-daemon.%s", user))
 }
 
-func show_usage() {
+func showUsage() {
 	fmt.Fprintf(os.Stderr,
 		"Usage: %s [-s] [-f=<format>] [-in=<path>] [-sock=<type>] [-addr=<addr>]\n"+
 			"       <command> [<args>]\n\n",
@@ -42,14 +42,14 @@ func show_usage() {
 }
 
 func main() {
-	flag.Usage = show_usage
+	flag.Usage = showUsage
 	flag.Parse()
 
 	var retval int
-	if *g_is_server {
-		retval = do_server()
+	if *gIsServer {
+		retval = doServer()
 	} else {
-		retval = do_client()
+		retval = doClient()
 	}
 	os.Exit(retval)
 }

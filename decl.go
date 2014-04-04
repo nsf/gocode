@@ -12,55 +12,55 @@ import (
 )
 
 // decl.class
-type decl_class int16
+type declClass int16
 
 const (
-	decl_invalid = decl_class(-1 + iota)
+	declInvalid = declClass(-1 + iota)
 
 	// these are in a sorted order
-	decl_const
-	decl_func
-	decl_package
-	decl_type
-	decl_var
+	declConst
+	declFunc
+	declPackage
+	declType
+	declVar
 
 	// this one serves as a temporary type for those methods that were
 	// declared before their actual owner
-	decl_methods_stub
+	declMethodsStub
 )
 
-func (this decl_class) String() string {
+func (this declClass) String() string {
 	switch this {
-	case decl_invalid:
+	case declInvalid:
 		return "PANIC"
-	case decl_const:
+	case declConst:
 		return "const"
-	case decl_func:
+	case declFunc:
 		return "func"
-	case decl_package:
+	case declPackage:
 		return "package"
-	case decl_type:
+	case declType:
 		return "type"
-	case decl_var:
+	case declVar:
 		return "var"
-	case decl_methods_stub:
+	case declMethodsStub:
 		return "IF YOU SEE THIS, REPORT A BUG" // :D
 	}
 	panic("unreachable")
 }
 
 // decl.flags
-type decl_flags int16
+type declFlags int16
 
 const (
-	decl_foreign = decl_flags(1 << iota) // imported from another package
+	declForeign = declFlags(1 << iota) // imported from another package
 
 	// means that the decl is a part of the range statement
 	// its type is inferred in a special way
-	decl_rangevar
+	declRangevar
 
 	// for preventing infinite recursions and loops in type inference code
-	decl_visited
+	declVisited
 )
 
 //-------------------------------------------------------------------------
@@ -76,8 +76,8 @@ type decl struct {
 	// '$i_%d' for anonymous interface types
 	name  string
 	typ   ast.Expr
-	class decl_class
-	flags decl_flags
+	class declClass
+	flags declFlags
 
 	// functions for interface type, fields+methods for struct type
 	children map[string]*decl
@@ -90,14 +90,14 @@ type decl struct {
 
 	// if it's a multiassignment and the Value is a CallExpr, it is being set
 	// to an index into the return value tuple, otherwise it's a -1
-	value_index int
+	valueIndex int
 
 	// scope where this Decl was declared in (not its visibilty scope!)
 	// Decl uses it for type inference
 	scope *scope
 }
 
-func ast_decl_type(d ast.Decl) ast.Expr {
+func astDeclType(d ast.Decl) ast.Expr {
 	switch t := d.(type) {
 	case *ast.GenDecl:
 		switch t.Tok {
@@ -115,24 +115,24 @@ func ast_decl_type(d ast.Decl) ast.Expr {
 	return nil
 }
 
-func ast_decl_class(d ast.Decl) decl_class {
+func astDeclClass(d ast.Decl) declClass {
 	switch t := d.(type) {
 	case *ast.GenDecl:
 		switch t.Tok {
 		case token.VAR:
-			return decl_var
+			return declVar
 		case token.CONST:
-			return decl_const
+			return declConst
 		case token.TYPE:
-			return decl_type
+			return declType
 		}
 	case *ast.FuncDecl:
-		return decl_func
+		return declFunc
 	}
 	panic("unreachable")
 }
 
-func ast_decl_convertable(d ast.Decl) bool {
+func astDeclConvertable(d ast.Decl) bool {
 	switch t := d.(type) {
 	case *ast.GenDecl:
 		switch t.Tok {
@@ -145,7 +145,7 @@ func ast_decl_convertable(d ast.Decl) bool {
 	return false
 }
 
-func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flags, scope *scope, add_anonymous bool) map[string]*decl {
+func astFieldListToDecls(f *ast.FieldList, class declClass, flags declFlags, scope *scope, addAnonymous bool) map[string]*decl {
 	count := 0
 	for _, field := range f.List {
 		count += len(field.Names)
@@ -154,7 +154,7 @@ func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flag
 	decls := make(map[string]*decl, count)
 	for _, field := range f.List {
 		for _, name := range field.Names {
-			if flags&decl_foreign != 0 && !ast.IsExported(name.Name) {
+			if flags&declForeign != 0 && !ast.IsExported(name.Name) {
 				continue
 			}
 			d := &decl{
@@ -163,15 +163,15 @@ func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flag
 				class:       class,
 				flags:       flags,
 				scope:       scope,
-				value_index: -1,
+				valueIndex: -1,
 			}
 			decls[d.name] = d
 		}
 
 		// add anonymous field as a child (type embedding)
-		if class == decl_var && field.Names == nil && add_anonymous {
-			tp := get_type_path(field.Type)
-			if flags&decl_foreign != 0 && !ast.IsExported(tp.name) {
+		if class == declVar && field.Names == nil && addAnonymous {
+			tp := getTypePath(field.Type)
+			if flags&declForeign != 0 && !ast.IsExported(tp.name) {
 				continue
 			}
 			d := &decl{
@@ -180,7 +180,7 @@ func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flag
 				class:       class,
 				flags:       flags,
 				scope:       scope,
-				value_index: -1,
+				valueIndex: -1,
 			}
 			decls[d.name] = d
 		}
@@ -188,7 +188,7 @@ func ast_field_list_to_decls(f *ast.FieldList, class decl_class, flags decl_flag
 	return decls
 }
 
-func ast_field_list_to_embedded(f *ast.FieldList) []ast.Expr {
+func astFieldListToEmbedded(f *ast.FieldList) []ast.Expr {
 	count := 0
 	for _, field := range f.List {
 		if field.Names == nil || field.Names[0].Name == "?" {
@@ -212,38 +212,38 @@ func ast_field_list_to_embedded(f *ast.FieldList) []ast.Expr {
 	return embedded
 }
 
-func ast_type_to_embedded(ty ast.Expr) []ast.Expr {
+func astTypeToEmbedded(ty ast.Expr) []ast.Expr {
 	switch t := ty.(type) {
 	case *ast.StructType:
-		return ast_field_list_to_embedded(t.Fields)
+		return astFieldListToEmbedded(t.Fields)
 	case *ast.InterfaceType:
-		return ast_field_list_to_embedded(t.Methods)
+		return astFieldListToEmbedded(t.Methods)
 	}
 	return nil
 }
 
-func ast_type_to_children(ty ast.Expr, flags decl_flags, scope *scope) map[string]*decl {
+func astTypeToChildren(ty ast.Expr, flags declFlags, scope *scope) map[string]*decl {
 	switch t := ty.(type) {
 	case *ast.StructType:
-		return ast_field_list_to_decls(t.Fields, decl_var, flags, scope, true)
+		return astFieldListToDecls(t.Fields, declVar, flags, scope, true)
 	case *ast.InterfaceType:
-		return ast_field_list_to_decls(t.Methods, decl_func, flags, scope, false)
+		return astFieldListToDecls(t.Methods, declFunc, flags, scope, false)
 	}
 	return nil
 }
 
 //-------------------------------------------------------------------------
-// anonymous_id_gen
+// anonymousIdGen
 //
 // ID generator for anonymous types (thread-safe)
 //-------------------------------------------------------------------------
 
-type anonymous_id_gen struct {
+type anonymousIdGen struct {
 	sync.Mutex
 	i int
 }
 
-func (a *anonymous_id_gen) gen() (id int) {
+func (a *anonymousIdGen) gen() (id int) {
 	a.Lock()
 	defer a.Unlock()
 	id = a.i
@@ -251,11 +251,11 @@ func (a *anonymous_id_gen) gen() (id int) {
 	return
 }
 
-var g_anon_gen anonymous_id_gen
+var gAnonGen anonymousIdGen
 
 //-------------------------------------------------------------------------
 
-func check_for_anon_type(t ast.Expr, flags decl_flags, s *scope) ast.Expr {
+func checkForAnonType(t ast.Expr, flags declFlags, s *scope) ast.Expr {
 	if t == nil {
 		return nil
 	}
@@ -263,15 +263,15 @@ func check_for_anon_type(t ast.Expr, flags decl_flags, s *scope) ast.Expr {
 
 	switch t.(type) {
 	case *ast.StructType:
-		name = fmt.Sprintf("$s_%d", g_anon_gen.gen())
+		name = fmt.Sprintf("$s_%d", gAnonGen.gen())
 	case *ast.InterfaceType:
-		name = fmt.Sprintf("$i_%d", g_anon_gen.gen())
+		name = fmt.Sprintf("$i_%d", gAnonGen.gen())
 	}
 
 	if name != "" {
-		anonymify_ast(t, flags, s)
-		d := new_decl_full(name, decl_type, flags, t, nil, -1, s)
-		s.add_named_decl(d)
+		anonymifyAst(t, flags, s)
+		d := newDeclFull(name, declType, flags, t, nil, -1, s)
+		s.addNamedDecl(d)
 		return ast.NewIdent(name)
 	}
 	return t
@@ -279,44 +279,44 @@ func check_for_anon_type(t ast.Expr, flags decl_flags, s *scope) ast.Expr {
 
 //-------------------------------------------------------------------------
 
-func new_decl_full(name string, class decl_class, flags decl_flags, typ, v ast.Expr, vi int, s *scope) *decl {
+func newDeclFull(name string, class declClass, flags declFlags, typ, v ast.Expr, vi int, s *scope) *decl {
 	d := new(decl)
 	d.name = name
 	d.class = class
 	d.flags = flags
 	d.typ = typ
 	d.value = v
-	d.value_index = vi
+	d.valueIndex = vi
 	d.scope = s
-	d.children = ast_type_to_children(d.typ, flags, s)
-	d.embedded = ast_type_to_embedded(d.typ)
+	d.children = astTypeToChildren(d.typ, flags, s)
+	d.embedded = astTypeToEmbedded(d.typ)
 	return d
 }
 
-func new_decl(name string, class decl_class, scope *scope) *decl {
+func newDecl(name string, class declClass, scope *scope) *decl {
 	decl := new(decl)
 	decl.name = name
 	decl.class = class
-	decl.value_index = -1
+	decl.valueIndex = -1
 	decl.scope = scope
 	return decl
 }
 
-func new_decl_var(name string, typ ast.Expr, value ast.Expr, vindex int, scope *scope) *decl {
+func newDeclVar(name string, typ ast.Expr, value ast.Expr, vindex int, scope *scope) *decl {
 	if name == "_" {
 		return nil
 	}
 	decl := new(decl)
 	decl.name = name
-	decl.class = decl_var
+	decl.class = declVar
 	decl.typ = typ
 	decl.value = value
-	decl.value_index = vindex
+	decl.valueIndex = vindex
 	decl.scope = scope
 	return decl
 }
 
-func method_of(d ast.Decl) string {
+func methodOf(d ast.Decl) string {
 	if t, ok := d.(*ast.FuncDecl); ok {
 		if t.Recv != nil {
 			switch t := t.Recv.List[0].Type.(type) {
@@ -332,13 +332,13 @@ func method_of(d ast.Decl) string {
 	return ""
 }
 
-func (other *decl) deep_copy() *decl {
+func (other *decl) deepCopy() *decl {
 	d := new(decl)
 	d.name = other.name
 	d.class = other.class
 	d.typ = other.typ
 	d.value = other.value
-	d.value_index = other.value_index
+	d.valueIndex = other.valueIndex
 	d.children = make(map[string]*decl, len(other.children))
 	for key, value := range other.children {
 		d.children[key] = value
@@ -351,25 +351,25 @@ func (other *decl) deep_copy() *decl {
 	return d
 }
 
-func (d *decl) clear_visited() {
-	d.flags &^= decl_visited
+func (d *decl) clearVisited() {
+	d.flags &^= declVisited
 }
 
-func (d *decl) expand_or_replace(other *decl) {
+func (d *decl) expandOrReplace(other *decl) {
 	// expand only if it's a methods stub, otherwise simply copy
-	if d.class != decl_methods_stub && other.class != decl_methods_stub {
+	if d.class != declMethodsStub && other.class != declMethodsStub {
 		d = other
 		return
 	}
 
-	if d.class == decl_methods_stub {
+	if d.class == declMethodsStub {
 		d.typ = other.typ
 		d.class = other.class
 	}
 
 	if other.children != nil {
 		for _, c := range other.children {
-			d.add_child(c)
+			d.addChild(c)
 		}
 	}
 
@@ -380,15 +380,15 @@ func (d *decl) expand_or_replace(other *decl) {
 }
 
 func (d *decl) matches() bool {
-	if strings.HasPrefix(d.name, "$") || d.class == decl_methods_stub {
+	if strings.HasPrefix(d.name, "$") || d.class == declMethodsStub {
 		return false
 	}
 	return true
 }
 
-func (d *decl) pretty_print_type(out io.Writer) {
+func (d *decl) prettyPrintType(out io.Writer) {
 	switch d.class {
-	case decl_type:
+	case declType:
 		switch d.typ.(type) {
 		case *ast.StructType:
 			// TODO: not used due to anonymify?
@@ -398,26 +398,26 @@ func (d *decl) pretty_print_type(out io.Writer) {
 			fmt.Fprintf(out, "interface")
 		default:
 			if d.typ != nil {
-				pretty_print_type_expr(out, d.typ)
+				prettyPrintTypeExpr(out, d.typ)
 			}
 		}
-	case decl_var:
+	case declVar:
 		if d.typ != nil {
-			pretty_print_type_expr(out, d.typ)
+			prettyPrintTypeExpr(out, d.typ)
 		}
-	case decl_func:
-		pretty_print_type_expr(out, d.typ)
+	case declFunc:
+		prettyPrintTypeExpr(out, d.typ)
 	}
 }
 
-func (d *decl) add_child(cd *decl) {
+func (d *decl) addChild(cd *decl) {
 	if d.children == nil {
 		d.children = make(map[string]*decl)
 	}
 	d.children[cd.name] = cd
 }
 
-func check_for_builtin_funcs(typ *ast.Ident, c *ast.CallExpr, scope *scope) (ast.Expr, *scope) {
+func checkForBuiltinFuncs(typ *ast.Ident, c *ast.CallExpr, scope *scope) (ast.Expr, *scope) {
 	if strings.HasPrefix(typ.Name, "func(") {
 		if t, ok := c.Fun.(*ast.Ident); ok {
 			switch t.Name {
@@ -433,20 +433,20 @@ func check_for_builtin_funcs(typ *ast.Ident, c *ast.CallExpr, scope *scope) (ast
 				}
 			case "append":
 				if len(c.Args) > 0 {
-					t, scope, _ := infer_type(c.Args[0], scope, -1)
+					t, scope, _ := inferType(c.Args[0], scope, -1)
 					return t, scope
 				}
 			case "complex":
 				// TODO: fix it
-				return ast.NewIdent("complex"), g_universe_scope
+				return ast.NewIdent("complex"), gUniverseScope
 			case "closed":
-				return ast.NewIdent("bool"), g_universe_scope
+				return ast.NewIdent("bool"), gUniverseScope
 			case "cap":
-				return ast.NewIdent("int"), g_universe_scope
+				return ast.NewIdent("int"), gUniverseScope
 			case "copy":
-				return ast.NewIdent("int"), g_universe_scope
+				return ast.NewIdent("int"), gUniverseScope
 			case "len":
-				return ast.NewIdent("int"), g_universe_scope
+				return ast.NewIdent("int"), gUniverseScope
 			}
 			// TODO:
 			// func recover() interface{}
@@ -457,7 +457,7 @@ func check_for_builtin_funcs(typ *ast.Ident, c *ast.CallExpr, scope *scope) (ast
 	return nil, nil
 }
 
-func func_return_type(f *ast.FuncType, index int) ast.Expr {
+func funcReturnType(f *ast.FuncType, index int) ast.Expr {
 	if f.Results == nil {
 		return nil
 	}
@@ -484,12 +484,12 @@ func func_return_type(f *ast.FuncType, index int) ast.Expr {
 	return nil
 }
 
-type type_path struct {
+type typePath struct {
 	pkg  string
 	name string
 }
 
-func (tp *type_path) is_nil() bool {
+func (tp *typePath) isNil() bool {
 	return tp.pkg == "" && tp.name == ""
 }
 
@@ -498,16 +498,16 @@ func (tp *type_path) is_nil() bool {
 // *ast.Expr
 // $ast$go/ast.Expr
 // to a path that can be used to lookup a type related Decl
-func get_type_path(e ast.Expr) (r type_path) {
+func getTypePath(e ast.Expr) (r typePath) {
 	if e == nil {
-		return type_path{"", ""}
+		return typePath{"", ""}
 	}
 
 	switch t := e.(type) {
 	case *ast.Ident:
 		r.name = t.Name
 	case *ast.StarExpr:
-		r = get_type_path(t.X)
+		r = getTypePath(t.X)
 	case *ast.SelectorExpr:
 		if ident, ok := t.X.(*ast.Ident); ok {
 			r.pkg = ident.Name
@@ -517,8 +517,8 @@ func get_type_path(e ast.Expr) (r type_path) {
 	return
 }
 
-func lookup_path(tp type_path, scope *scope) *decl {
-	if tp.is_nil() {
+func lookupPath(tp typePath, scope *scope) *decl {
+	if tp.isNil() {
 		return nil
 	}
 	var decl *decl
@@ -533,7 +533,7 @@ func lookup_path(tp type_path, scope *scope) *decl {
 
 	if decl != nil {
 		if tp.name != "" {
-			return decl.find_child(tp.name)
+			return decl.findChild(tp.name)
 		} else {
 			return decl
 		}
@@ -542,8 +542,8 @@ func lookup_path(tp type_path, scope *scope) *decl {
 	return scope.lookup(tp.name)
 }
 
-func lookup_pkg(tp type_path, scope *scope) string {
-	if tp.is_nil() {
+func lookupPkg(tp typePath, scope *scope) string {
+	if tp.isNil() {
 		return ""
 	}
 	if tp.pkg == "" {
@@ -556,65 +556,65 @@ func lookup_pkg(tp type_path, scope *scope) string {
 	return decl.name
 }
 
-func type_to_decl(t ast.Expr, scope *scope) *decl {
-	tp := get_type_path(t)
-	d := lookup_path(tp, scope)
-	if d != nil && d.class == decl_var {
+func typeToDecl(t ast.Expr, scope *scope) *decl {
+	tp := getTypePath(t)
+	d := lookupPath(tp, scope)
+	if d != nil && d.class == declVar {
 		// weird variable declaration pointing to itself
 		return nil
 	}
 	return d
 }
 
-func expr_to_decl(e ast.Expr, scope *scope) *decl {
-	t, scope, _ := infer_type(e, scope, -1)
-	return type_to_decl(t, scope)
+func exprToDecl(e ast.Expr, scope *scope) *decl {
+	t, scope, _ := inferType(e, scope, -1)
+	return typeToDecl(t, scope)
 }
 
 //-------------------------------------------------------------------------
 // Type inference
 //-------------------------------------------------------------------------
 
-type type_predicate func(ast.Expr) bool
+type typePredicate func(ast.Expr) bool
 
-func advance_to_type(pred type_predicate, v ast.Expr, scope *scope) (ast.Expr, *scope) {
+func advanceToType(pred typePredicate, v ast.Expr, scope *scope) (ast.Expr, *scope) {
 	if pred(v) {
 		return v, scope
 	}
 
-	decl := type_to_decl(v, scope)
+	decl := typeToDecl(v, scope)
 	if decl == nil {
 		return nil, nil
 	}
 
-	if decl.flags&decl_visited != 0 {
+	if decl.flags&declVisited != 0 {
 		return nil, nil
 	}
-	decl.flags |= decl_visited
-	defer decl.clear_visited()
+	decl.flags |= declVisited
+	defer decl.clearVisited()
 
-	return advance_to_type(pred, decl.typ, decl.scope)
+	return advanceToType(pred, decl.typ, decl.scope)
 }
 
-func advance_to_struct_or_interface(decl *decl) *decl {
-	if decl.flags&decl_visited != 0 {
+func advanceToStructOrInterface(decl *decl) *decl {
+	if decl.flags&declVisited != 0 {
 		return nil
 	}
-	decl.flags |= decl_visited
-	defer decl.clear_visited()
+	decl.flags |= declVisited
+	defer decl.clearVisited()
 
-	if struct_interface_predicate(decl.typ) {
+	if structInterfacePredicate(decl.typ) {
 		return decl
 	}
 
-	decl = type_to_decl(decl.typ, decl.scope)
+	decl = typeToDecl(decl.typ, decl.scope)
 	if decl == nil {
 		return nil
 	}
-	return advance_to_struct_or_interface(decl)
+	return advanceToStructOrInterface(decl)
 }
 
-func struct_interface_predicate(v ast.Expr) bool {
+func structInterfacePredicate(v ast.Expr) bool {
 	switch v.(type) {
 	case *ast.StructType, *ast.InterfaceType:
 		return true
@@ -622,12 +622,12 @@ func struct_interface_predicate(v ast.Expr) bool {
 	return false
 }
 
-func chan_predicate(v ast.Expr) bool {
+func chanPredicate(v ast.Expr) bool {
 	_, ok := v.(*ast.ChanType)
 	return ok
 }
 
-func index_predicate(v ast.Expr) bool {
+func indexPredicate(v ast.Expr) bool {
 	switch v.(type) {
 	case *ast.ArrayType, *ast.MapType, *ast.Ellipsis:
 		return true
@@ -635,17 +635,17 @@ func index_predicate(v ast.Expr) bool {
 	return false
 }
 
-func star_predicate(v ast.Expr) bool {
+func starPredicate(v ast.Expr) bool {
 	_, ok := v.(*ast.StarExpr)
 	return ok
 }
 
-func func_predicate(v ast.Expr) bool {
+func funcPredicate(v ast.Expr) bool {
 	_, ok := v.(*ast.FuncType)
 	return ok
 }
 
-func range_predicate(v ast.Expr) bool {
+func rangePredicate(v ast.Expr) bool {
 	switch t := v.(type) {
 	case *ast.Ident:
 		if t.Name == "string" {
@@ -657,44 +657,44 @@ func range_predicate(v ast.Expr) bool {
 	return false
 }
 
-type anonymous_typer struct {
-	flags decl_flags
+type anonymousTyper struct {
+	flags declFlags
 	scope *scope
 }
 
-func (a *anonymous_typer) Visit(node ast.Node) ast.Visitor {
+func (a *anonymousTyper) Visit(node ast.Node) ast.Visitor {
 	switch t := node.(type) {
 	case *ast.CompositeLit:
-		t.Type = check_for_anon_type(t.Type, a.flags, a.scope)
+		t.Type = checkForAnonType(t.Type, a.flags, a.scope)
 	case *ast.MapType:
-		t.Key = check_for_anon_type(t.Key, a.flags, a.scope)
-		t.Value = check_for_anon_type(t.Value, a.flags, a.scope)
+		t.Key = checkForAnonType(t.Key, a.flags, a.scope)
+		t.Value = checkForAnonType(t.Value, a.flags, a.scope)
 	case *ast.ArrayType:
-		t.Elt = check_for_anon_type(t.Elt, a.flags, a.scope)
+		t.Elt = checkForAnonType(t.Elt, a.flags, a.scope)
 	case *ast.Ellipsis:
-		t.Elt = check_for_anon_type(t.Elt, a.flags, a.scope)
+		t.Elt = checkForAnonType(t.Elt, a.flags, a.scope)
 	case *ast.ChanType:
-		t.Value = check_for_anon_type(t.Value, a.flags, a.scope)
+		t.Value = checkForAnonType(t.Value, a.flags, a.scope)
 	case *ast.Field:
-		t.Type = check_for_anon_type(t.Type, a.flags, a.scope)
+		t.Type = checkForAnonType(t.Type, a.flags, a.scope)
 	case *ast.CallExpr:
-		t.Fun = check_for_anon_type(t.Fun, a.flags, a.scope)
+		t.Fun = checkForAnonType(t.Fun, a.flags, a.scope)
 	case *ast.ParenExpr:
-		t.X = check_for_anon_type(t.X, a.flags, a.scope)
+		t.X = checkForAnonType(t.X, a.flags, a.scope)
 	case *ast.GenDecl:
 		switch t.Tok {
 		case token.VAR:
 			for _, s := range t.Specs {
 				vs := s.(*ast.ValueSpec)
-				vs.Type = check_for_anon_type(vs.Type, a.flags, a.scope)
+				vs.Type = checkForAnonType(vs.Type, a.flags, a.scope)
 			}
 		}
 	}
 	return a
 }
 
-func anonymify_ast(node ast.Node, flags decl_flags, scope *scope) {
-	v := anonymous_typer{flags, scope}
+func anonymifyAst(node ast.Node, flags declFlags, scope *scope) {
+	v := anonymousTyper{flags, scope}
 	ast.Walk(&v, node)
 }
 
@@ -702,23 +702,23 @@ func anonymify_ast(node ast.Node, flags decl_flags, scope *scope) {
 // 	- type expression which represents a full name of a type
 //	- bool whether a type expression is actually a type (used internally)
 //	- scope in which type makes sense
-func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
+func inferType(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 	switch t := v.(type) {
 	case *ast.CompositeLit:
 		return t.Type, scope, true
 	case *ast.Ident:
 		if d := scope.lookup(t.Name); d != nil {
-			if d.class == decl_package {
+			if d.class == declPackage {
 				return ast.NewIdent(t.Name), scope, false
 			}
-			typ, scope := d.infer_type()
-			return typ, scope, d.class == decl_type
+			typ, scope := d.inferType()
+			return typ, scope, d.class == declType
 		}
 	case *ast.UnaryExpr:
 		switch t.Op {
 		case token.AND:
 			// &a makes sense only with values, don't even check for type
-			it, s, _ := infer_type(t.X, scope, -1)
+			it, s, _ := inferType(t.X, scope, -1)
 			if it == nil {
 				break
 			}
@@ -728,21 +728,21 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 			return e, s, false
 		case token.ARROW:
 			// <-a makes sense only with values
-			it, s, _ := infer_type(t.X, scope, -1)
+			it, s, _ := inferType(t.X, scope, -1)
 			if it == nil {
 				break
 			}
 			switch index {
 			case -1, 0:
-				it, s = advance_to_type(chan_predicate, it, s)
+				it, s = advanceToType(chanPredicate, it, s)
 				return it.(*ast.ChanType).Value, s, false
 			case 1:
 				// technically it's a value, but in case of index == 1
 				// it is always the last infer operation
-				return ast.NewIdent("bool"), g_universe_scope, false
+				return ast.NewIdent("bool"), gUniverseScope, false
 			}
 		case token.ADD, token.NOT, token.SUB, token.XOR:
-			it, s, _ := infer_type(t.X, scope, -1)
+			it, s, _ := inferType(t.X, scope, -1)
 			if it == nil {
 				break
 			}
@@ -753,13 +753,13 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		case token.EQL, token.NEQ, token.LSS, token.LEQ,
 			token.GTR, token.GEQ, token.LOR, token.LAND:
 			// logic operations, the result is a bool, always
-			return ast.NewIdent("bool"), g_universe_scope, false
+			return ast.NewIdent("bool"), gUniverseScope, false
 		case token.ADD, token.SUB, token.MUL, token.QUO, token.OR,
 			token.XOR, token.REM, token.AND, token.AND_NOT:
 			// try X, then Y, they should be the same anyway
-			it, s, _ := infer_type(t.X, scope, -1)
+			it, s, _ := inferType(t.X, scope, -1)
 			if it == nil {
-				it, s, _ = infer_type(t.Y, scope, -1)
+				it, s, _ = inferType(t.Y, scope, -1)
 				if it == nil {
 					break
 				}
@@ -767,7 +767,7 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 			return it, s, false
 		case token.SHL, token.SHR:
 			// try only X for shifts, Y is always uint
-			it, s, _ := infer_type(t.X, scope, -1)
+			it, s, _ := inferType(t.X, scope, -1)
 			if it == nil {
 				break
 			}
@@ -775,11 +775,11 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		}
 	case *ast.IndexExpr:
 		// something[another] always returns a value and it works on a value too
-		it, s, _ := infer_type(t.X, scope, -1)
+		it, s, _ := inferType(t.X, scope, -1)
 		if it == nil {
 			break
 		}
-		it, s = advance_to_type(index_predicate, it, s)
+		it, s = advanceToType(indexPredicate, it, s)
 		switch t := it.(type) {
 		case *ast.ArrayType:
 			return t.Elt, s, false
@@ -790,16 +790,16 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 			case -1, 0:
 				return t.Value, s, false
 			case 1:
-				return ast.NewIdent("bool"), g_universe_scope, false
+				return ast.NewIdent("bool"), gUniverseScope, false
 			}
 		}
 	case *ast.SliceExpr:
 		// something[start : end] always returns a value
-		it, s, _ := infer_type(t.X, scope, -1)
+		it, s, _ := inferType(t.X, scope, -1)
 		if it == nil {
 			break
 		}
-		it, s = advance_to_type(index_predicate, it, s)
+		it, s = advanceToType(indexPredicate, it, s)
 		switch t := it.(type) {
 		case *ast.ArrayType:
 			e := new(ast.ArrayType)
@@ -807,17 +807,17 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 			return e, s, false
 		}
 	case *ast.StarExpr:
-		it, s, is_type := infer_type(t.X, scope, -1)
+		it, s, isType := inferType(t.X, scope, -1)
 		if it == nil {
 			break
 		}
-		if is_type {
+		if isType {
 			// if it's a type, add * modifier, make it a 'pointer of' type
 			e := new(ast.StarExpr)
 			e.X = it
 			return e, s, true
 		} else {
-			it, s := advance_to_type(star_predicate, it, s)
+			it, s := advanceToType(starPredicate, it, s)
 			if se, ok := it.(*ast.StarExpr); ok {
 				return se.X, s, false
 			}
@@ -825,49 +825,49 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 	case *ast.CallExpr:
 		// this is a function call or a type cast:
 		// myFunc(1,2,3) or int16(myvar)
-		it, s, is_type := infer_type(t.Fun, scope, -1)
+		it, s, isType := inferType(t.Fun, scope, -1)
 		if it == nil {
 			break
 		}
 
-		if is_type {
+		if isType {
 			// a type cast
 			return it, scope, false
 		} else {
 			// it must be a function call or a built-in function
 			// first check for built-in
 			if ct, ok := it.(*ast.Ident); ok {
-				ty, s := check_for_builtin_funcs(ct, t, scope)
+				ty, s := checkForBuiltinFuncs(ct, t, scope)
 				if ty != nil {
 					return ty, s, false
 				}
 			}
 
 			// then check for an ordinary function call
-			it, scope = advance_to_type(func_predicate, it, s)
+			it, scope = advanceToType(funcPredicate, it, s)
 			if ct, ok := it.(*ast.FuncType); ok {
-				return func_return_type(ct, index), s, false
+				return funcReturnType(ct, index), s, false
 			}
 		}
 	case *ast.ParenExpr:
-		it, s, is_type := infer_type(t.X, scope, -1)
+		it, s, isType := inferType(t.X, scope, -1)
 		if it == nil {
 			break
 		}
-		return it, s, is_type
+		return it, s, isType
 	case *ast.SelectorExpr:
-		it, s, _ := infer_type(t.X, scope, -1)
+		it, s, _ := inferType(t.X, scope, -1)
 		if it == nil {
 			break
 		}
 
-		if d := type_to_decl(it, s); d != nil {
-			c := d.find_child_and_in_embedded(t.Sel.Name)
+		if d := typeToDecl(it, s); d != nil {
+			c := d.findChildAndInEmbedded(t.Sel.Name)
 			if c != nil {
-				if c.class == decl_type {
+				if c.class == declType {
 					return t, scope, true
 				} else {
-					typ, s := c.infer_type()
+					typ, s := c.inferType()
 					return typ, s, false
 				}
 			}
@@ -878,15 +878,15 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		return t.Type, scope, false
 	case *ast.TypeAssertExpr:
 		if t.Type == nil {
-			return infer_type(t.X, scope, -1)
+			return inferType(t.X, scope, -1)
 		}
 		switch index {
 		case -1, 0:
 			// converting a value to a different type, but return thing is a value
-			it, _, _ := infer_type(t.Type, scope, -1)
+			it, _, _ := inferType(t.Type, scope, -1)
 			return it, scope, false
 		case 1:
-			return ast.NewIdent("bool"), g_universe_scope, false
+			return ast.NewIdent("bool"), gUniverseScope, false
 		}
 	case *ast.ArrayType, *ast.MapType, *ast.ChanType, *ast.Ellipsis,
 		*ast.FuncType, *ast.StructType, *ast.InterfaceType:
@@ -901,19 +901,19 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 // Uses Value, ValueIndex and Scope to infer the type of this
 // declaration. Returns the type itself and the scope where this type
 // makes sense.
-func (d *decl) infer_type() (ast.Expr, *scope) {
+func (d *decl) inferType() (ast.Expr, *scope) {
 	// special case for range vars
-	if d.flags&decl_rangevar != 0 {
+	if d.flags&declRangevar != 0 {
 		var scope *scope
-		d.typ, scope = infer_range_type(d.value, d.scope, d.value_index)
+		d.typ, scope = inferRangeType(d.value, d.scope, d.valueIndex)
 		return d.typ, scope
 	}
 
 	switch d.class {
-	case decl_package:
+	case declPackage:
 		// package is handled specially in inferType
 		return nil, nil
-	case decl_type:
+	case declType:
 		return ast.NewIdent(d.name), d.scope
 	}
 
@@ -923,23 +923,23 @@ func (d *decl) infer_type() (ast.Expr, *scope) {
 	}
 
 	// prevent loops
-	if d.flags&decl_visited != 0 {
+	if d.flags&declVisited != 0 {
 		return nil, nil
 	}
-	d.flags |= decl_visited
-	defer d.clear_visited()
+	d.flags |= declVisited
+	defer d.clearVisited()
 
 	var scope *scope
-	d.typ, scope, _ = infer_type(d.value, d.scope, d.value_index)
+	d.typ, scope, _ = inferType(d.value, d.scope, d.valueIndex)
 	return d.typ, scope
 }
 
-func (d *decl) find_child(name string) *decl {
-	if d.flags&decl_visited != 0 {
+func (d *decl) findChild(name string) *decl {
+	if d.flags&declVisited != 0 {
 		return nil
 	}
-	d.flags |= decl_visited
-	defer d.clear_visited()
+	d.flags |= declVisited
+	defer d.clearVisited()
 
 	if d.children != nil {
 		if c, ok := d.children[name]; ok {
@@ -947,19 +947,19 @@ func (d *decl) find_child(name string) *decl {
 		}
 	}
 
-	decl := advance_to_struct_or_interface(d)
+	decl := advanceToStructOrInterface(d)
 	if decl != nil && decl != d {
-		return decl.find_child(name)
+		return decl.findChild(name)
 	}
 	return nil
 }
 
-func (d *decl) find_child_and_in_embedded(name string) *decl {
-	c := d.find_child(name)
+func (d *decl) findChildAndInEmbedded(name string) *decl {
+	c := d.findChild(name)
 	if c == nil {
 		for _, e := range d.embedded {
-			typedecl := type_to_decl(e, d.scope)
-			c = typedecl.find_child_and_in_embedded(name)
+			typedecl := typeToDecl(e, d.scope)
+			c = typedecl.findChildAndInEmbedded(name)
 			if c != nil {
 				break
 			}
@@ -973,9 +973,9 @@ func (d *decl) find_child_and_in_embedded(name string) *decl {
 // [int], [value] := range [slice or array]
 // [key], [value] := range [map]
 // [value], [nil] := range [chan]
-func infer_range_type(e ast.Expr, sc *scope, valueindex int) (ast.Expr, *scope) {
-	t, s, _ := infer_type(e, sc, -1)
-	t, s = advance_to_type(range_predicate, t, s)
+func inferRangeType(e ast.Expr, sc *scope, valueindex int) (ast.Expr, *scope) {
+	t, s, _ := inferType(e, sc, -1)
+	t, s = advanceToType(rangePredicate, t, s)
 	if t != nil {
 		var t1, t2 ast.Expr
 		var s1, s2 *scope
@@ -988,18 +988,18 @@ func infer_range_type(e ast.Expr, sc *scope, valueindex int) (ast.Expr, *scope) 
 			if t.Name == "string" {
 				t1 = ast.NewIdent("int")
 				t2 = ast.NewIdent("rune")
-				s1 = g_universe_scope
-				s2 = g_universe_scope
+				s1 = gUniverseScope
+				s2 = gUniverseScope
 			} else {
 				t1, t2 = nil, nil
 			}
 		case *ast.ArrayType:
 			t1 = ast.NewIdent("int")
-			s1 = g_universe_scope
+			s1 = gUniverseScope
 			t2 = t.Elt
 		case *ast.Ellipsis:
 			t1 = ast.NewIdent("int")
-			s1 = g_universe_scope
+			s1 = gUniverseScope
 			t2 = t.Elt
 		case *ast.MapType:
 			t1 = t.Key
@@ -1025,7 +1025,7 @@ func infer_range_type(e ast.Expr, sc *scope, valueindex int) (ast.Expr, *scope) 
 // Pretty printing
 //-------------------------------------------------------------------------
 
-func get_array_len(e ast.Expr) string {
+func getArrayLen(e ast.Expr) string {
 	switch t := e.(type) {
 	case *ast.BasicLit:
 		return string(t.Value)
@@ -1035,11 +1035,11 @@ func get_array_len(e ast.Expr) string {
 	return ""
 }
 
-func pretty_print_type_expr(out io.Writer, e ast.Expr) {
+func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 	switch t := e.(type) {
 	case *ast.StarExpr:
 		fmt.Fprintf(out, "*")
-		pretty_print_type_expr(out, t.X)
+		prettyPrintTypeExpr(out, t.X)
 	case *ast.Ident:
 		if strings.HasPrefix(t.Name, "$") {
 			// beautify anonymous types
@@ -1060,24 +1060,24 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 	case *ast.ArrayType:
 		al := ""
 		if t.Len != nil {
-			al = get_array_len(t.Len)
+			al = getArrayLen(t.Len)
 		}
 		if al != "" {
 			fmt.Fprintf(out, "[%s]", al)
 		} else {
 			fmt.Fprintf(out, "[]")
 		}
-		pretty_print_type_expr(out, t.Elt)
+		prettyPrintTypeExpr(out, t.Elt)
 	case *ast.SelectorExpr:
-		pretty_print_type_expr(out, t.X)
+		prettyPrintTypeExpr(out, t.X)
 		fmt.Fprintf(out, ".%s", t.Sel.Name)
 	case *ast.FuncType:
 		fmt.Fprintf(out, "func(")
-		pretty_print_func_field_list(out, t.Params)
+		prettyPrintFuncFieldList(out, t.Params)
 		fmt.Fprintf(out, ")")
 
 		buf := bytes.NewBuffer(make([]byte, 0, 256))
-		nresults := pretty_print_func_field_list(buf, t.Results)
+		nresults := prettyPrintFuncFieldList(buf, t.Results)
 		if nresults > 0 {
 			results := buf.String()
 			if strings.IndexAny(results, ", ") != -1 {
@@ -1087,14 +1087,14 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 		}
 	case *ast.MapType:
 		fmt.Fprintf(out, "map[")
-		pretty_print_type_expr(out, t.Key)
+		prettyPrintTypeExpr(out, t.Key)
 		fmt.Fprintf(out, "]")
-		pretty_print_type_expr(out, t.Value)
+		prettyPrintTypeExpr(out, t.Value)
 	case *ast.InterfaceType:
 		fmt.Fprintf(out, "interface{}")
 	case *ast.Ellipsis:
 		fmt.Fprintf(out, "...")
-		pretty_print_type_expr(out, t.Elt)
+		prettyPrintTypeExpr(out, t.Elt)
 	case *ast.StructType:
 		fmt.Fprintf(out, "struct")
 	case *ast.ChanType:
@@ -1106,10 +1106,10 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 		case ast.SEND | ast.RECV:
 			fmt.Fprintf(out, "chan ")
 		}
-		pretty_print_type_expr(out, t.Value)
+		prettyPrintTypeExpr(out, t.Value)
 	case *ast.ParenExpr:
 		fmt.Fprintf(out, "(")
-		pretty_print_type_expr(out, t.X)
+		prettyPrintTypeExpr(out, t.X)
 		fmt.Fprintf(out, ")")
 	case *ast.BadExpr:
 		// TODO: probably I should check that in a separate function
@@ -1120,7 +1120,7 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 	}
 }
 
-func pretty_print_func_field_list(out io.Writer, f *ast.FieldList) int {
+func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 	count := 0
 	if f == nil {
 		return count
@@ -1147,7 +1147,7 @@ func pretty_print_func_field_list(out io.Writer, f *ast.FieldList) int {
 		}
 
 		// type
-		pretty_print_type_expr(out, field.Type)
+		prettyPrintTypeExpr(out, field.Type)
 
 		// ,
 		if i != len(f.List)-1 {
@@ -1157,7 +1157,7 @@ func pretty_print_func_field_list(out io.Writer, f *ast.FieldList) int {
 	return count
 }
 
-func ast_decl_names(d ast.Decl) []*ast.Ident {
+func astDeclNames(d ast.Decl) []*ast.Ident {
 	var names []*ast.Ident
 
 	switch t := d.(type) {
@@ -1188,7 +1188,7 @@ func ast_decl_names(d ast.Decl) []*ast.Ident {
 	return names
 }
 
-func ast_decl_values(d ast.Decl) []ast.Expr {
+func astDeclValues(d ast.Decl) []ast.Expr {
 	// TODO: CONST values here too
 	switch t := d.(type) {
 	case *ast.GenDecl:
@@ -1203,7 +1203,7 @@ func ast_decl_values(d ast.Decl) []ast.Expr {
 	return nil
 }
 
-func ast_decl_split(d ast.Decl) []ast.Decl {
+func astDeclSplit(d ast.Decl) []ast.Decl {
 	var decls []ast.Decl
 	if t, ok := d.(*ast.GenDecl); ok {
 		decls = make([]ast.Decl, len(t.Specs))
@@ -1222,21 +1222,21 @@ func ast_decl_split(d ast.Decl) []ast.Decl {
 }
 
 //-------------------------------------------------------------------------
-// decl_pack
+// declPack
 //-------------------------------------------------------------------------
 
-type decl_pack struct {
+type declPack struct {
 	names  []*ast.Ident
 	typ    ast.Expr
 	values []ast.Expr
 }
 
-type foreach_decl_struct struct {
-	decl_pack
+type foreachDeclStruct struct {
+	declPack
 	decl ast.Decl
 }
 
-func (f *decl_pack) value(i int) ast.Expr {
+func (f *declPack) value(i int) ast.Expr {
 	if f.values == nil {
 		return nil
 	}
@@ -1246,7 +1246,7 @@ func (f *decl_pack) value(i int) ast.Expr {
 	return f.values[0]
 }
 
-func (f *decl_pack) value_index(i int) (v ast.Expr, vi int) {
+func (f *declPack) valueIndex(i int) (v ast.Expr, vi int) {
 	// default: nil value
 	v = nil
 	vi = -1
@@ -1271,7 +1271,7 @@ func (f *decl_pack) value_index(i int) (v ast.Expr, vi int) {
 	return
 }
 
-func (f *decl_pack) type_value_index(i int) (ast.Expr, ast.Expr, int) {
+func (f *declPack) typeValueIndex(i int) (ast.Expr, ast.Expr, int) {
 	if f.typ != nil {
 		// If there is a type, we don't care about value, just return the type
 		// and zero value.
@@ -1279,22 +1279,22 @@ func (f *decl_pack) type_value_index(i int) (ast.Expr, ast.Expr, int) {
 	}
 
 	// And otherwise we simply return nil type and a valid value for later inferring.
-	v, vi := f.value_index(i)
+	v, vi := f.valueIndex(i)
 	return nil, v, vi
 }
 
-type foreach_decl_func func(data *foreach_decl_struct)
+type foreachDeclFunc func(data *foreachDeclStruct)
 
-func foreach_decl(decl ast.Decl, do foreach_decl_func) {
-	decls := ast_decl_split(decl)
-	var data foreach_decl_struct
+func foreachDecl(decl ast.Decl, do foreachDeclFunc) {
+	decls := astDeclSplit(decl)
+	var data foreachDeclStruct
 	for _, decl := range decls {
-		if !ast_decl_convertable(decl) {
+		if !astDeclConvertable(decl) {
 			continue
 		}
-		data.names = ast_decl_names(decl)
-		data.typ = ast_decl_type(decl)
-		data.values = ast_decl_values(decl)
+		data.names = astDeclNames(decl)
+		data.typ = astDeclType(decl)
+		data.values = astDeclValues(decl)
 		data.decl = decl
 
 		do(&data)
@@ -1305,72 +1305,72 @@ func foreach_decl(decl ast.Decl, do foreach_decl_func) {
 // Built-in declarations
 //-------------------------------------------------------------------------
 
-var g_universe_scope = new_scope(nil)
+var gUniverseScope = newScope(nil)
 
 func init() {
 	builtin := ast.NewIdent("built-in")
 
-	add_type := func(name string) {
-		d := new_decl(name, decl_type, g_universe_scope)
+	addType := func(name string) {
+		d := newDecl(name, declType, gUniverseScope)
 		d.typ = builtin
-		g_universe_scope.add_named_decl(d)
+		gUniverseScope.addNamedDecl(d)
 	}
-	add_type("bool")
-	add_type("byte")
-	add_type("complex64")
-	add_type("complex128")
-	add_type("float32")
-	add_type("float64")
-	add_type("int8")
-	add_type("int16")
-	add_type("int32")
-	add_type("int64")
-	add_type("string")
-	add_type("uint8")
-	add_type("uint16")
-	add_type("uint32")
-	add_type("uint64")
-	add_type("int")
-	add_type("uint")
-	add_type("uintptr")
-	add_type("rune")
+	addType("bool")
+	addType("byte")
+	addType("complex64")
+	addType("complex128")
+	addType("float32")
+	addType("float64")
+	addType("int8")
+	addType("int16")
+	addType("int32")
+	addType("int64")
+	addType("string")
+	addType("uint8")
+	addType("uint16")
+	addType("uint32")
+	addType("uint64")
+	addType("int")
+	addType("uint")
+	addType("uintptr")
+	addType("rune")
 
-	add_const := func(name string) {
-		d := new_decl(name, decl_const, g_universe_scope)
+	addConst := func(name string) {
+		d := newDecl(name, declConst, gUniverseScope)
 		d.typ = builtin
-		g_universe_scope.add_named_decl(d)
+		gUniverseScope.addNamedDecl(d)
 	}
-	add_const("true")
-	add_const("false")
-	add_const("iota")
-	add_const("nil")
+	addConst("true")
+	addConst("false")
+	addConst("iota")
+	addConst("nil")
 
-	add_func := func(name, typ string) {
-		d := new_decl(name, decl_func, g_universe_scope)
+	addFunc := func(name, typ string) {
+		d := newDecl(name, declFunc, gUniverseScope)
 		d.typ = ast.NewIdent(typ)
-		g_universe_scope.add_named_decl(d)
+		gUniverseScope.addNamedDecl(d)
 	}
-	add_func("append", "func([]type, ...type) []type")
-	add_func("cap", "func(container) int")
-	add_func("close", "func(channel)")
-	add_func("complex", "func(real, imag) complex")
-	add_func("copy", "func(dst, src)")
-	add_func("delete", "func(map[typeA]typeB, typeA)")
-	add_func("imag", "func(complex)")
-	add_func("len", "func(container) int")
-	add_func("make", "func(type, len[, cap]) type")
-	add_func("new", "func(type) *type")
-	add_func("panic", "func(interface{})")
-	add_func("print", "func(...interface{})")
-	add_func("println", "func(...interface{})")
-	add_func("real", "func(complex)")
-	add_func("recover", "func() interface{}")
+	addFunc("append", "func([]type, ...type) []type")
+	addFunc("cap", "func(container) int")
+	addFunc("close", "func(channel)")
+	addFunc("complex", "func(real, imag) complex")
+	addFunc("copy", "func(dst, src)")
+	addFunc("delete", "func(map[typeA]typeB, typeA)")
+	addFunc("imag", "func(complex)")
+	addFunc("len", "func(container) int")
+	addFunc("make", "func(type, len[, cap]) type")
+	addFunc("new", "func(type) *type")
+	addFunc("panic", "func(interface{})")
+	addFunc("print", "func(...interface{})")
+	addFunc("println", "func(...interface{})")
+	addFunc("real", "func(complex)")
+	addFunc("recover", "func() interface{}")
 
 	// built-in error interface
-	d := new_decl("error", decl_type, g_universe_scope)
+	d := newDecl("error", declType, gUniverseScope)
 	d.typ = &ast.InterfaceType{}
 	d.children = make(map[string]*decl)
-	d.children["Error"] = new_decl("Error", decl_func, g_universe_scope)
+	d.children["Error"] = newDecl("Error", declFunc, gUniverseScope)
 	d.children["Error"].typ = &ast.FuncType{
 		Results: &ast.FieldList{
 			List: []*ast.Field{
@@ -1380,5 +1380,5 @@ func init() {
 			},
 		},
 	}
-	g_universe_scope.add_named_decl(d)
+	gUniverseScope.addNamedDecl(d)
 }

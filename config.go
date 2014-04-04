@@ -23,12 +23,12 @@ type config struct {
 	LibPath         string `json:"lib-path"`
 }
 
-var g_config = config{
+var gConfig = config{
 	false,
 	"",
 }
 
-var g_string_to_bool = map[string]bool{
+var gStringToBool = map[string]bool{
 	"t":     true,
 	"true":  true,
 	"y":     true,
@@ -43,10 +43,10 @@ var g_string_to_bool = map[string]bool{
 	"0":     false,
 }
 
-func set_value(v reflect.Value, value string) {
+func setValue(v reflect.Value, value string) {
 	switch t := v; t.Kind() {
 	case reflect.Bool:
-		v, ok := g_string_to_bool[value]
+		v, ok := gStringToBool[value]
 		if ok {
 			t.SetBool(v)
 		}
@@ -65,7 +65,7 @@ func set_value(v reflect.Value, value string) {
 	}
 }
 
-func list_value(v reflect.Value, name string, w io.Writer) {
+func listValue(v reflect.Value, name string, w io.Writer) {
 	switch t := v; t.Kind() {
 	case reflect.Bool:
 		fmt.Fprintf(w, "%s %v\n", name, t.Bool())
@@ -79,38 +79,38 @@ func list_value(v reflect.Value, name string, w io.Writer) {
 }
 
 func (this *config) list() string {
-	str, typ := this.value_and_type()
+	str, typ := this.valueAndType()
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		name := typ.Field(i).Tag.Get("json")
-		list_value(v, name, buf)
+		listValue(v, name, buf)
 	}
 	return buf.String()
 }
 
-func (this *config) list_option(name string) string {
-	str, typ := this.value_and_type()
+func (this *config) listOption(name string) string {
+	str, typ := this.valueAndType()
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		nm := typ.Field(i).Tag.Get("json")
 		if nm == name {
-			list_value(v, name, buf)
+			listValue(v, name, buf)
 		}
 	}
 	return buf.String()
 }
 
-func (this *config) set_option(name, value string) string {
-	str, typ := this.value_and_type()
+func (this *config) setOption(name, value string) string {
+	str, typ := this.valueAndType()
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
 	for i := 0; i < str.NumField(); i++ {
 		v := str.Field(i)
 		nm := typ.Field(i).Tag.Get("json")
 		if nm == name {
-			set_value(v, value)
-			list_value(v, name, buf)
+			setValue(v, value)
+			listValue(v, name, buf)
 		}
 	}
 	this.write()
@@ -118,7 +118,7 @@ func (this *config) set_option(name, value string) string {
 
 }
 
-func (this *config) value_and_type() (reflect.Value, reflect.Type) {
+func (this *config) valueAndType() (reflect.Value, reflect.Type) {
 	v := reflect.ValueOf(this).Elem()
 	return v, v.Type()
 }
@@ -130,12 +130,12 @@ func (this *config) write() error {
 	}
 
 	// make sure config dir exists
-	dir := config_dir()
-	if !file_exists(dir) {
+	dir := configDir()
+	if !fileExists(dir) {
 		os.MkdirAll(dir, 0755)
 	}
 
-	f, err := os.Create(config_file())
+	f, err := os.Create(configFile())
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (this *config) write() error {
 }
 
 func (this *config) read() error {
-	data, err := ioutil.ReadFile(config_file())
+	data, err := ioutil.ReadFile(configFile())
 	if err != nil {
 		return err
 	}

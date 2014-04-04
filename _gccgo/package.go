@@ -11,7 +11,7 @@ import "go/ast"
 import "go/token"
 import "strings"
 
-var builtin_type_names = []*ast.Ident{
+var builtinTypeNames = []*ast.Ident{
 	nil,
 	ast.NewIdent("int8"),
 	ast.NewIdent("int16"),
@@ -37,12 +37,12 @@ var builtin_type_names = []*ast.Ident{
 }
 
 const (
-	smallest_builtin_code = -21
+	smallestBuiltinCode = -21
 )
 
-func read_import_data(import_path string) ([]byte, error) {
+func readImportData(importPath string) ([]byte, error) {
 	// TODO: find file location
-	filename := import_path + ".gox"
+	filename := importPath + ".gox"
 
 	f, err := elf.Open(filename)
 	if err != nil {
@@ -58,31 +58,31 @@ func read_import_data(import_path string) ([]byte, error) {
 	return sec.Data()
 }
 
-func parse_import_data(data []byte) {
+func parseImportData(data []byte) {
 	buf := bytes.NewBuffer(data)
-	var p import_data_parser
+	var p importDataParser
 	p.init(buf)
 
 	// magic
-	p.expect_ident("v1")
+	p.expectIdent("v1")
 	p.expect(';')
 
 	// package ident
-	p.expect_ident("package")
+	p.expectIdent("package")
 	pkgid := p.expect(scanner.Ident)
 	p.expect(';')
 
 	println("package ident: " + pkgid)
 
 	// package path
-	p.expect_ident("pkgpath")
+	p.expectIdent("pkgpath")
 	pkgpath := p.expect(scanner.Ident)
 	p.expect(';')
 
 	println("package path: " + pkgpath)
 
 	// package priority
-	p.expect_ident("priority")
+	p.expectIdent("priority")
 	priority := p.expect(scanner.Int)
 	p.expect(';')
 
@@ -90,7 +90,7 @@ func parse_import_data(data []byte) {
 
 	// import init functions
 	for p.toktype == scanner.Ident && p.token() == "import" {
-		p.expect_ident("import")
+		p.expectIdent("import")
 		pkgname := p.expect(scanner.Ident)
 		pkgpath := p.expect(scanner.Ident)
 		importpath := p.expect(scanner.String)
@@ -99,7 +99,7 @@ func parse_import_data(data []byte) {
 	}
 
 	if p.toktype == scanner.Ident && p.token() == "init" {
-		p.expect_ident("init")
+		p.expectIdent("init")
 		for p.toktype != ';' {
 			pkgname := p.expect(scanner.Ident)
 			initname := p.expect(scanner.Ident)
@@ -109,18 +109,19 @@ func parse_import_data(data []byte) {
 		p.expect(';')
 	}
 
-	loop: for {
+loop:
+	for {
 		switch tok := p.expect(scanner.Ident); tok {
 		case "const":
-			p.read_const()
+			p.readConst()
 		case "type":
-			p.read_type_decl()
+			p.readTypeDecl()
 		case "var":
-			p.read_var()
+			p.readVar()
 		case "func":
-			p.read_func()
+			p.readFunc()
 		case "checksum":
-			p.read_checksum()
+			p.readChecksum()
 			break loop
 		default:
 			panic(errors.New("unexpected identifier token: '" + tok + "'"))
@@ -132,36 +133,36 @@ func parse_import_data(data []byte) {
 // import data parser
 //----------------------------------------------------------------------------
 
-type import_data_type struct {
-	name string
+type importDataType struct {
+	name  string
 	type_ ast.Expr
 }
 
-type import_data_parser struct {
-	scanner scanner.Scanner
-	toktype rune
-	typetable []*import_data_type
+type importDataParser struct {
+	scanner   scanner.Scanner
+	toktype   rune
+	typetable []*importDataType
 }
 
-func (this *import_data_parser) init(reader io.Reader) {
+func (this *importDataParser) init(reader io.Reader) {
 	this.scanner.Mode = scanner.ScanIdents | scanner.ScanInts | scanner.ScanStrings | scanner.ScanFloats
 	this.scanner.Init(reader)
 	this.next()
 
 	// len == 1 here, because 0 is an invalid type index
-	this.typetable = make([]*import_data_type, 1, 50)
+	this.typetable = make([]*importDataType, 1, 50)
 }
 
-func (this *import_data_parser) next() {
+func (this *importDataParser) next() {
 	this.toktype = this.scanner.Scan()
 }
 
-func (this *import_data_parser) token() string {
+func (this *importDataParser) token() string {
 	return this.scanner.TokenText()
 }
 
 // internal, use expect(scanner.Ident) instead
-func (this *import_data_parser) read_ident() string {
+func (this *importDataParser) readIdent() string {
 	id := ""
 	prev := rune(0)
 
@@ -191,7 +192,7 @@ loop:
 	return id
 }
 
-func (this *import_data_parser) read_int() string {
+func (this *importDataParser) readInt() string {
 	val := ""
 	if this.toktype == '-' {
 		this.next()
@@ -206,20 +207,20 @@ func (this *import_data_parser) read_int() string {
 	return val
 }
 
-func (this *import_data_parser) errorf(format string, args ...interface{}) {
+func (this *importDataParser) errorf(format string, args ...interface{}) {
 	panic(errors.New(fmt.Sprintf(format, args...)))
 }
 
 // makes sure that the current token is 'x', returns it and reads the next one
-func (this *import_data_parser) expect(x rune) string {
+func (this *importDataParser) expect(x rune) string {
 	if x == scanner.Ident {
 		// special case, in gccgo import data identifier is not exactly a scanner.Ident
-		return this.read_ident()
+		return this.readIdent()
 	}
 
 	if x == scanner.Int {
 		// another special case, handle negative ints as well
-		return this.read_int()
+		return this.readInt()
 	}
 
 	if this.toktype != x {
@@ -232,7 +233,7 @@ func (this *import_data_parser) expect(x rune) string {
 }
 
 // makes sure that the following set of tokens matches 'special', reads the next one
-func (this *import_data_parser) expect_special(special string) {
+func (this *importDataParser) expectSpecial(special string) {
 	i := 0
 	for i < len(special) {
 		if this.toktype != rune(special[i]) {
@@ -249,24 +250,24 @@ func (this *import_data_parser) expect_special(special string) {
 }
 
 // makes sure that the current token is scanner.Ident and is equals to 'ident', reads the next one
-func (this *import_data_parser) expect_ident(ident string) {
+func (this *importDataParser) expectIdent(ident string) {
 	tok := this.expect(scanner.Ident)
 	if tok != ident {
 		this.errorf("expected identifier: \"%s\", got: \"%s\"", ident, tok)
 	}
 }
 
-func (this *import_data_parser) read_type() ast.Expr {
-	type_, name := this.read_type_full()
+func (this *importDataParser) readType() ast.Expr {
+	type_, name := this.readTypeFull()
 	if name != "" {
 		return ast.NewIdent(name)
 	}
 	return type_
 }
 
-func (this *import_data_parser) read_type_full() (ast.Expr, string) {
+func (this *importDataParser) readTypeFull() (ast.Expr, string) {
 	this.expect('<')
-	this.expect_ident("type")
+	this.expectIdent("type")
 
 	numstr := this.expect(scanner.Int)
 	num, err := strconv.ParseInt(numstr, 10, 32)
@@ -278,10 +279,10 @@ func (this *import_data_parser) read_type_full() (ast.Expr, string) {
 		// was already declared previously
 		this.next()
 		if num < 0 {
-			if num < smallest_builtin_code {
+			if num < smallestBuiltinCode {
 				this.errorf("out of range built-in type code")
 			}
-			return builtin_type_names[-num], ""
+			return builtinTypeNames[-num], ""
 		} else {
 			// lookup type table
 			type_ := this.typetable[num]
@@ -289,14 +290,14 @@ func (this *import_data_parser) read_type_full() (ast.Expr, string) {
 		}
 	}
 
-	this.typetable = append(this.typetable, &import_data_type{})
+	this.typetable = append(this.typetable, &importDataType{})
 	var type_ = this.typetable[len(this.typetable)-1]
 
 	switch this.toktype {
 	case scanner.String:
 		// named type
 		s := this.expect(scanner.String)
-		type_.name = s[1:len(s)-1] // remove ""
+		type_.name = s[1 : len(s)-1] // remove ""
 		fallthrough
 	default:
 		// unnamed type
@@ -304,65 +305,65 @@ func (this *import_data_parser) read_type_full() (ast.Expr, string) {
 		case scanner.Ident:
 			switch tok := this.token(); tok {
 			case "struct":
-				type_.type_ = this.read_struct_type()
+				type_.type_ = this.readStructType()
 			case "interface":
-				type_.type_ = this.read_interface_type()
+				type_.type_ = this.readInterfaceType()
 			case "map":
-				type_.type_ = this.read_map_type()
+				type_.type_ = this.readMapType()
 			case "chan":
-				type_.type_ = this.read_chan_type()
+				type_.type_ = this.readChanType()
 			default:
 				this.errorf("unknown type class token: \"%s\"", tok)
 			}
 		case '[':
-			type_.type_ = this.read_array_or_slice_type()
+			type_.type_ = this.readArrayOrSliceType()
 		case '*':
 			this.next()
 			if this.token() == "any" {
 				this.next()
 				type_.type_ = &ast.StarExpr{X: ast.NewIdent("any")}
 			} else {
-				type_.type_ = &ast.StarExpr{X: this.read_type()}
+				type_.type_ = &ast.StarExpr{X: this.readType()}
 			}
 		case '(':
-			type_.type_ = this.read_func_type()
+			type_.type_ = this.readFuncType()
 		case '<':
-			type_.type_ = this.read_type()
+			type_.type_ = this.readType()
 		}
 	}
 
 	for this.toktype != '>' {
 		// must be a method or many methods
-		this.expect_ident("func")
-		this.read_method()
+		this.expectIdent("func")
+		this.readMethod()
 	}
 
 	this.expect('>')
 	return type_.type_, type_.name
 }
 
-func (this *import_data_parser) read_map_type() ast.Expr {
-	this.expect_ident("map")
+func (this *importDataParser) readMapType() ast.Expr {
+	this.expectIdent("map")
 	this.expect('[')
-	key := this.read_type()
+	key := this.readType()
 	this.expect(']')
-	val := this.read_type()
+	val := this.readType()
 	return &ast.MapType{Key: key, Value: val}
 }
 
-func (this *import_data_parser) read_chan_type() ast.Expr {
+func (this *importDataParser) readChanType() ast.Expr {
 	dir := ast.SEND | ast.RECV
-	this.expect_ident("chan")
+	this.expectIdent("chan")
 	switch this.toktype {
 	case '-':
 		// chan -< <type>
-		this.expect_special("-<")
+		this.expectSpecial("-<")
 		dir = ast.SEND
 	case '<':
 		// slight ambiguity here
 		if this.scanner.Peek() == '-' {
 			// chan <- <type>
-			this.expect_special("<-")
+			this.expectSpecial("<-")
 			dir = ast.RECV
 		}
 		// chan <type>
@@ -370,13 +371,13 @@ func (this *import_data_parser) read_chan_type() ast.Expr {
 		this.errorf("unexpected token: \"%s\"", this.token())
 	}
 
-	return &ast.ChanType{Dir: dir, Value: this.read_type()}
+	return &ast.ChanType{Dir: dir, Value: this.readType()}
 }
 
-func (this *import_data_parser) read_field() *ast.Field {
+func (this *importDataParser) readField() *ast.Field {
 	var tag string
 	name := this.expect(scanner.Ident)
-	type_ := this.read_type()
+	type_ := this.readType()
 	if this.toktype == scanner.String {
 		tag = this.expect(scanner.String)
 	}
@@ -388,32 +389,32 @@ func (this *import_data_parser) read_field() *ast.Field {
 	}
 }
 
-func (this *import_data_parser) read_struct_type() ast.Expr {
+func (this *importDataParser) readStructType() ast.Expr {
 	var fields []*ast.Field
-	read_field := func() {
-		field := this.read_field()
+	readField := func() {
+		field := this.readField()
 		fields = append(fields, field)
 	}
 
-	this.expect_ident("struct")
+	this.expectIdent("struct")
 	this.expect('{')
 	for this.toktype != '}' {
-		read_field()
+		readField()
 		this.expect(';')
 	}
 	this.expect('}')
 	return &ast.StructType{Fields: &ast.FieldList{List: fields}}
 }
 
-func (this *import_data_parser) read_parameter() *ast.Field {
+func (this *importDataParser) readParameter() *ast.Field {
 	name := this.expect(scanner.Ident)
 
 	var type_ ast.Expr
 	if this.toktype == '.' {
-		this.expect_special("...")
-		type_ = &ast.Ellipsis{Elt: this.read_type()}
+		this.expectSpecial("...")
+		type_ = &ast.Ellipsis{Elt: this.readType()}
 	} else {
-		type_ = this.read_type()
+		type_ = this.readType()
 	}
 
 	var tag string
@@ -423,24 +424,24 @@ func (this *import_data_parser) read_parameter() *ast.Field {
 
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(name)},
-		Type: type_,
-		Tag:  &ast.BasicLit{Kind: token.STRING, Value: tag},
+		Type:  type_,
+		Tag:   &ast.BasicLit{Kind: token.STRING, Value: tag},
 	}
 }
 
-func (this *import_data_parser) read_parameters() *ast.FieldList {
+func (this *importDataParser) readParameters() *ast.FieldList {
 	var fields []*ast.Field
-	read_parameter := func() {
-		parameter := this.read_parameter()
+	readParameter := func() {
+		parameter := this.readParameter()
 		fields = append(fields, parameter)
 	}
 
 	this.expect('(')
 	if this.toktype != ')' {
-		read_parameter()
+		readParameter()
 		for this.toktype == ',' {
 			this.next() // skip ','
-			read_parameter()
+			readParameter()
 		}
 	}
 	this.expect(')')
@@ -451,29 +452,29 @@ func (this *import_data_parser) read_parameters() *ast.FieldList {
 	return &ast.FieldList{List: fields}
 }
 
-func (this *import_data_parser) read_func_type() *ast.FuncType {
+func (this *importDataParser) readFuncType() *ast.FuncType {
 	var params, results *ast.FieldList
 
-	params = this.read_parameters()
+	params = this.readParameters()
 	switch this.toktype {
 	case '<':
-		field := &ast.Field{Type: this.read_type()}
+		field := &ast.Field{Type: this.readType()}
 		results = &ast.FieldList{List: []*ast.Field{field}}
 	case '(':
-		results = this.read_parameters()
+		results = this.readParameters()
 	}
 
 	return &ast.FuncType{Params: params, Results: results}
 }
 
-func (this *import_data_parser) read_method_or_embed_spec() *ast.Field {
+func (this *importDataParser) readMethodOrEmbedSpec() *ast.Field {
 	var type_ ast.Expr
 	name := this.expect(scanner.Ident)
 	if name == "?" {
 		// TODO: ast.SelectorExpr conversion here possibly
-		type_ = this.read_type()
+		type_ = this.readType()
 	} else {
-		type_ = this.read_func_type()
+		type_ = this.readFuncType()
 	}
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(name)},
@@ -481,35 +482,35 @@ func (this *import_data_parser) read_method_or_embed_spec() *ast.Field {
 	}
 }
 
-func (this *import_data_parser) read_interface_type() ast.Expr {
+func (this *importDataParser) readInterfaceType() ast.Expr {
 	var methods []*ast.Field
-	read_method := func() {
-		method := this.read_method_or_embed_spec()
+	readMethod := func() {
+		method := this.readMethodOrEmbedSpec()
 		methods = append(methods, method)
 	}
 
-	this.expect_ident("interface")
+	this.expectIdent("interface")
 	this.expect('{')
 	for this.toktype != '}' {
-		read_method()
+		readMethod()
 		this.expect(';')
 	}
 	this.expect('}')
 	return &ast.InterfaceType{Methods: &ast.FieldList{List: methods}}
 }
 
-func (this *import_data_parser) read_method() {
+func (this *importDataParser) readMethod() {
 	var buf1, buf2 bytes.Buffer
-	recv := this.read_parameters()
+	recv := this.readParameters()
 	name := this.expect(scanner.Ident)
-	type_ := this.read_func_type()
+	type_ := this.readFuncType()
 	this.expect(';')
-	pretty_print_type_expr(&buf1, recv.List[0].Type)
-	pretty_print_type_expr(&buf2, type_)
+	prettyPrintTypeExpr(&buf1, recv.List[0].Type)
+	prettyPrintTypeExpr(&buf2, type_)
 	println("func (" + buf1.String() + ") " + name + buf2.String()[4:])
 }
 
-func (this *import_data_parser) read_array_or_slice_type() ast.Expr {
+func (this *importDataParser) readArrayOrSliceType() ast.Expr {
 	var length ast.Expr
 
 	this.expect('[')
@@ -520,19 +521,19 @@ func (this *import_data_parser) read_array_or_slice_type() ast.Expr {
 	this.expect(']')
 	return &ast.ArrayType{
 		Len: length,
-		Elt: this.read_type(),
+		Elt: this.readType(),
 	}
 }
 
-func (this *import_data_parser) read_const() {
+func (this *importDataParser) readConst() {
 	var buf bytes.Buffer
 
 	// const keyword was already consumed
 	c := "const " + this.expect(scanner.Ident)
 	if this.toktype != '=' {
 		// parse type
-		type_ := this.read_type()
-		pretty_print_type_expr(&buf, type_)
+		type_ := this.readType()
+		prettyPrintTypeExpr(&buf, type_)
 		c += " " + buf.String()
 	}
 
@@ -544,7 +545,7 @@ func (this *import_data_parser) read_const() {
 	println(c)
 }
 
-func (this *import_data_parser) read_checksum() {
+func (this *importDataParser) readChecksum() {
 	// checksum keyword was already consumed
 	for this.toktype != ';' {
 		this.next()
@@ -552,32 +553,32 @@ func (this *import_data_parser) read_checksum() {
 	this.expect(';')
 }
 
-func (this *import_data_parser) read_type_decl() {
+func (this *importDataParser) readTypeDecl() {
 	var buf bytes.Buffer
 	// type keyword was already consumed
-	type_, name := this.read_type_full()
+	type_, name := this.readTypeFull()
 	this.expect(';')
-	pretty_print_type_expr(&buf, type_)
+	prettyPrintTypeExpr(&buf, type_)
 	println("type " + name + " " + buf.String())
 }
 
-func (this *import_data_parser) read_var() {
+func (this *importDataParser) readVar() {
 	var buf bytes.Buffer
 	// var keyword was already consumed
 	name := this.expect(scanner.Ident)
-	type_ := this.read_type()
+	type_ := this.readType()
 	this.expect(';')
-	pretty_print_type_expr(&buf, type_)
+	prettyPrintTypeExpr(&buf, type_)
 	println("var " + name + " " + buf.String())
 }
 
-func (this *import_data_parser) read_func() {
+func (this *importDataParser) readFunc() {
 	var buf bytes.Buffer
 	// func keyword was already consumed
 	name := this.expect(scanner.Ident)
-	type_ := this.read_func_type()
+	type_ := this.readFuncType()
 	this.expect(';')
-	pretty_print_type_expr(&buf, type_)
+	prettyPrintTypeExpr(&buf, type_)
 	println("func " + name + buf.String()[4:])
 }
 
@@ -585,7 +586,7 @@ func (this *import_data_parser) read_func() {
 // Pretty printing
 //-------------------------------------------------------------------------
 
-func get_array_len(e ast.Expr) string {
+func getArrayLen(e ast.Expr) string {
 	switch t := e.(type) {
 	case *ast.BasicLit:
 		return string(t.Value)
@@ -595,11 +596,11 @@ func get_array_len(e ast.Expr) string {
 	return ""
 }
 
-func pretty_print_type_expr(out io.Writer, e ast.Expr) {
+func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 	switch t := e.(type) {
 	case *ast.StarExpr:
 		fmt.Fprintf(out, "*")
-		pretty_print_type_expr(out, t.X)
+		prettyPrintTypeExpr(out, t.X)
 	case *ast.Ident:
 		if strings.HasPrefix(t.Name, "$") {
 			// beautify anonymous types
@@ -616,24 +617,24 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 		al := ""
 		if t.Len != nil {
 			println(t.Len)
-			al = get_array_len(t.Len)
+			al = getArrayLen(t.Len)
 		}
 		if al != "" {
 			fmt.Fprintf(out, "[%s]", al)
 		} else {
 			fmt.Fprintf(out, "[]")
 		}
-		pretty_print_type_expr(out, t.Elt)
+		prettyPrintTypeExpr(out, t.Elt)
 	case *ast.SelectorExpr:
-		pretty_print_type_expr(out, t.X)
+		prettyPrintTypeExpr(out, t.X)
 		fmt.Fprintf(out, ".%s", t.Sel.Name)
 	case *ast.FuncType:
 		fmt.Fprintf(out, "func(")
-		pretty_print_func_field_list(out, t.Params)
+		prettyPrintFuncFieldList(out, t.Params)
 		fmt.Fprintf(out, ")")
 
 		buf := bytes.NewBuffer(make([]byte, 0, 256))
-		nresults := pretty_print_func_field_list(buf, t.Results)
+		nresults := prettyPrintFuncFieldList(buf, t.Results)
 		if nresults > 0 {
 			results := buf.String()
 			if strings.Index(results, ",") != -1 {
@@ -643,14 +644,14 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 		}
 	case *ast.MapType:
 		fmt.Fprintf(out, "map[")
-		pretty_print_type_expr(out, t.Key)
+		prettyPrintTypeExpr(out, t.Key)
 		fmt.Fprintf(out, "]")
-		pretty_print_type_expr(out, t.Value)
+		prettyPrintTypeExpr(out, t.Value)
 	case *ast.InterfaceType:
 		fmt.Fprintf(out, "interface{}")
 	case *ast.Ellipsis:
 		fmt.Fprintf(out, "...")
-		pretty_print_type_expr(out, t.Elt)
+		prettyPrintTypeExpr(out, t.Elt)
 	case *ast.StructType:
 		fmt.Fprintf(out, "struct")
 	case *ast.ChanType:
@@ -662,10 +663,10 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 		case ast.SEND | ast.RECV:
 			fmt.Fprintf(out, "chan ")
 		}
-		pretty_print_type_expr(out, t.Value)
+		prettyPrintTypeExpr(out, t.Value)
 	case *ast.ParenExpr:
 		fmt.Fprintf(out, "(")
-		pretty_print_type_expr(out, t.X)
+		prettyPrintTypeExpr(out, t.X)
 		fmt.Fprintf(out, ")")
 	case *ast.BadExpr:
 		// TODO: probably I should check that in a separate function
@@ -677,7 +678,7 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 	}
 }
 
-func pretty_print_func_field_list(out io.Writer, f *ast.FieldList) int {
+func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 	count := 0
 	if f == nil {
 		return count
@@ -704,7 +705,7 @@ func pretty_print_func_field_list(out io.Writer, f *ast.FieldList) int {
 		}
 
 		// type
-		pretty_print_type_expr(out, field.Type)
+		prettyPrintTypeExpr(out, field.Type)
 
 		// ,
 		if i != len(f.List)-1 {
@@ -715,9 +716,9 @@ func pretty_print_func_field_list(out io.Writer, f *ast.FieldList) int {
 }
 
 func main() {
-	data, err := read_import_data("io")
+	data, err := readImportData("io")
 	if err != nil {
 		panic(err)
 	}
-	parse_import_data(data)
+	parseImportData(data)
 }
