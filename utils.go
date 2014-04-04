@@ -13,7 +13,7 @@ import (
 )
 
 // returns truncated 'data' and amount of bytes skipped (for cursor pos adjustment)
-func filter_out_shebang(data []byte) ([]byte, int) {
+func filterOutShebang(data []byte) ([]byte, int) {
 	if len(data) > 2 && data[0] == '#' && data[1] == '!' {
 		newline := bytes.Index(data, []byte("\n"))
 		if newline != -1 && len(data) > newline+1 {
@@ -23,7 +23,7 @@ func filter_out_shebang(data []byte) ([]byte, int) {
 	return data, 0
 }
 
-func file_exists(filename string) bool {
+func fileExists(filename string) bool {
 	_, err := os.Stat(filename)
 	if err != nil {
 		return false
@@ -31,16 +31,16 @@ func file_exists(filename string) bool {
 	return true
 }
 
-func char_to_byte_offset(s []byte, offset_c int) (offset_b int) {
-	for offset_b = 0; offset_c > 0 && offset_b < len(s); offset_b++ {
-		if utf8.RuneStart(s[offset_b]) {
-			offset_c--
+func charToByteOffset(s []byte, offsetC int) (offsetB int) {
+	for offsetB = 0; offsetC > 0 && offsetB < len(s); offsetB++ {
+		if utf8.RuneStart(s[offsetB]) {
+			offsetC--
 		}
 	}
-	return offset_b
+	return offsetB
 }
 
-func xdg_home_dir() string {
+func xdgHomeDir() string {
 	xdghome := os.Getenv("XDG_CONFIG_HOME")
 	if xdghome == "" {
 		xdghome = filepath.Join(os.Getenv("HOME"), ".config")
@@ -48,7 +48,7 @@ func xdg_home_dir() string {
 	return xdghome
 }
 
-func has_prefix(s, prefix string, ignorecase bool) bool {
+func hasPrefix(s, prefix string, ignorecase bool) bool {
 	if ignorecase {
 		s = strings.ToLower(s)
 		prefix = strings.ToLower(prefix)
@@ -57,16 +57,16 @@ func has_prefix(s, prefix string, ignorecase bool) bool {
 }
 
 //-------------------------------------------------------------------------
-// print_backtrace
+// printBacktrace
 //
 // a nicer backtrace printer than the default one
 //-------------------------------------------------------------------------
 
-var g_backtrace_mutex sync.Mutex
+var gBacktraceMutex sync.Mutex
 
-func print_backtrace(err interface{}) {
-	g_backtrace_mutex.Lock()
-	defer g_backtrace_mutex.Unlock()
+func printBacktrace(err interface{}) {
+	gBacktraceMutex.Lock()
+	defer gBacktraceMutex.Unlock()
 	fmt.Printf("panic: %v\n", err)
 	i := 2
 	for {
@@ -89,25 +89,25 @@ func print_backtrace(err interface{}) {
 // at the same time.
 // -------------------------------------------------------------------------
 
-type file_read_request struct {
+type fileReadRequest struct {
 	filename string
-	out      chan file_read_response
+	out      chan fileReadResponse
 }
 
-type file_read_response struct {
+type fileReadResponse struct {
 	data  []byte
 	error error
 }
 
-type file_reader_type struct {
-	in chan file_read_request
+type fileReaderType struct {
+	in chan fileReadRequest
 }
 
-func new_file_reader() *file_reader_type {
-	this := new(file_reader_type)
-	this.in = make(chan file_read_request)
+func newFileReader() *fileReaderType {
+	this := new(fileReaderType)
+	this.in = make(chan fileReadRequest)
 	go func() {
-		var rsp file_read_response
+		var rsp fileReadResponse
 		for {
 			req := <-this.in
 			rsp.data, rsp.error = ioutil.ReadFile(req.filename)
@@ -117,14 +117,14 @@ func new_file_reader() *file_reader_type {
 	return this
 }
 
-func (this *file_reader_type) read_file(filename string) ([]byte, error) {
-	req := file_read_request{
+func (this *fileReaderType) readFile(filename string) ([]byte, error) {
+	req := fileReadRequest{
 		filename,
-		make(chan file_read_response),
+		make(chan fileReadResponse),
 	}
 	this.in <- req
 	rsp := <-req.out
 	return rsp.data, rsp.error
 }
 
-var file_reader = new_file_reader()
+var fileReader = newFileReader()

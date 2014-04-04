@@ -11,25 +11,25 @@ import (
 	"time"
 )
 
-func do_client() int {
-	addr := *g_addr
-	if *g_sock == "unix" {
-		addr = get_socket_filename()
+func doClient() int {
+	addr := *gAddr
+	if *gSock == "unix" {
+		addr = getSocketFilename()
 	}
 
 	// client
-	client, err := rpc.Dial(*g_sock, addr)
+	client, err := rpc.Dial(*gSock, addr)
 	if err != nil {
-		if *g_sock == "unix" && file_exists(addr) {
+		if *gSock == "unix" && fileExists(addr) {
 			os.Remove(addr)
 		}
 
-		err = try_run_server()
+		err = tryRunServer()
 		if err != nil {
 			fmt.Printf("%s\n", err.Error())
 			return 1
 		}
-		client, err = try_to_connect(*g_sock, addr)
+		client, err = tryToConnect(*gSock, addr)
 		if err != nil {
 			fmt.Printf("%s\n", err.Error())
 			return 1
@@ -40,25 +40,25 @@ func do_client() int {
 	if flag.NArg() > 0 {
 		switch flag.Arg(0) {
 		case "autocomplete":
-			cmd_auto_complete(client)
+			cmdAutoComplete(client)
 		case "cursortype":
-			cmd_cursor_type_pkg(client)
+			cmdCursorTypePkg(client)
 		case "close":
-			cmd_close(client)
+			cmdClose(client)
 		case "status":
-			cmd_status(client)
+			cmdStatus(client)
 		case "drop-cache":
-			cmd_drop_cache(client)
+			cmdDropCache(client)
 		case "set":
-			cmd_set(client)
+			cmdSet(client)
 		}
 	}
 	return 0
 }
 
-func try_run_server() error {
-	path := get_executable_filename()
-	args := []string{os.Args[0], "-s", "-sock", *g_sock, "-addr", *g_addr}
+func tryRunServer() error {
+	path := getExecutableFilename()
+	args := []string{os.Args[0], "-s", "-sock", *gSock, "-addr", *gAddr}
 	cwd, _ := os.Getwd()
 	procattr := os.ProcAttr{Dir: cwd, Env: os.Environ(), Files: []*os.File{nil, nil, nil}}
 	p, err := os.StartProcess(path, args, &procattr)
@@ -69,7 +69,7 @@ func try_run_server() error {
 	return p.Release()
 }
 
-func try_to_connect(network, address string) (client *rpc.Client, err error) {
+func tryToConnect(network, address string) (client *rpc.Client, err error) {
 	t := 0
 	for {
 		client, err = rpc.Dial(network, address)
@@ -84,12 +84,12 @@ func try_to_connect(network, address string) (client *rpc.Client, err error) {
 	return
 }
 
-func prepare_file_filename_cursor() ([]byte, string, int) {
+func prepareFileFilenameCursor() ([]byte, string, int) {
 	var file []byte
 	var err error
 
-	if *g_input != "" {
-		file, err = ioutil.ReadFile(*g_input)
+	if *gInput != "" {
+		file, err = ioutil.ReadFile(*gInput)
 	} else {
 		file, err = ioutil.ReadAll(os.Stdin)
 	}
@@ -99,9 +99,9 @@ func prepare_file_filename_cursor() ([]byte, string, int) {
 	}
 
 	var skipped int
-	file, skipped = filter_out_shebang(file)
+	file, skipped = filterOutShebang(file)
 
-	filename := *g_input
+	filename := *gInput
 	cursor := -1
 
 	offset := ""
@@ -116,7 +116,7 @@ func prepare_file_filename_cursor() ([]byte, string, int) {
 	if offset != "" {
 		if offset[0] == 'c' || offset[0] == 'C' {
 			cursor, _ = strconv.Atoi(offset[1:])
-			cursor = char_to_byte_offset(file, cursor)
+			cursor = charToByteOffset(file, cursor)
 		} else {
 			cursor, _ = strconv.Atoi(offset)
 		}
@@ -134,39 +134,39 @@ func prepare_file_filename_cursor() ([]byte, string, int) {
 // commands
 //-------------------------------------------------------------------------
 
-func cmd_status(c *rpc.Client) {
-	fmt.Printf("%s\n", client_status(c, 0))
+func cmdStatus(c *rpc.Client) {
+	fmt.Printf("%s\n", clientStatus(c, 0))
 }
 
-func cmd_auto_complete(c *rpc.Client) {
-	var env gocode_env
+func cmdAutoComplete(c *rpc.Client) {
+	var env gocodeEnv
 	env.get()
-	file, filename, cursor := prepare_file_filename_cursor()
-	f := get_formatter(*g_format)
-	f.write_candidates(client_auto_complete(c, file, filename, cursor, env))
+	file, filename, cursor := prepareFileFilenameCursor()
+	f := getFormatter(*gFormat)
+	f.writeCandidates(clientAutoComplete(c, file, filename, cursor, env))
 }
 
-func cmd_cursor_type_pkg(c *rpc.Client) {
-	file, filename, cursor := prepare_file_filename_cursor()
-	typ, pkg := client_cursor_type_pkg(c, file, filename, cursor)
+func cmdCursorTypePkg(c *rpc.Client) {
+	file, filename, cursor := prepareFileFilenameCursor()
+	typ, pkg := clientCursorTypePkg(c, file, filename, cursor)
 	fmt.Printf("%s,,%s\n", typ, pkg)
 }
 
-func cmd_close(c *rpc.Client) {
-	client_close(c, 0)
+func cmdClose(c *rpc.Client) {
+	clientClose(c, 0)
 }
 
-func cmd_drop_cache(c *rpc.Client) {
-	client_drop_cache(c, 0)
+func cmdDropCache(c *rpc.Client) {
+	clientDropCache(c, 0)
 }
 
-func cmd_set(c *rpc.Client) {
+func cmdSet(c *rpc.Client) {
 	switch flag.NArg() {
 	case 1:
-		fmt.Print(client_set(c, "\x00", "\x00"))
+		fmt.Print(clientSet(c, "\x00", "\x00"))
 	case 2:
-		fmt.Print(client_set(c, flag.Arg(1), "\x00"))
+		fmt.Print(clientSet(c, flag.Arg(1), "\x00"))
 	case 3:
-		fmt.Print(client_set(c, flag.Arg(1), flag.Arg(2)))
+		fmt.Print(clientSet(c, flag.Arg(1), flag.Arg(2)))
 	}
 }

@@ -15,27 +15,27 @@ import (
 
 const prefix = "server_"
 
-func pretty_print_type_expr(out io.Writer, e ast.Expr) {
+func prettyPrintTypeExpr(out io.Writer, e ast.Expr) {
 	ty := reflect.TypeOf(e)
 	switch t := e.(type) {
 	case *ast.StarExpr:
 		fmt.Fprintf(out, "*")
-		pretty_print_type_expr(out, t.X)
+		prettyPrintTypeExpr(out, t.X)
 	case *ast.Ident:
 		fmt.Fprintf(out, t.Name)
 	case *ast.ArrayType:
 		fmt.Fprintf(out, "[]")
-		pretty_print_type_expr(out, t.Elt)
+		prettyPrintTypeExpr(out, t.Elt)
 	case *ast.SelectorExpr:
-		pretty_print_type_expr(out, t.X)
+		prettyPrintTypeExpr(out, t.X)
 		fmt.Fprintf(out, ".%s", t.Sel.Name)
 	case *ast.FuncType:
 		fmt.Fprintf(out, "func(")
-		pretty_print_func_field_list(out, t.Params)
+		prettyPrintFuncFieldList(out, t.Params)
 		fmt.Fprintf(out, ")")
 
 		buf := bytes.NewBuffer(make([]byte, 0, 256))
-		nresults := pretty_print_func_field_list(buf, t.Results)
+		nresults := prettyPrintFuncFieldList(buf, t.Results)
 		if nresults > 0 {
 			results := buf.String()
 			if strings.Index(results, " ") != -1 {
@@ -45,20 +45,20 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 		}
 	case *ast.MapType:
 		fmt.Fprintf(out, "map[")
-		pretty_print_type_expr(out, t.Key)
+		prettyPrintTypeExpr(out, t.Key)
 		fmt.Fprintf(out, "]")
-		pretty_print_type_expr(out, t.Value)
+		prettyPrintTypeExpr(out, t.Value)
 	case *ast.InterfaceType:
 		fmt.Fprintf(out, "interface{}")
 	case *ast.Ellipsis:
 		fmt.Fprintf(out, "...")
-		pretty_print_type_expr(out, t.Elt)
+		prettyPrintTypeExpr(out, t.Elt)
 	default:
 		fmt.Fprintf(out, "\n[!!] unknown type: %s\n", ty.String())
 	}
 }
 
-func pretty_print_func_field_list(out io.Writer, f *ast.FieldList) int {
+func prettyPrintFuncFieldList(out io.Writer, f *ast.FieldList) int {
 	count := 0
 	if f == nil {
 		return count
@@ -79,7 +79,7 @@ func pretty_print_func_field_list(out io.Writer, f *ast.FieldList) int {
 		}
 
 		// type
-		pretty_print_type_expr(out, field.Type)
+		prettyPrintTypeExpr(out, field.Type)
 
 		// ,
 		if i != len(f.List)-1 {
@@ -89,7 +89,7 @@ func pretty_print_func_field_list(out io.Writer, f *ast.FieldList) int {
 	return count
 }
 
-func pretty_print_func_field_list_using_args(out io.Writer, f *ast.FieldList) int {
+func prettyPrintFuncFieldListUsingArgs(out io.Writer, f *ast.FieldList) int {
 	count := 0
 	if f == nil {
 		return count
@@ -110,7 +110,7 @@ func pretty_print_func_field_list_using_args(out io.Writer, f *ast.FieldList) in
 		}
 
 		// type
-		pretty_print_type_expr(out, field.Type)
+		prettyPrintTypeExpr(out, field.Type)
 
 		// ,
 		if i != len(f.List)-1 {
@@ -120,7 +120,7 @@ func pretty_print_func_field_list_using_args(out io.Writer, f *ast.FieldList) in
 	return count
 }
 
-func generate_struct_wrapper(out io.Writer, fun *ast.FieldList, structname, name string) int {
+func generateStructWrapper(out io.Writer, fun *ast.FieldList, structname, name string) int {
 	fmt.Fprintf(out, "type %s_%s struct {\n", structname, name)
 	argn := 0
 	for _, field := range fun.List {
@@ -141,7 +141,7 @@ func generate_struct_wrapper(out io.Writer, fun *ast.FieldList, structname, name
 		}
 
 		// type
-		pretty_print_type_expr(out, field.Type)
+		prettyPrintTypeExpr(out, field.Type)
 
 		// \n
 		fmt.Fprintf(out, "\n")
@@ -151,7 +151,7 @@ func generate_struct_wrapper(out io.Writer, fun *ast.FieldList, structname, name
 }
 
 // function that is being exposed to an RPC API, but calls simple "Server_" one
-func generate_server_rpc_wrapper(out io.Writer, fun *ast.FuncDecl, name string, argcnt, replycnt int) {
+func generateServerRpcWrapper(out io.Writer, fun *ast.FuncDecl, name string, argcnt, replycnt int) {
 	fmt.Fprintf(out, "func (r *RPC) RPC_%s(args *Args_%s, reply *Reply_%s) error {\n",
 		name, name, name)
 
@@ -173,13 +173,13 @@ func generate_server_rpc_wrapper(out io.Writer, fun *ast.FuncDecl, name string, 
 	fmt.Fprintf(out, "\treturn nil\n}\n")
 }
 
-func generate_client_rpc_wrapper(out io.Writer, fun *ast.FuncDecl, name string, argcnt, replycnt int) {
+func generateClientRpcWrapper(out io.Writer, fun *ast.FuncDecl, name string, argcnt, replycnt int) {
 	fmt.Fprintf(out, "func client_%s(cli *rpc.Client, ", name)
-	pretty_print_func_field_list_using_args(out, fun.Type.Params)
+	prettyPrintFuncFieldListUsingArgs(out, fun.Type.Params)
 	fmt.Fprintf(out, ")")
 
 	buf := bytes.NewBuffer(make([]byte, 0, 256))
-	nresults := pretty_print_func_field_list(buf, fun.Type.Results)
+	nresults := prettyPrintFuncFieldList(buf, fun.Type.Results)
 	if nresults > 0 {
 		results := buf.String()
 		if strings.Index(results, " ") != -1 {
@@ -207,17 +207,17 @@ func generate_client_rpc_wrapper(out io.Writer, fun *ast.FuncDecl, name string, 
 	fmt.Fprintf(out, "\n}\n")
 }
 
-func wrap_function(out io.Writer, fun *ast.FuncDecl) {
+func wrapFunction(out io.Writer, fun *ast.FuncDecl) {
 	name := fun.Name.Name[len(prefix):]
 	fmt.Fprintf(out, "// wrapper for: %s\n\n", fun.Name.Name)
-	argcnt := generate_struct_wrapper(out, fun.Type.Params, "Args", name)
-	replycnt := generate_struct_wrapper(out, fun.Type.Results, "Reply", name)
-	generate_server_rpc_wrapper(out, fun, name, argcnt, replycnt)
-	generate_client_rpc_wrapper(out, fun, name, argcnt, replycnt)
+	argcnt := generateStructWrapper(out, fun.Type.Params, "Args", name)
+	replycnt := generateStructWrapper(out, fun.Type.Results, "Reply", name)
+	generateServerRpcWrapper(out, fun, name, argcnt, replycnt)
+	generateClientRpcWrapper(out, fun, name, argcnt, replycnt)
 	fmt.Fprintf(out, "\n")
 }
 
-func process_file(out io.Writer, filename string) {
+func processFile(out io.Writer, filename string) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, filename, nil, 0)
 	if err != nil {
@@ -228,7 +228,7 @@ func process_file(out io.Writer, filename string) {
 		if fdecl, ok := decl.(*ast.FuncDecl); ok {
 			namelen := len(fdecl.Name.Name)
 			if namelen >= len(prefix) && fdecl.Name.Name[0:len(prefix)] == prefix {
-				wrap_function(out, fdecl)
+				wrapFunction(out, fdecl)
 			}
 		}
 	}
@@ -251,6 +251,6 @@ func main() {
 	flag.Parse()
 	fmt.Fprintf(os.Stdout, head)
 	for _, file := range flag.Args() {
-		process_file(os.Stdout, file)
+		processFile(os.Stdout, file)
 	}
 }

@@ -4,7 +4,7 @@ type Foo struct {}
 
 func (f *Foo) Bar() {}
 
-func create_foo() Foo {
+func createFoo() Foo {
 	t := Foo{}
 	
 }

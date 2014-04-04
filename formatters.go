@@ -10,16 +10,16 @@ import (
 //-------------------------------------------------------------------------
 
 type formatter interface {
-	write_candidates(candidates []candidate, num int)
+	writeCandidates(candidates []candidate, num int)
 }
 
 //-------------------------------------------------------------------------
-// nice_formatter (just for testing, simple textual output)
+// niceFormatter (just for testing, simple textual output)
 //-------------------------------------------------------------------------
 
-type nice_formatter struct{}
+type niceFormatter struct{}
 
-func (*nice_formatter) write_candidates(candidates []candidate, num int) {
+func (*niceFormatter) writeCandidates(candidates []candidate, num int) {
 	if candidates == nil {
 		fmt.Printf("Nothing to complete.\n")
 		return
@@ -28,7 +28,7 @@ func (*nice_formatter) write_candidates(candidates []candidate, num int) {
 	fmt.Printf("Found %d candidates:\n", len(candidates))
 	for _, c := range candidates {
 		abbr := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
-		if c.Class == decl_func {
+		if c.Class == declFunc {
 			abbr = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
 		}
 		fmt.Printf("  %s\n", abbr)
@@ -36,12 +36,12 @@ func (*nice_formatter) write_candidates(candidates []candidate, num int) {
 }
 
 //-------------------------------------------------------------------------
-// vim_formatter
+// vimFormatter
 //-------------------------------------------------------------------------
 
-type vim_formatter struct{}
+type vimFormatter struct{}
 
-func (*vim_formatter) write_candidates(candidates []candidate, num int) {
+func (*vimFormatter) writeCandidates(candidates []candidate, num int) {
 	if candidates == nil {
 		fmt.Print("[0, []]")
 		return
@@ -54,7 +54,7 @@ func (*vim_formatter) write_candidates(candidates []candidate, num int) {
 		}
 
 		word := c.Name
-		if c.Class == decl_func {
+		if c.Class == declFunc {
 			word += "("
 			if strings.HasPrefix(c.Type, "func()") {
 				word += ")"
@@ -62,7 +62,7 @@ func (*vim_formatter) write_candidates(candidates []candidate, num int) {
 		}
 
 		abbr := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
-		if c.Class == decl_func {
+		if c.Class == declFunc {
 			abbr = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
 		}
 		fmt.Printf("{'word': '%s', 'abbr': '%s', 'info': '%s'}", word, abbr, abbr)
@@ -71,16 +71,16 @@ func (*vim_formatter) write_candidates(candidates []candidate, num int) {
 }
 
 //-------------------------------------------------------------------------
-// godit_formatter
+// goditFormatter
 //-------------------------------------------------------------------------
 
-type godit_formatter struct{}
+type goditFormatter struct{}
 
-func (*godit_formatter) write_candidates(candidates []candidate, num int) {
+func (*goditFormatter) writeCandidates(candidates []candidate, num int) {
 	fmt.Printf("%d,,%d\n", num, len(candidates))
 	for _, c := range candidates {
 		contents := c.Name
-		if c.Class == decl_func {
+		if c.Class == declFunc {
 			contents += "("
 			if strings.HasPrefix(c.Type, "func()") {
 				contents += ")"
@@ -88,7 +88,7 @@ func (*godit_formatter) write_candidates(candidates []candidate, num int) {
 		}
 
 		display := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
-		if c.Class == decl_func {
+		if c.Class == declFunc {
 			display = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
 		}
 		fmt.Printf("%s,,%s\n", display, contents)
@@ -96,15 +96,15 @@ func (*godit_formatter) write_candidates(candidates []candidate, num int) {
 }
 
 //-------------------------------------------------------------------------
-// emacs_formatter
+// emacsFormatter
 //-------------------------------------------------------------------------
 
-type emacs_formatter struct{}
+type emacsFormatter struct{}
 
-func (*emacs_formatter) write_candidates(candidates []candidate, num int) {
+func (*emacsFormatter) writeCandidates(candidates []candidate, num int) {
 	for _, c := range candidates {
 		hint := c.Class.String() + " " + c.Type
-		if c.Class == decl_func {
+		if c.Class == declFunc {
 			hint = c.Type
 		}
 		fmt.Printf("%s,,%s\n", c.Name, hint)
@@ -112,24 +112,24 @@ func (*emacs_formatter) write_candidates(candidates []candidate, num int) {
 }
 
 //-------------------------------------------------------------------------
-// csv_formatter
+// csvFormatter
 //-------------------------------------------------------------------------
 
-type csv_formatter struct{}
+type csvFormatter struct{}
 
-func (*csv_formatter) write_candidates(candidates []candidate, num int) {
+func (*csvFormatter) writeCandidates(candidates []candidate, num int) {
 	for _, c := range candidates {
 		fmt.Printf("%s,,%s,,%s\n", c.Class, c.Name, c.Type)
 	}
 }
 
 //-------------------------------------------------------------------------
-// json_formatter
+// jsonFormatter
 //-------------------------------------------------------------------------
 
-type json_formatter struct{}
+type jsonFormatter struct{}
 
-func (*json_formatter) write_candidates(candidates []candidate, num int) {
+func (*jsonFormatter) writeCandidates(candidates []candidate, num int) {
 	if candidates == nil {
 		fmt.Print("[]")
 		return
@@ -148,20 +148,20 @@ func (*json_formatter) write_candidates(candidates []candidate, num int) {
 
 //-------------------------------------------------------------------------
 
-func get_formatter(name string) formatter {
+func getFormatter(name string) formatter {
 	switch name {
 	case "vim":
-		return new(vim_formatter)
+		return new(vimFormatter)
 	case "emacs":
-		return new(emacs_formatter)
+		return new(emacsFormatter)
 	case "nice":
-		return new(nice_formatter)
+		return new(niceFormatter)
 	case "csv":
-		return new(csv_formatter)
+		return new(csvFormatter)
 	case "json":
-		return new(json_formatter)
+		return new(jsonFormatter)
 	case "godit":
-		return new(godit_formatter)
+		return new(goditFormatter)
 	}
-	return new(nice_formatter)
+	return new(niceFormatter)
 }

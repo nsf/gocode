@@ -14,13 +14,13 @@ import (
 )
 
 //-------------------------------------------------------------------------
-// package_file_cache
+// packageFileCache
 //
 // Structure that represents a cache for an imported pacakge. In other words
 // these are the contents of an archive (*.a) file.
 //-------------------------------------------------------------------------
 
-type package_file_cache struct {
+type packageFileCache struct {
 	name     string // file name
 	mtime    int64
 	defalias string
@@ -30,8 +30,8 @@ type package_file_cache struct {
 	others map[string]*decl
 }
 
-func new_package_file_cache(name string) *package_file_cache {
-	m := new(package_file_cache)
+func newPackageFileCache(name string) *packageFileCache {
+	m := new(packageFileCache)
 	m.name = name
 	m.mtime = 0
 	m.defalias = ""
@@ -39,42 +39,42 @@ func new_package_file_cache(name string) *package_file_cache {
 }
 
 // Creates a cache that stays in cache forever. Useful for built-in packages.
-func new_package_file_cache_forever(name, defalias string) *package_file_cache {
-	m := new(package_file_cache)
+func newPackageFileCacheForever(name, defalias string) *packageFileCache {
+	m := new(packageFileCache)
 	m.name = name
 	m.mtime = -1
 	m.defalias = defalias
 	return m
 }
 
-func (m *package_file_cache) find_file() string {
-	if file_exists(m.name) {
+func (m *packageFileCache) findFile() string {
+	if fileExists(m.name) {
 		return m.name
 	}
 
 	n := len(m.name)
 	filename := m.name[:n-1] + "6"
-	if file_exists(filename) {
+	if fileExists(filename) {
 		return filename
 	}
 
 	filename = m.name[:n-1] + "8"
-	if file_exists(filename) {
+	if fileExists(filename) {
 		return filename
 	}
 
 	filename = m.name[:n-1] + "5"
-	if file_exists(filename) {
+	if fileExists(filename) {
 		return filename
 	}
 	return m.name
 }
 
-func (m *package_file_cache) update_cache() {
+func (m *packageFileCache) updateCache() {
 	if m.mtime == -1 {
 		return
 	}
-	fname := m.find_file()
+	fname := m.findFile()
 	stat, err := os.Stat(fname)
 	if err != nil {
 		return
@@ -84,16 +84,16 @@ func (m *package_file_cache) update_cache() {
 	if m.mtime != statmtime {
 		m.mtime = statmtime
 
-		data, err := file_reader.read_file(fname)
+		data, err := fileReader.readFile(fname)
 		if err != nil {
 			return
 		}
-		m.process_package_data(data)
+		m.processPackageData(data)
 	}
 }
 
-func (m *package_file_cache) process_package_data(data []byte) {
-	m.scope = new_scope(g_universe_scope)
+func (m *packageFileCache) processPackageData(data []byte) {
+	m.scope = newScope(gUniverseScope)
 
 	// find import section
 	i := bytes.Index(data, []byte{'\n', '$', '$'})
@@ -110,30 +110,30 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	data = data[i:]
 
 	buf := bytes.NewBuffer(data)
-	var p gc_parser
+	var p gcParser
 	p.init(buf, m)
 	// main package
-	m.main = new_decl(m.name, decl_package, nil)
+	m.main = newDecl(m.name, declPackage, nil)
 	// and the built-in "unsafe" package to the pathToAlias map
-	p.path_to_alias["unsafe"] = "unsafe"
+	p.pathToAlias["unsafe"] = "unsafe"
 	// create map for other packages
 	m.others = make(map[string]*decl)
-	p.parse_export(func(pkg string, decl ast.Decl) {
-		anonymify_ast(decl, decl_foreign, m.scope)
+	p.parseExport(func(pkg string, decl ast.Decl) {
+		anonymifyAst(decl, declForeign, m.scope)
 		if pkg == "" {
 			// main package
-			add_ast_decl_to_package(m.main, decl, m.scope)
+			addAstDeclToPackage(m.main, decl, m.scope)
 		} else {
 			// others
 			if _, ok := m.others[pkg]; !ok {
-				m.others[pkg] = new_decl(pkg, decl_package, nil)
+				m.others[pkg] = newDecl(pkg, declPackage, nil)
 			}
-			add_ast_decl_to_package(m.others[pkg], decl, m.scope)
+			addAstDeclToPackage(m.others[pkg], decl, m.scope)
 		}
 	})
 
 	// hack, add ourselves to the package scope
-	m.add_package_to_scope("#"+m.defalias, m.name)
+	m.addPackageToScope("#"+m.defalias, m.name)
 
 	// WTF is that? :D
 	for key, value := range m.scope.entities {
@@ -144,46 +144,46 @@ func (m *package_file_cache) process_package_data(data []byte) {
 		if !ok && value.name == m.name {
 			pkg = m.main
 		}
-		m.scope.replace_decl(key, pkg)
+		m.scope.replaceDecl(key, pkg)
 	}
 }
 
-func (m *package_file_cache) add_package_to_scope(alias, realname string) {
-	d := new_decl(realname, decl_package, nil)
-	m.scope.add_decl(alias, d)
+func (m *packageFileCache) addPackageToScope(alias, realname string) {
+	d := newDecl(realname, declPackage, nil)
+	m.scope.addDecl(alias, d)
 }
 
-func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
-	foreach_decl(decl, func(data *foreach_decl_struct) {
-		class := ast_decl_class(data.decl)
+func addAstDeclToPackage(pkg *decl, decl ast.Decl, scope *scope) {
+	foreachDecl(decl, func(data *foreachDeclStruct) {
+		class := astDeclClass(data.decl)
 		for i, name := range data.names {
-			typ, v, vi := data.type_value_index(i)
+			typ, v, vi := data.typeValueIndex(i)
 
-			d := new_decl_full(name.Name, class, decl_foreign, typ, v, vi, scope)
+			d := newDeclFull(name.Name, class, declForeign, typ, v, vi, scope)
 			if d == nil {
 				return
 			}
 
-			if !name.IsExported() && d.class != decl_type {
+			if !name.IsExported() && d.class != declType {
 				return
 			}
 
-			methodof := method_of(data.decl)
+			methodof := methodOf(data.decl)
 			if methodof != "" {
-				decl := pkg.find_child(methodof)
+				decl := pkg.findChild(methodof)
 				if decl != nil {
-					decl.add_child(d)
+					decl.addChild(d)
 				} else {
-					decl = new_decl(methodof, decl_methods_stub, scope)
-					decl.add_child(d)
-					pkg.add_child(decl)
+					decl = newDecl(methodof, declMethodsStub, scope)
+					decl.addChild(d)
+					pkg.addChild(decl)
 				}
 			} else {
-				decl := pkg.find_child(d.name)
+				decl := pkg.findChild(d.name)
 				if decl != nil {
-					decl.expand_or_replace(d)
+					decl.expandOrReplace(d)
 				} else {
-					pkg.add_child(d)
+					pkg.addChild(d)
 				}
 			}
 		}
@@ -191,7 +191,7 @@ func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
 }
 
 //-------------------------------------------------------------------------
-// gc_parser
+// gcParser
 //
 // The following part of the code may contain portions of the code from the Go
 // standard library, which tells me to retain their copyright notice:
@@ -225,16 +225,16 @@ func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //-------------------------------------------------------------------------
 
-type gc_parser struct {
+type gcParser struct {
 	scanner       scanner.Scanner
 	tok           rune
 	lit           string
-	path_to_alias map[string]string
+	pathToAlias map[string]string
 	beautify      bool
-	pfc           *package_file_cache
+	pfc           *packageFileCache
 }
 
-func (p *gc_parser) init(src io.Reader, pfc *package_file_cache) {
+func (p *gcParser) init(src io.Reader, pfc *packageFileCache) {
 	p.scanner.Init(src)
 	p.scanner.Error = func(_ *scanner.Scanner, msg string) { p.error(msg) }
 	p.scanner.Mode = scanner.ScanIdents | scanner.ScanInts | scanner.ScanStrings |
@@ -242,11 +242,11 @@ func (p *gc_parser) init(src io.Reader, pfc *package_file_cache) {
 	p.scanner.Whitespace = 1<<'\t' | 1<<' ' | 1<<'\r' | 1<<'\v' | 1<<'\f'
 	p.scanner.Filename = "package.go"
 	p.next()
-	p.path_to_alias = make(map[string]string)
+	p.pathToAlias = make(map[string]string)
 	p.pfc = pfc
 }
 
-func (p *gc_parser) next() {
+func (p *gcParser) next() {
 	p.tok = p.scanner.Scan()
 	switch p.tok {
 	case scanner.Ident, scanner.Int, scanner.String:
@@ -256,15 +256,15 @@ func (p *gc_parser) next() {
 	}
 }
 
-func (p *gc_parser) error(msg string) {
+func (p *gcParser) error(msg string) {
 	panic(errors.New(msg))
 }
 
-func (p *gc_parser) errorf(format string, args ...interface{}) {
+func (p *gcParser) errorf(format string, args ...interface{}) {
 	p.error(fmt.Sprintf(format, args...))
 }
 
-func (p *gc_parser) expect(tok rune) string {
+func (p *gcParser) expect(tok rune) string {
 	lit := p.lit
 	if p.tok != tok {
 		p.errorf("expected %s, got %s (%q)", scanner.TokenString(tok),
@@ -274,14 +274,14 @@ func (p *gc_parser) expect(tok rune) string {
 	return lit
 }
 
-func (p *gc_parser) expect_keyword(keyword string) {
+func (p *gcParser) expectKeyword(keyword string) {
 	lit := p.expect(scanner.Ident)
 	if lit != keyword {
 		p.errorf("expected keyword: %s, got: %q", keyword, lit)
 	}
 }
 
-func (p *gc_parser) expect_special(what string) {
+func (p *gcParser) expectSpecial(what string) {
 	i := 0
 	for i < len(what) {
 		if p.tok != rune(what[i]) {
@@ -304,7 +304,7 @@ func (p *gc_parser) expect_special(what string) {
 
 // dotIdentifier = "?" | ( ident | '·' ) { ident | int | '·' } .
 // we're doing lexer job here, kind of
-func (p *gc_parser) parse_dot_ident() string {
+func (p *gcParser) parseDotIdent() string {
 	if p.tok == '?' {
 		p.next()
 		return "?"
@@ -334,10 +334,10 @@ func (p *gc_parser) parse_dot_ident() string {
 	return ident
 }
 
-// ImportPath = string_lit .
+// ImportPath = stringLit .
 // quoted name of the path, but we return it as an identifier, taking an alias
 // from 'pathToAlias' map, it is filled by import statements
-func (p *gc_parser) parse_package() *ast.Ident {
+func (p *gcParser) parsePackage() *ast.Ident {
 	path, err := strconv.Unquote(p.expect(scanner.String))
 	if err != nil {
 		panic(err)
@@ -347,23 +347,23 @@ func (p *gc_parser) parse_package() *ast.Ident {
 }
 
 // ExportedName = "@" ImportPath "." dotIdentifier .
-func (p *gc_parser) parse_exported_name() *ast.SelectorExpr {
+func (p *gcParser) parseExportedName() *ast.SelectorExpr {
 	p.expect('@')
-	pkg := p.parse_package()
+	pkg := p.parsePackage()
 	if p.beautify {
 		if pkg.Name == "" {
 			pkg.Name = "#" + p.pfc.defalias
 		} else {
-			pkg.Name = p.path_to_alias[pkg.Name]
+			pkg.Name = p.pathToAlias[pkg.Name]
 		}
 	}
 	p.expect('.')
-	name := ast.NewIdent(p.parse_dot_ident())
+	name := ast.NewIdent(p.parseDotIdent())
 	return &ast.SelectorExpr{X: pkg, Sel: name}
 }
 
 // Name = identifier | "?" | ExportedName .
-func (p *gc_parser) parse_name() (string, ast.Expr) {
+func (p *gcParser) parseName() (string, ast.Expr) {
 	switch p.tok {
 	case scanner.Ident:
 		name := p.lit
@@ -373,18 +373,18 @@ func (p *gc_parser) parse_name() (string, ast.Expr) {
 		p.next()
 		return "?", ast.NewIdent("?")
 	case '@':
-		en := p.parse_exported_name()
+		en := p.parseExportedName()
 		return en.Sel.Name, en
 	}
 	p.error("name expected")
 	return "", nil
 }
 
-// Field = Name Type [ string_lit ] .
-func (p *gc_parser) parse_field() *ast.Field {
+// Field = Name Type [ stringLit ] .
+func (p *gcParser) parseField() *ast.Field {
 	var tag string
-	name, _ := p.parse_name()
-	typ := p.parse_type()
+	name, _ := p.parseName()
+	typ := p.parseType()
 	if p.tok == scanner.String {
 		tag = p.expect(scanner.String)
 	}
@@ -401,18 +401,18 @@ func (p *gc_parser) parse_field() *ast.Field {
 	}
 }
 
-// Parameter = ( identifier | "?" ) [ "..." ] Type [ string_lit ] .
-func (p *gc_parser) parse_parameter() *ast.Field {
+// Parameter = ( identifier | "?" ) [ "..." ] Type [ stringLit ] .
+func (p *gcParser) parseParameter() *ast.Field {
 	// name
-	name, _ := p.parse_name()
+	name, _ := p.parseName()
 
 	// type
 	var typ ast.Expr
 	if p.tok == '.' {
-		p.expect_special("...")
-		typ = &ast.Ellipsis{Elt: p.parse_type()}
+		p.expectSpecial("...")
+		typ = &ast.Ellipsis{Elt: p.parseType()}
 	} else {
-		typ = p.parse_type()
+		typ = p.parseType()
 	}
 
 	var tag string
@@ -429,19 +429,19 @@ func (p *gc_parser) parse_parameter() *ast.Field {
 
 // Parameters = "(" [ ParameterList ] ")" .
 // ParameterList = { Parameter "," } Parameter .
-func (p *gc_parser) parse_parameters() *ast.FieldList {
+func (p *gcParser) parseParameters() *ast.FieldList {
 	flds := []*ast.Field{}
-	parse_parameter := func() {
-		par := p.parse_parameter()
+	parseParameter := func() {
+		par := p.parseParameter()
 		flds = append(flds, par)
 	}
 
 	p.expect('(')
 	if p.tok != ')' {
-		parse_parameter()
+		parseParameter()
 		for p.tok == ',' {
 			p.next()
-			parse_parameter()
+			parseParameter()
 		}
 	}
 	p.expect(')')
@@ -450,26 +450,26 @@ func (p *gc_parser) parse_parameters() *ast.FieldList {
 
 // Signature = Parameters [ Result ] .
 // Result = Type | Parameters .
-func (p *gc_parser) parse_signature() *ast.FuncType {
+func (p *gcParser) parseSignature() *ast.FuncType {
 	var params *ast.FieldList
 	var results *ast.FieldList
 
-	params = p.parse_parameters()
+	params = p.parseParameters()
 	switch p.tok {
 	case scanner.Ident, '[', '*', '<', '@':
-		fld := &ast.Field{Type: p.parse_type()}
+		fld := &ast.Field{Type: p.parseType()}
 		results = &ast.FieldList{List: []*ast.Field{fld}}
 	case '(':
-		results = p.parse_parameters()
+		results = p.parseParameters()
 	}
 	return &ast.FuncType{Params: params, Results: results}
 }
 
 // MethodOrEmbedSpec = Name [ Signature ] .
-func (p *gc_parser) parse_method_or_embed_spec() *ast.Field {
-	name, nameexpr := p.parse_name()
+func (p *gcParser) parseMethodOrEmbedSpec() *ast.Field {
+	name, nameexpr := p.parseName()
 	if p.tok == '(' {
-		typ := p.parse_signature()
+		typ := p.parseSignature()
 		return &ast.Field{
 			Names: []*ast.Ident{ast.NewIdent(name)},
 			Type:  typ,
@@ -481,8 +481,8 @@ func (p *gc_parser) parse_method_or_embed_spec() *ast.Field {
 	}
 }
 
-// int_lit = [ "-" | "+" ] { "0" ... "9" } .
-func (p *gc_parser) parse_int() {
+// intLit = [ "-" | "+" ] { "0" ... "9" } .
+func (p *gcParser) parseInt() {
 	switch p.tok {
 	case '-', '+':
 		p.next()
@@ -490,35 +490,35 @@ func (p *gc_parser) parse_int() {
 	p.expect(scanner.Int)
 }
 
-// number = int_lit [ "p" int_lit ] .
-func (p *gc_parser) parse_number() {
-	p.parse_int()
+// number = intLit [ "p" intLit ] .
+func (p *gcParser) parseNumber() {
+	p.parseInt()
 	if p.lit == "p" {
 		p.next()
-		p.parse_int()
+		p.parseInt()
 	}
 }
 
 //-------------------------------------------------------------------------------
-// gc_parser.types
+// gcParser.types
 //-------------------------------------------------------------------------------
 
 // InterfaceType = "interface" "{" [ MethodOrEmbedList ] "}" .
 // MethodOrEmbedList = MethodOrEmbedSpec { ";" MethodOrEmbedSpec } .
-func (p *gc_parser) parse_interface_type() ast.Expr {
+func (p *gcParser) parseInterfaceType() ast.Expr {
 	var methods []*ast.Field
-	parse_method := func() {
-		meth := p.parse_method_or_embed_spec()
+	parseMethod := func() {
+		meth := p.parseMethodOrEmbedSpec()
 		methods = append(methods, meth)
 	}
 
-	p.expect_keyword("interface")
+	p.expectKeyword("interface")
 	p.expect('{')
 	if p.tok != '}' {
-		parse_method()
+		parseMethod()
 		for p.tok == ';' {
 			p.next()
-			parse_method()
+			parseMethod()
 		}
 	}
 	p.expect('}')
@@ -527,20 +527,20 @@ func (p *gc_parser) parse_interface_type() ast.Expr {
 
 // StructType = "struct" "{" [ FieldList ] "}" .
 // FieldList = Field { ";" Field } .
-func (p *gc_parser) parse_struct_type() ast.Expr {
+func (p *gcParser) parseStructType() ast.Expr {
 	var fields []*ast.Field
-	parse_field := func() {
-		fld := p.parse_field()
+	parseField := func() {
+		fld := p.parseField()
 		fields = append(fields, fld)
 	}
 
-	p.expect_keyword("struct")
+	p.expectKeyword("struct")
 	p.expect('{')
 	if p.tok != '}' {
-		parse_field()
+		parseField()
 		for p.tok == ';' {
 			p.next()
-			parse_field()
+			parseField()
 		}
 	}
 	p.expect('}')
@@ -548,43 +548,43 @@ func (p *gc_parser) parse_struct_type() ast.Expr {
 }
 
 // MapType = "map" "[" Type "]" Type .
-func (p *gc_parser) parse_map_type() ast.Expr {
-	p.expect_keyword("map")
+func (p *gcParser) parseMapType() ast.Expr {
+	p.expectKeyword("map")
 	p.expect('[')
-	key := p.parse_type()
+	key := p.parseType()
 	p.expect(']')
-	elt := p.parse_type()
+	elt := p.parseType()
 	return &ast.MapType{Key: key, Value: elt}
 }
 
 // ChanType = ( "chan" [ "<-" ] | "<-" "chan" ) Type .
-func (p *gc_parser) parse_chan_type() ast.Expr {
+func (p *gcParser) parseChanType() ast.Expr {
 	dir := ast.SEND | ast.RECV
 	if p.tok == scanner.Ident {
-		p.expect_keyword("chan")
+		p.expectKeyword("chan")
 		if p.tok == '<' {
-			p.expect_special("<-")
+			p.expectSpecial("<-")
 			dir = ast.SEND
 		}
 	} else {
-		p.expect_special("<-")
-		p.expect_keyword("chan")
+		p.expectSpecial("<-")
+		p.expectKeyword("chan")
 		dir = ast.RECV
 	}
 
-	elt := p.parse_type()
+	elt := p.parseType()
 	return &ast.ChanType{Dir: dir, Value: elt}
 }
 
 // ArrayOrSliceType = ArrayType | SliceType .
-// ArrayType = "[" int_lit "]" Type .
+// ArrayType = "[" intLit "]" Type .
 // SliceType = "[" "]" Type .
-func (p *gc_parser) parse_array_or_slice_type() ast.Expr {
+func (p *gcParser) parseArrayOrSliceType() ast.Expr {
 	p.expect('[')
 	if p.tok == ']' {
 		// SliceType
 		p.next() // skip ']'
-		return &ast.ArrayType{Len: nil, Elt: p.parse_type()}
+		return &ast.ArrayType{Len: nil, Elt: p.parseType()}
 	}
 
 	// ArrayType
@@ -592,7 +592,7 @@ func (p *gc_parser) parse_array_or_slice_type() ast.Expr {
 	p.expect(']')
 	return &ast.ArrayType{
 		Len: &ast.BasicLit{Kind: token.INT, Value: lit},
-		Elt: p.parse_type(),
+		Elt: p.parseType(),
 	}
 }
 
@@ -605,38 +605,38 @@ func (p *gc_parser) parse_array_or_slice_type() ast.Expr {
 // SliceType = "[" "]" Type .
 // PointerType = "*" Type .
 // FuncType = "func" Signature .
-func (p *gc_parser) parse_type() ast.Expr {
+func (p *gcParser) parseType() ast.Expr {
 	switch p.tok {
 	case scanner.Ident:
 		switch p.lit {
 		case "struct":
-			return p.parse_struct_type()
+			return p.parseStructType()
 		case "func":
 			p.next()
-			return p.parse_signature()
+			return p.parseSignature()
 		case "interface":
-			return p.parse_interface_type()
+			return p.parseInterfaceType()
 		case "map":
-			return p.parse_map_type()
+			return p.parseMapType()
 		case "chan":
-			return p.parse_chan_type()
+			return p.parseChanType()
 		default:
 			lit := p.lit
 			p.next()
 			return ast.NewIdent(lit)
 		}
 	case '@':
-		return p.parse_exported_name()
+		return p.parseExportedName()
 	case '[':
-		return p.parse_array_or_slice_type()
+		return p.parseArrayOrSliceType()
 	case '*':
 		p.next()
-		return &ast.StarExpr{X: p.parse_type()}
+		return &ast.StarExpr{X: p.parseType()}
 	case '<':
-		return p.parse_chan_type()
+		return p.parseChanType()
 	case '(':
 		p.next()
-		typ := p.parse_type()
+		typ := p.parseType()
 		p.expect(')')
 		return typ
 	}
@@ -645,33 +645,33 @@ func (p *gc_parser) parse_type() ast.Expr {
 }
 
 //-------------------------------------------------------------------------------
-// gc_parser.declarations
+// gcParser.declarations
 //-------------------------------------------------------------------------------
 
-// ImportDecl = "import" identifier string_lit .
-func (p *gc_parser) parse_import_decl() {
-	p.expect_keyword("import")
+// ImportDecl = "import" identifier stringLit .
+func (p *gcParser) parseImportDecl() {
+	p.expectKeyword("import")
 	alias := p.expect(scanner.Ident)
-	path := p.parse_package()
-	p.path_to_alias[path.Name] = alias
-	p.pfc.add_package_to_scope(alias, path.Name)
+	path := p.parsePackage()
+	p.pathToAlias[path.Name] = alias
+	p.pfc.addPackageToScope(alias, path.Name)
 }
 
 // ConstDecl   = "const" ExportedName [ Type ] "=" Literal .
-// Literal     = bool_lit | int_lit | float_lit | complex_lit | string_lit .
-// bool_lit    = "true" | "false" .
-// complex_lit = "(" float_lit "+" float_lit ")" .
-// rune_lit    = "(" int_lit "+" int_lit ")" .
-// string_lit  = `"` { unicode_char } `"` .
-func (p *gc_parser) parse_const_decl() (string, *ast.GenDecl) {
+// Literal     = boolLit | intLit | floatLit | complexLit | stringLit .
+// boolLit    = "true" | "false" .
+// complexLit = "(" floatLit "+" floatLit ")" .
+// runeLit    = "(" intLit "+" intLit ")" .
+// stringLit  = `"` { unicodeChar } `"` .
+func (p *gcParser) parseConstDecl() (string, *ast.GenDecl) {
 	// TODO: do we really need actual const value? gocode doesn't use this
-	p.expect_keyword("const")
-	name := p.parse_exported_name()
+	p.expectKeyword("const")
+	name := p.parseExportedName()
 	p.beautify = true
 
 	var typ ast.Expr
 	if p.tok != '=' {
-		typ = p.parse_type()
+		typ = p.parseType()
 	}
 
 	p.expect('=')
@@ -683,17 +683,17 @@ func (p *gc_parser) parse_const_decl() (string, *ast.GenDecl) {
 		p.next()
 	case '-', '+', scanner.Int:
 		// number
-		p.parse_number()
+		p.parseNumber()
 	case '(':
-		// complex_lit or rune_lit
+		// complexLit or runeLit
 		p.next() // skip '('
 		if p.tok == scanner.Char {
 			p.next()
 		} else {
-			p.parse_number()
+			p.parseNumber()
 		}
 		p.expect('+')
-		p.parse_number()
+		p.parseNumber()
 		p.expect(')')
 	case scanner.Char:
 		p.next()
@@ -716,11 +716,11 @@ func (p *gc_parser) parse_const_decl() (string, *ast.GenDecl) {
 }
 
 // TypeDecl = "type" ExportedName Type .
-func (p *gc_parser) parse_type_decl() (string, *ast.GenDecl) {
-	p.expect_keyword("type")
-	name := p.parse_exported_name()
+func (p *gcParser) parseTypeDecl() (string, *ast.GenDecl) {
+	p.expectKeyword("type")
+	name := p.parseExportedName()
 	p.beautify = true
-	typ := p.parse_type()
+	typ := p.parseType()
 	return name.X.(*ast.Ident).Name, &ast.GenDecl{
 		Tok: token.TYPE,
 		Specs: []ast.Spec{
@@ -733,11 +733,11 @@ func (p *gc_parser) parse_type_decl() (string, *ast.GenDecl) {
 }
 
 // VarDecl = "var" ExportedName Type .
-func (p *gc_parser) parse_var_decl() (string, *ast.GenDecl) {
-	p.expect_keyword("var")
-	name := p.parse_exported_name()
+func (p *gcParser) parseVarDecl() (string, *ast.GenDecl) {
+	p.expectKeyword("var")
+	name := p.parseExportedName()
 	p.beautify = true
-	typ := p.parse_type()
+	typ := p.parseType()
 	return name.X.(*ast.Ident).Name, &ast.GenDecl{
 		Tok: token.VAR,
 		Specs: []ast.Spec{
@@ -750,7 +750,7 @@ func (p *gc_parser) parse_var_decl() (string, *ast.GenDecl) {
 }
 
 // FuncBody = "{" ... "}" .
-func (p *gc_parser) parse_func_body() {
+func (p *gcParser) parseFuncBody() {
 	p.expect('{')
 	for i := 1; i > 0; p.next() {
 		switch p.tok {
@@ -763,13 +763,13 @@ func (p *gc_parser) parse_func_body() {
 }
 
 // FuncDecl = "func" ExportedName Signature [ FuncBody ] .
-func (p *gc_parser) parse_func_decl() (string, *ast.FuncDecl) {
+func (p *gcParser) parseFuncDecl() (string, *ast.FuncDecl) {
 	// "func" was already consumed by lookahead
-	name := p.parse_exported_name()
+	name := p.parseExportedName()
 	p.beautify = true
-	typ := p.parse_signature()
+	typ := p.parseSignature()
 	if p.tok == '{' {
-		p.parse_func_body()
+		p.parseFuncBody()
 	}
 	return name.X.(*ast.Ident).Name, &ast.FuncDecl{
 		Name: name.Sel,
@@ -777,7 +777,7 @@ func (p *gc_parser) parse_func_decl() (string, *ast.FuncDecl) {
 	}
 }
 
-func strip_method_receiver(recv *ast.FieldList) string {
+func stripMethodReceiver(recv *ast.FieldList) string {
 	var sel *ast.SelectorExpr
 
 	// find selector expression
@@ -805,14 +805,14 @@ func strip_method_receiver(recv *ast.FieldList) string {
 
 // MethodDecl = "func" Receiver Name Signature .
 // Receiver = "(" ( identifier | "?" ) [ "*" ] ExportedName ")" [ FuncBody ] .
-func (p *gc_parser) parse_method_decl() (string, *ast.FuncDecl) {
-	recv := p.parse_parameters()
+func (p *gcParser) parseMethodDecl() (string, *ast.FuncDecl) {
+	recv := p.parseParameters()
 	p.beautify = true
-	pkg := strip_method_receiver(recv)
-	name, _ := p.parse_name()
-	typ := p.parse_signature()
+	pkg := stripMethodReceiver(recv)
+	name, _ := p.parseName()
+	typ := p.parseSignature()
 	if p.tok == '{' {
-		p.parse_func_body()
+		p.parseFuncBody()
 	}
 	return pkg, &ast.FuncDecl{
 		Recv: recv,
@@ -822,22 +822,22 @@ func (p *gc_parser) parse_method_decl() (string, *ast.FuncDecl) {
 }
 
 // Decl = [ ImportDecl | ConstDecl | TypeDecl | VarDecl | FuncDecl | MethodDecl ] "\n" .
-func (p *gc_parser) parse_decl() (pkg string, decl ast.Decl) {
+func (p *gcParser) parseDecl() (pkg string, decl ast.Decl) {
 	switch p.lit {
 	case "import":
-		p.parse_import_decl()
+		p.parseImportDecl()
 	case "const":
-		pkg, decl = p.parse_const_decl()
+		pkg, decl = p.parseConstDecl()
 	case "type":
-		pkg, decl = p.parse_type_decl()
+		pkg, decl = p.parseTypeDecl()
 	case "var":
-		pkg, decl = p.parse_var_decl()
+		pkg, decl = p.parseVarDecl()
 	case "func":
 		p.next()
 		if p.tok == '(' {
-			pkg, decl = p.parse_method_decl()
+			pkg, decl = p.parseMethodDecl()
 		} else {
-			pkg, decl = p.parse_func_decl()
+			pkg, decl = p.parseFuncDecl()
 		}
 	}
 	p.expect('\n')
@@ -846,17 +846,17 @@ func (p *gc_parser) parse_decl() (pkg string, decl ast.Decl) {
 
 // Export = PackageClause { Decl } "$$" .
 // PackageClause = "package" identifier [ "safe" ] "\n" .
-func (p *gc_parser) parse_export(callback func(string, ast.Decl)) {
-	p.expect_keyword("package")
+func (p *gcParser) parseExport(callback func(string, ast.Decl)) {
+	p.expectKeyword("package")
 	p.pfc.defalias = p.expect(scanner.Ident)
 	if p.tok != '\n' {
-		p.expect_keyword("safe")
+		p.expectKeyword("safe")
 	}
 	p.expect('\n')
 
 	for p.tok != '$' && p.tok != scanner.EOF {
 		p.beautify = false
-		pkg, decl := p.parse_decl()
+		pkg, decl := p.parseDecl()
 		if decl != nil {
 			callback(pkg, decl)
 		}
@@ -864,23 +864,23 @@ func (p *gc_parser) parse_export(callback func(string, ast.Decl)) {
 }
 
 //-------------------------------------------------------------------------
-// package_cache
+// packageCache
 //-------------------------------------------------------------------------
 
-type package_cache map[string]*package_file_cache
+type packageCache map[string]*packageFileCache
 
-func new_package_cache() package_cache {
-	m := make(package_cache)
+func newPackageCache() packageCache {
+	m := make(packageCache)
 
 	// add built-in "unsafe" package
-	m.add_builtin_unsafe_package()
+	m.addBuiltinUnsafePackage()
 
 	return m
 }
 
 // Function fills 'ps' set with packages from 'packages' import information.
 // In case if package is not in the cache, it creates one and adds one to the cache.
-func (c package_cache) append_packages(ps map[string]*package_file_cache, pkgs []package_import) {
+func (c packageCache) appendPackages(ps map[string]*packageFileCache, pkgs []packageImport) {
 	for _, m := range pkgs {
 		if _, ok := ps[m.path]; ok {
 			continue
@@ -889,14 +889,14 @@ func (c package_cache) append_packages(ps map[string]*package_file_cache, pkgs [
 		if mod, ok := c[m.path]; ok {
 			ps[m.path] = mod
 		} else {
-			mod = new_package_file_cache(m.path)
+			mod = newPackageFileCache(m.path)
 			ps[m.path] = mod
 			c[m.path] = mod
 		}
 	}
 }
 
-var g_builtin_unsafe_package = []byte(`
+var gBuiltinUnsafePackage = []byte(`
 import
 $$
 package unsafe
@@ -913,8 +913,8 @@ package unsafe
 $$
 `)
 
-func (c package_cache) add_builtin_unsafe_package() {
-	pkg := new_package_file_cache_forever("unsafe", "unsafe")
-	pkg.process_package_data(g_builtin_unsafe_package)
+func (c packageCache) addBuiltinUnsafePackage() {
+	pkg := newPackageFileCacheForever("unsafe", "unsafe")
+	pkg.processPackageData(gBuiltinUnsafePackage)
 	c["unsafe"] = pkg
 }
