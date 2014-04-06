@@ -3,6 +3,7 @@
 package main
 
 import (
+	"go/build"
 	"net/rpc"
 )
 
@@ -15,7 +16,7 @@ type Args_auto_complete struct {
 	Arg0 []byte
 	Arg1 string
 	Arg2 int
-	Arg3 gocode_env
+	Arg3 build.Context
 }
 type Reply_auto_complete struct {
 	Arg0 []candidate
@@ -26,7 +27,7 @@ func (r *RPC) RPC_auto_complete(args *Args_auto_complete, reply *Reply_auto_comp
 	reply.Arg0, reply.Arg1 = server_auto_complete(args.Arg0, args.Arg1, args.Arg2, args.Arg3)
 	return nil
 }
-func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, Arg3 gocode_env) (c []candidate, d int) {
+func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, Arg3 build.Context) (c []candidate, d int) {
 	var args Args_auto_complete
 	var reply Reply_auto_complete
 	args.Arg0 = Arg0
