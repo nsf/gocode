@@ -116,7 +116,12 @@ loop:
 		if this.token_index == 0 {
 			return make_expr(this.tokens[:orig])
 		}
-		switch r := this.token().tok; r {
+		r := this.token().tok
+		if r.IsKeyword() {
+			// If we reach a keyword, the expression is definitely over.
+			break loop
+		}
+		switch r {
 		case token.PERIOD:
 			this.previous_token()
 			last = r
