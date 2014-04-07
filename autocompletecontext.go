@@ -144,7 +144,7 @@ type auto_complete_context struct {
 
 func new_auto_complete_context(pcache package_cache, declcache *decl_cache) *auto_complete_context {
 	c := new(auto_complete_context)
-	c.current = new_auto_complete_file("", declcache.env)
+	c.current = new_auto_complete_file("", declcache.context)
 	c.pcache = pcache
 	c.declcache = declcache
 	return c
