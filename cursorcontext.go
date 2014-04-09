@@ -109,37 +109,39 @@ func (this *token_iterator) try_extract_struct_init_expr() []byte {
 // valid Go expression
 func (this *token_iterator) extract_go_expr() []byte {
 	// TODO: Make this function recursive.
-	last := token.ILLEGAL
 	orig := this.token_index
+
+	// prev always contains the type of the previously scanned token (initialized with the token
+	// right under the cursor). This is the token to the *right* of the current one.
+	prev := this.token().tok
 loop:
 	for {
+		this.previous_token()
 		if this.token_index == 0 {
 			return make_expr(this.tokens[:orig])
 		}
-		r := this.token().tok
-		if r.IsKeyword() {
-			// If we reach a keyword, the expression is definitely over.
-			break loop
-		}
-		switch r {
+		t := this.token().tok
+		switch t {
 		case token.PERIOD:
-			this.previous_token()
-			last = r
+			if prev != token.IDENT {
+				// Not ".ident".
+				break loop
+			}
+		case token.IDENT:
+			if prev == token.IDENT {
+				// "ident ident".
+				break loop
+			}
 		case token.RPAREN, token.RBRACK:
-			if last == token.IDENT {
+			if prev == token.IDENT {
 				// ")ident" or "]ident".
 				break loop
 			}
 			this.skip_to_bracket_pair()
-			this.previous_token()
-			last = r
-		case token.SEMICOLON, token.LPAREN, token.LBRACE, token.COLON, token.COMMA:
-			// If we reach one of these tokens, the expression is definitely over.
-			break loop
 		default:
-			this.previous_token()
-			last = r
+			break loop
 		}
+		prev = t
 	}
 	return make_expr(this.tokens[this.token_index+1 : orig])
 }

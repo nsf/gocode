@@ -41,4 +41,6 @@ test.0040 - anonymous return values shouldn't introduce new vars
 test.0041 - nested struct initialization expressions (outer)
 test.0042 - nested struct initialization expressions (inner)
 test.0043 - sequential struct initialization expressions
-test.0043 - struct initialization expression only suggests var names (no functions)
+test.0044 - struct initialization expression only suggests var names (no functions)
+test.0045 - if statement
+test.0046 - ":=" statement
