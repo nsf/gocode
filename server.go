@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"go/build"
+	"log"
 	"net"
 	"net/rpc"
 	"os"
@@ -17,7 +18,7 @@ func do_server() int {
 	if *g_sock == "unix" {
 		addr = get_socket_filename()
 		if file_exists(addr) {
-			fmt.Printf("unix socket: '%s' already exists\n", addr)
+			log.Printf("unix socket: '%s' already exists\n", addr)
 			return 1
 		}
 	}
@@ -129,27 +130,27 @@ func server_auto_complete(file []byte, filename string, cursor int, context buil
 		g_daemon.drop_cache()
 	}
 	if *g_debug {
-		fmt.Printf("Got autocompletion request for '%s'\n", filename)
-		fmt.Printf("Cursor at: %d\n", cursor)
-		fmt.Println("-------------------------------------------------------")
-		fmt.Print(string(file[:cursor]))
-		fmt.Print("#")
-		fmt.Print(string(file[cursor:]))
-		fmt.Println("-------------------------------------------------------")
+		log.Printf("Got autocompletion request for '%s'\n", filename)
+		log.Printf("Cursor at: %d\n", cursor)
+		log.Println("-------------------------------------------------------")
+		log.Print(string(file[:cursor]))
+		log.Print("#")
+		log.Print(string(file[cursor:]))
+		log.Println("-------------------------------------------------------")
 	}
 	candidates, d := g_daemon.autocomplete.apropos(file, filename, cursor)
 	if *g_debug {
-		fmt.Printf("Offset: %d\n", d)
-		fmt.Printf("Number of candidates found: %d\n", len(candidates))
-		fmt.Printf("Candidates are:\n")
+		log.Printf("Offset: %d\n", d)
+		log.Printf("Number of candidates found: %d\n", len(candidates))
+		log.Printf("Candidates are:\n")
 		for _, c := range candidates {
 			abbr := fmt.Sprintf("%s %s %s", c.Class, c.Name, c.Type)
 			if c.Class == decl_func {
 				abbr = fmt.Sprintf("%s %s%s", c.Class, c.Name, c.Type[len("func"):])
 			}
-			fmt.Printf("  %s\n", abbr)
+			log.Printf("  %s\n", abbr)
 		}
-		fmt.Println("=======================================================")
+		log.Println("=======================================================")
 	}
 	return candidates, d
 }
