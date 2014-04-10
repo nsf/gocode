@@ -36,7 +36,7 @@ def run_test(t)
 
 	cursorpos = Dir["#{t}/cursor.*"].map{|d| File.extname(d)[1..-1]}.first
 	outexpected = IO.read("#{t}/out.expected") rescue "To be determined"
-	filename = "#{t}/test.go"
+	filename = "#{t}/test.go.in"
 
 	out = %x[gocode -in #{filename} autocomplete #{filename} #{cursorpos}]
 

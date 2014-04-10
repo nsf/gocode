@@ -31,7 +31,7 @@ def run_test(t):
 			outexpected = f.read()
 	except:
 		outexpected = "To be determined"
-	filename = t + "/test.go"
+	filename = t + "/test.go.in"
 	gocode = subprocess.Popen(["gocode", "-in", filename, "autocomplete", filename, cursorpos],
 			shell=False, stdout=subprocess.PIPE)
 	out = gocode.communicate()[0]
