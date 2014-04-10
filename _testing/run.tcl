@@ -53,7 +53,7 @@ proc run_test {t} {
 	incr stats.total
 	set cursorpos [string range [file extension [glob "${t}/cursor.*"]] 1 end]
 	set expected [read_file "${t}/out.expected"]
-	set filename "${t}/test.go"
+	set filename "${t}/test.go.in"
 
 	set out [read_file "| gocode -in ${filename} autocomplete ${filename} ${cursorpos}"]
 	if {$out eq $expected} {
