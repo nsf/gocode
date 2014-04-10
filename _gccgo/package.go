@@ -109,7 +109,8 @@ func parse_import_data(data []byte) {
 		p.expect(';')
 	}
 
-	loop: for {
+loop:
+	for {
 		switch tok := p.expect(scanner.Ident); tok {
 		case "const":
 			p.read_const()
@@ -133,13 +134,13 @@ func parse_import_data(data []byte) {
 //----------------------------------------------------------------------------
 
 type import_data_type struct {
-	name string
+	name  string
 	type_ ast.Expr
 }
 
 type import_data_parser struct {
-	scanner scanner.Scanner
-	toktype rune
+	scanner   scanner.Scanner
+	toktype   rune
 	typetable []*import_data_type
 }
 
@@ -296,7 +297,7 @@ func (this *import_data_parser) read_type_full() (ast.Expr, string) {
 	case scanner.String:
 		// named type
 		s := this.expect(scanner.String)
-		type_.name = s[1:len(s)-1] // remove ""
+		type_.name = s[1 : len(s)-1] // remove ""
 		fallthrough
 	default:
 		// unnamed type
@@ -423,8 +424,8 @@ func (this *import_data_parser) read_parameter() *ast.Field {
 
 	return &ast.Field{
 		Names: []*ast.Ident{ast.NewIdent(name)},
-		Type: type_,
-		Tag:  &ast.BasicLit{Kind: token.STRING, Value: tag},
+		Type:  type_,
+		Tag:   &ast.BasicLit{Kind: token.STRING, Value: tag},
 	}
 }
 
