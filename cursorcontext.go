@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/scanner"
 	"go/token"
+	"log"
 )
 
 type cursor_context struct {
@@ -143,7 +144,11 @@ loop:
 		}
 		prev = t
 	}
-	return make_expr(this.tokens[this.token_index+1 : orig])
+	exprT := this.tokens[this.token_index+1 : orig]
+	if *g_debug {
+		log.Printf("extracted expression tokens: %#v", exprT)
+	}
+	return make_expr(exprT)
 }
 
 // Given a slice of token_item, reassembles them into the original literal expression.
