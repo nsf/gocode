@@ -186,6 +186,8 @@ func find_go_dag_package(imp, filedir string) (string, bool) {
 	return "", false
 }
 
+// autobuild compares the mod time of the source files of the package, and if any of them is newer
+// than the package object file will rebuild it.
 func autobuild(p *build.Package) error {
 	if p.Dir == "" {
 		return fmt.Errorf("no files to build")
@@ -209,6 +211,9 @@ func autobuild(p *build.Package) error {
 	return nil
 }
 
+// build_package builds the package by calling `go install package/import`. If everything compiles
+// correctly, the newly compiled package should then be in the usual place in the `$GOPATH/pkg`
+// directory, and gocode will pick it up from there.
 func build_package(p *build.Package) error {
 	log.Printf("-------------------")
 	log.Printf("rebuilding package %s", p.Name)
