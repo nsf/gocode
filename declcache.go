@@ -6,7 +6,10 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"io/ioutil"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 )
@@ -183,6 +186,45 @@ func find_go_dag_package(imp, filedir string) (string, bool) {
 	return "", false
 }
 
+func autobuild(p *build.Package) error {
+	if p.Dir == "" {
+		return fmt.Errorf("no files to build")
+	}
+	ps, err := os.Stat(p.PkgObj)
+	if err != nil {
+		// Assume package file does not exist and build for the first time.
+		return build_package(p)
+	}
+	pt := ps.ModTime()
+	fs, err := ioutil.ReadDir(p.Dir)
+	for _, f := range fs {
+		if f.IsDir() {
+			break
+		}
+		if f.ModTime().After(pt) {
+			// Source file is newer than package file; rebuild.
+			return build_package(p)
+		}
+	}
+	return nil
+}
+
+func build_package(p *build.Package) error {
+	log.Printf("-------------------")
+	log.Printf("rebuilding package %s", p.Name)
+	log.Printf("package import: %s", p.ImportPath)
+	log.Printf("package object: %s", p.PkgObj)
+	log.Printf("package source dir: %s", p.Dir)
+	log.Printf("package source files: %v", p.GoFiles)
+	// TODO: Should read STDERR rather than STDOUT.
+	out, err := exec.Command("go", "install", p.ImportPath).Output()
+	if err != nil {
+		return err
+	}
+	log.Printf("build out: %s\n", string(out))
+	return nil
+}
+
 // find_global_file returns the file path of the compiled package corresponding to the specified
 // import, and a boolean stating whether such path is valid.
 // TODO: Return only one value, possibly empty string if not found.
@@ -198,6 +240,9 @@ func find_global_file(imp string, context build.Context) (string, bool) {
 
 	p, err := context.Import(imp, "", build.AllowBinary)
 	if err == nil {
+		if g_config.Autobuild {
+			autobuild(p)
+		}
 		if file_exists(p.PkgObj) {
 			return p.PkgObj, true
 		}
