@@ -36,6 +36,8 @@ Also watch the [demo screencast](http://nosmileface.ru/images/gocode-demo.swf).
 
 ### Vim setup
 
+#### Manual installation
+
 In order to install vim scripts, you need to fulfill the following steps:
 
  1. Install official Go vim scripts from **$GOROOT/misc/vim**. If you did that already, proceed to the step 2.
@@ -69,6 +71,16 @@ In order to install vim scripts, you need to fulfill the following steps:
     `filetype plugin on`
 
  4. Autocompletion should work now. Use `<C-x><C-o>` for autocompletion (omnifunc autocompletion).
+
+#### Using Vundle
+
+Add the following line to your **.vimrc**:
+
+`Plugin 'nsf/gocode', {'rtp': 'vim/'}`
+
+And then update your packages by running `:PluginInstall`.
+
+#### Other
 
 Alternatively take a look at the vundle/pathogen friendly repo: https://github.com/Blackrush/vim-gocode.
 
