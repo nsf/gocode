@@ -230,6 +230,20 @@ func build_package(p *build.Package) error {
 	return nil
 }
 
+func log_found_package_maybe(imp, pkgpath string) {
+	if *g_debug {
+		log.Printf("Found \"%s\" at \"%s\"\n", imp, pkgpath)
+	}
+}
+
+func log_build_context(context build.Context) {
+	log.Printf(" GOROOT: %s\n", context.GOROOT)
+	log.Printf(" GOPATH: %s\n", context.GOPATH)
+	log.Printf(" GOOS: %s\n", context.GOOS)
+	log.Printf(" GOARCH: %s\n", context.GOARCH)
+	log.Printf(" lib-path: \"%s\"\n", g_config.LibPath)
+}
+
 // find_global_file returns the file path of the compiled package corresponding to the specified
 // import, and a boolean stating whether such path is valid.
 // TODO: Return only one value, possibly empty string if not found.
@@ -249,6 +263,7 @@ func find_global_file(imp string, context build.Context) (string, bool) {
 			autobuild(p)
 		}
 		if file_exists(p.PkgObj) {
+			log_found_package_maybe(imp, p.PkgObj)
 			return p.PkgObj, true
 		}
 	}
@@ -260,17 +275,24 @@ func find_global_file(imp string, context build.Context) (string, bool) {
 		for _, p := range filepath.SplitList(g_config.LibPath) {
 			pkg_path := filepath.Join(p, pkgfile)
 			if file_exists(pkg_path) {
+				log_found_package_maybe(imp, pkg_path)
 				return pkg_path, true
 			}
 			// Also check the relevant pkg/OS_ARCH dir for the libpath, if provided.
 			pkgdir := fmt.Sprintf("%s_%s", context.GOOS, context.GOARCH)
 			pkg_path = filepath.Join(p, "pkg", pkgdir, pkgfile)
 			if file_exists(pkg_path) {
+				log_found_package_maybe(imp, pkg_path)
 				return pkg_path, true
 			}
 		}
 	}
 
+	if *g_debug {
+		log.Printf("Import path \"%s\" was not resolved\n", imp)
+		log.Println("Gocode's build context is:")
+		log_build_context(context)
+	}
 	return "", false
 }
 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"bytes"
 )
 
 func do_server() int {
@@ -130,12 +131,14 @@ func server_auto_complete(file []byte, filename string, cursor int, context buil
 		g_daemon.drop_cache()
 	}
 	if *g_debug {
+		var buf bytes.Buffer
 		log.Printf("Got autocompletion request for '%s'\n", filename)
 		log.Printf("Cursor at: %d\n", cursor)
-		log.Println("-------------------------------------------------------")
-		log.Print(string(file[:cursor]))
-		log.Print("#")
-		log.Print(string(file[cursor:]))
+		buf.WriteString("-------------------------------------------------------\n")
+		buf.Write(file[:cursor])
+		buf.WriteString("#")
+		buf.Write(file[cursor:])
+		log.Print(buf.String())
 		log.Println("-------------------------------------------------------")
 	}
 	candidates, d := g_daemon.autocomplete.apropos(file, filename, cursor)
