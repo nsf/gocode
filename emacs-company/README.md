@@ -1,33 +1,38 @@
-This is an alternative emacs plugin, uses company-mode:
-	http://company-mode.github.io
+# Company-go
+Company-go is an alternative emacs plugin for autocompletion. Is uses [company-mode](http://company-mode.github.io). Completion will start automatically after you type a few letters.
 
-Here's how I use it in my .emacs:
+## Setup
+Install `company` and `company-go`.
 
+Add the following to your emacs-config:
+
+```lisp
 (require 'company)                                   ; load company mode
 (require 'company-go)                                ; load company mode go backend
+```
+
+## Possible improvements
+
+```lisp
 (setq company-tooltip-limit 20)                      ; bigger popup window
 (setq company-minimum-prefix-length 0)               ; autocomplete right after '.'
-(setq company-idle-delay .3)                         ; shorter delay before autocompletion popup
-(setq company-echo-delay 0)                          ; removes annoying blinking
+(setq company-idle-delay .3)                         ; decrease delay before autocompletion popup shows
+(setq company-echo-delay 0)                          ; remove annoying blinking
 (setq company-begin-commands '(self-insert-command)) ; start autocompletion only after typing
+```
 
-One thing to note here is the 'company-backends' list. By default company mode
-loads every backend it has. And while I could simply add company-go backend to
-that list using a hook, I'm leaving it to the end user. Perhaps it would be
-preferrable for you to use multiple backends at the same time, or maybe you
-just want the company-go backend only in the go-mode. I prefer to use the
-company-go backend only and having company-mode enabled only for go-mode.
-That's the way you can do it:
+### Only use company-mode with company-go in go-mode
+By default company-mode loads every backend it has. If you want to only have company-mode enabled in go-mode add the following to your emacs-config:
 
+```lisp
 (add-hook 'go-mode-hook (lambda ()
                           (set (make-local-variable 'company-backends) '(company-go))
                           (company-mode)))
+```
 
-I hope you get the idea.
+### Color customization
 
-P.S. Also, default company mode colors are kind of ugly, I took these from
-auto-complete-mode defaults:
-
+```lisp
 (custom-set-faces
  '(company-preview
    ((t (:foreground "darkgray" :underline t))))
@@ -43,5 +48,4 @@ auto-complete-mode defaults:
  '(company-tooltip-common-selection
    ((((type x)) (:inherit company-tooltip-selection :weight bold))
     (t (:inherit company-tooltip-selection)))))
-
-Of course you can change them the way you prefer, use customize-mode or do it manually.
+```
