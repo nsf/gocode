@@ -44,3 +44,4 @@ test.0043 - sequential struct initialization expressions
 test.0044 - struct initialization expression only suggests var names (no functions)
 test.0045 - if statement
 test.0046 - ":=" statement
+test.0047 - completion on struct with undefined embedded type
