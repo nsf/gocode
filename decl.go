@@ -955,6 +955,10 @@ func (d *decl) find_child(name string) *decl {
 }
 
 func (d *decl) find_child_and_in_embedded(name string) *decl {
+	if d == nil {
+		return nil
+	}
+
 	c := d.find_child(name)
 	if c == nil {
 		for _, e := range d.embedded {
