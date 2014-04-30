@@ -15,6 +15,16 @@
   (require 'company)
   (require 'go-mode))
 
+;; Close gocode daemon at exit unless it was already running
+(eval-after-load "go-mode"
+  '(progn
+     (let* ((user (or (getenv "USER") "all"))
+            (sock (format (concat temporary-file-directory "gocode-daemon.%s") user)))
+       (unless (file-exists-p sock)
+         (add-hook 'kill-emacs-hook #'(lambda ()
+                                        (ignore-errors
+                                          (call-process "gocode" nil nil nil "close"))))))))
+
 (defgroup company-go nil
   "Completion back-end for Go."
   :group 'company)
