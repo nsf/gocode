@@ -115,7 +115,7 @@ You can change all available options using `gocode set` command. The config file
 
  - *lib-path*
 
-   A string option. Allows you to add search paths for packages. By default, gocode only searches **$GOPATH/pkg/$GOOS_$GOARCH** and **$GOROOT/pkg/$GOOS_$GOARCH** in terms of previously existed environment variables. Also you can specify multiple paths using ':' (colon) as a separator (on Windows use semicolon ';').
+   A string option. Allows you to add search paths for packages. By default, gocode only searches **$GOPATH/pkg/$GOOS_$GOARCH** and **$GOROOT/pkg/$GOOS_$GOARCH** in terms of previously existed environment variables. Also you can specify multiple paths using ':' (colon) as a separator (on Windows use semicolon ';'). The paths specified by *lib-path* are prepended to the default ones.
 
  - *autobuild*
 
@@ -123,11 +123,11 @@ You can change all available options using `gocode set` command. The config file
 
 ### Debugging
 
-If something went wrong, the first thing you may want to do is manually start the gocode daemon in a separate terminal window. It will show you all the stack traces and panics if any. Shutdown the daemon if it was already started and run a new one explicitly:
+If something went wrong, the first thing you may want to do is manually start the gocode daemon with a debug mode enabled and in a separate terminal window. It will show you all the stack traces, panics if any and additional info about autocompletion requests. Shutdown the daemon if it was already started and run a new one explicitly with a debug mode enabled:
 
 `gocode close`
 
-`gocode -s`
+`gocode -s -debug`
 
 Please, report bugs, feature suggestions and other rants to the [github issue tracker](http://github.com/nsf/gocode/issues) of this project.
 
