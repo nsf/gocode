@@ -1,5 +1,6 @@
 # Company-go
-Company-go is an alternative emacs plugin for autocompletion. Is uses [company-mode](http://company-mode.github.io). Completion will start automatically after you type a few letters.
+Company-go is an alternative emacs plugin for autocompletion. Is uses [company-mode](http://company-mode.github.io).
+Completion will start automatically whenever the current symbol is preceded by a `.`, or after you type `company-minimum-prefix-length` letters.
 
 ## Setup
 Install `company` and `company-go`.
@@ -15,7 +16,6 @@ Add the following to your emacs-config:
 
 ```lisp
 (setq company-tooltip-limit 20)                      ; bigger popup window
-(setq company-minimum-prefix-length 0)               ; autocomplete right after '.'
 (setq company-idle-delay .3)                         ; decrease delay before autocompletion popup shows
 (setq company-echo-delay 0)                          ; remove annoying blinking
 (setq company-begin-commands '(self-insert-command)) ; start autocompletion only after typing
