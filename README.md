@@ -119,7 +119,7 @@ You can change all available options using `gocode set` command. The config file
 
  - *autobuild*
 
-   A boolean option. If **true**, gocode will try to automatically build out-of-date packages when their source files are modified, in order to obtain the freshest autocomplete results for them. Default: **false**.
+   A boolean option. If **true**, gocode will try to automatically build out-of-date packages when their source files are modified, in order to obtain the freshest autocomplete results for them. This feature is experimental. Default: **false**.
 
 ### Debugging
 
