@@ -30,6 +30,7 @@ func (i token_item) Literal() string {
 	} else {
 		return i.tok.String()
 	}
+	return ""
 }
 
 func (this *token_iterator) token() token_item {
@@ -288,4 +289,5 @@ func (c *auto_complete_context) deduce_cursor_type_pkg(file []byte, cursor int) 
 		t, scope, _ := infer_type(expr, c.current.scope, -1)
 		return t, lookup_pkg(get_type_path(t), scope), t != nil
 	}
+	return nil, "", false
 }
