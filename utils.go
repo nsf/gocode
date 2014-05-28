@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
+	"go/build"
 )
 
 // returns truncated 'data' and amount of bytes skipped (for cursor pos adjustment)
@@ -87,7 +88,7 @@ func print_backtrace(err interface{}) {
 // It's a bad idea to block multiple goroutines on file I/O. Creates many
 // threads which fight for HDD. Therefore only single goroutine should read HDD
 // at the same time.
-// -------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 
 type file_read_request struct {
 	filename string
@@ -128,3 +129,50 @@ func (this *file_reader_type) read_file(filename string) ([]byte, error) {
 }
 
 var file_reader = new_file_reader()
+
+//-------------------------------------------------------------------------
+// copy of the build.Context without func fields
+//-------------------------------------------------------------------------
+
+type go_build_context struct {
+	GOARCH        string
+	GOOS          string
+	GOROOT        string
+	GOPATH        string
+	CgoEnabled    bool
+	UseAllFiles   bool
+	Compiler      string
+	BuildTags     []string
+	ReleaseTags   []string
+	InstallSuffix string
+}
+
+func pack_build_context(ctx *build.Context) go_build_context {
+	return go_build_context{
+		GOARCH: ctx.GOARCH,
+		GOOS: ctx.GOOS,
+		GOROOT: ctx.GOROOT,
+		GOPATH: ctx.GOPATH,
+		CgoEnabled: ctx.CgoEnabled,
+		UseAllFiles: ctx.UseAllFiles,
+		Compiler: ctx.Compiler,
+		BuildTags: ctx.BuildTags,
+		ReleaseTags: ctx.ReleaseTags,
+		InstallSuffix: ctx.InstallSuffix,
+	}
+}
+
+func unpack_build_context(ctx *go_build_context) build.Context {
+	return build.Context{
+		GOARCH: ctx.GOARCH,
+		GOOS: ctx.GOOS,
+		GOROOT: ctx.GOROOT,
+		GOPATH: ctx.GOPATH,
+		CgoEnabled: ctx.CgoEnabled,
+		UseAllFiles: ctx.UseAllFiles,
+		Compiler: ctx.Compiler,
+		BuildTags: ctx.BuildTags,
+		ReleaseTags: ctx.ReleaseTags,
+		InstallSuffix: ctx.InstallSuffix,
+	}
+}
