@@ -120,7 +120,7 @@
   (if (stringp item)
       (let ((s (get-text-property 0 'summary item)))
         (message "%s" s)
-        "")))
+        nil)))
 
 (defun ac-go-candidates ()
   (ac-go-get-candidates (ac-go-format-autocomplete (ac-go-invoke-autocomplete))))
