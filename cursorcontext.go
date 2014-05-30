@@ -220,7 +220,19 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 	case token.IDENT, token.VAR:
 		// we're '<whatever>.<ident>'
 		// parse <ident> as Partial and figure out decl
-		partial := iter.token().Literal()
+		tok := iter.token()
+
+		var partial string
+		if r == token.IDENT {
+			// Calculate the offset of the cursor position within the identifier.
+			// For instance, if we are 'ab#c', we want partial_len = 2 and partial = ab.
+			partial_len := cursor - tok.off
+			partial = tok.Literal()[0:partial_len]
+		} else {
+			// Do not try to truncate if it is not an identifier.
+			partial = tok.Literal()
+		}
+
 		iter.previous_token()
 		if iter.token().tok == token.PERIOD {
 			decl := c.deduce_cursor_decl(&iter)

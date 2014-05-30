@@ -45,3 +45,4 @@ test.0044 - struct initialization expression only suggests var names (no functio
 test.0045 - if statement
 test.0046 - ":=" statement
 test.0047 - completion on struct with undefined embedded type
+test.0048 - completion with cursor in the middle of existing token
