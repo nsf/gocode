@@ -227,6 +227,12 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 			// Calculate the offset of the cursor position within the identifier.
 			// For instance, if we are 'ab#c', we want partial_len = 2 and partial = ab.
 			partial_len := cursor - tok.off
+			// Cursor may be past the end of the literal if there are whitespaces after
+			// the identifier, so we bring it back inside the appropriate limits if
+			// needed.
+			if partial_len > len(tok.Literal()) {
+				partial_len = len(tok.Literal())
+			}
 			partial = tok.Literal()[0:partial_len]
 		} else {
 			// Do not try to truncate if it is not an identifier.
