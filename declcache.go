@@ -260,7 +260,7 @@ func find_global_file(imp string, context build.Context) (string, bool) {
 		return "unsafe", true
 	}
 
-	p, err := context.Import(imp, "", build.AllowBinary)
+	p, err := context.Import(imp, "", build.AllowBinary|build.FindOnly)
 	if err == nil {
 		if g_config.Autobuild {
 			autobuild(p)
