@@ -199,9 +199,12 @@ func autobuild(p *build.Package) error {
 	}
 	pt := ps.ModTime()
 	fs, err := ioutil.ReadDir(p.Dir)
+	if err != nil {
+		return err
+	}
 	for _, f := range fs {
 		if f.IsDir() {
-			break
+			continue
 		}
 		if f.ModTime().After(pt) {
 			// Source file is newer than package file; rebuild.
