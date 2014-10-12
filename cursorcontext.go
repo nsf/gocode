@@ -217,7 +217,7 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 		// figure out decl, Partial is ""
 		decl := c.deduce_cursor_decl(&iter)
 		return cursor_context{decl, ""}, decl != nil
-	case token.IDENT, token.VAR:
+	case token.IDENT, token.TYPE, token.CONST, token.VAR, token.FUNC, token.PACKAGE:
 		// we're '<whatever>.<ident>'
 		// parse <ident> as Partial and figure out decl
 		tok := iter.token()
