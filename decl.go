@@ -684,6 +684,8 @@ func (a *anonymous_typer) Visit(node ast.Node) ast.Visitor {
 		t.Fun = check_for_anon_type(t.Fun, a.flags, a.scope)
 	case *ast.ParenExpr:
 		t.X = check_for_anon_type(t.X, a.flags, a.scope)
+	case *ast.StarExpr:
+		t.X = check_for_anon_type(t.X, a.flags, a.scope)
 	case *ast.GenDecl:
 		switch t.Tok {
 		case token.VAR:
