@@ -13,6 +13,7 @@
 (eval-when-compile
   (require 'cl)
   (require 'company)
+  (require 'company-template)
   (require 'go-mode))
 
 ;; Close gocode daemon at exit unless it was already running
@@ -37,6 +38,11 @@
 (defcustom company-go-begin-after-member-access t
   "When non-nil, automatic completion will start whenever the current
 symbol is preceded by a \".\", ignoring `company-minimum-prefix-length'."
+  :group 'company-go
+  :type 'boolean)
+
+(defcustom company-go-insert-arguments t
+  "When non-nil, insert function or method arguments as a template after completion."
   :group 'company-go
   :type 'boolean)
 
@@ -130,6 +136,26 @@ triggers a completion immediately."
                   (cons (current-buffer) (point))))))))
     (file-error (message "company-go: Could not run godef binary") nil)))
 
+(defun company-go--insert-arguments (meta)
+  "Insert arguments when META is a function or a method."
+  (when (string-match "^func\\s *[^(]+\\(.*\\)" meta)
+    (let ((args (company-go--extract-arguments (match-string 1 meta))))
+      (insert args)
+      (company-template-c-like-templatify args))))
+
+(defun company-go--extract-arguments (str)
+  "Extract arguments with parentheses from STR."
+  (let ((len (length str))
+        (pos 1)
+        (pirs-paren 1))
+    (while (and (/= pirs-paren 0) (< pos len))
+      (let ((c (substring-no-properties str pos (1+ pos))))
+        (cond
+         ((string= c "(") (setq pirs-paren (1+ pirs-paren)))
+         ((string= c ")") (setq pirs-paren (1- pirs-paren))))
+        (setq pos (1+ pos))))
+    (substring-no-properties str 0 pos)))
+
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
   (case command
@@ -142,7 +168,11 @@ triggers a completion immediately."
      (when company-go-show-annotation
        (get-text-property 0 'meta arg)))
     (location (company-go--location arg))
-    (sorted t)))
+    (sorted t)
+    (post-completion
+     (when company-go-insert-arguments
+       (company-go--insert-arguments
+        (get-text-property 0 'meta arg))))))
 
 (provide 'company-go)
 ;;; company-go.el ends here
