@@ -6,6 +6,7 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
+	"log"
 )
 
 func parse_decl_list(fset *token.FileSet, data []byte) ([]ast.Decl, error) {
@@ -54,7 +55,10 @@ func (f *auto_complete_file) offset(p token.Pos) int {
 // this one is used for current file buffer exclusively
 func (f *auto_complete_file) process_data(data []byte) {
 	cur, filedata, block := rip_off_decl(data, f.cursor)
-	file, _ := parser.ParseFile(f.fset, "", filedata, 0)
+	file, err := parser.ParseFile(f.fset, "", filedata, 0)
+	if err != nil && *g_debug {
+		log.Printf("Error parsing input file: %s", err)
+	}
 	f.package_name = package_name(file)
 
 	f.decls = make(map[string]*decl)
