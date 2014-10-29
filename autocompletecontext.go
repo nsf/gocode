@@ -236,9 +236,16 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	// concurrent fashion. Apparently I'm not really good at that. Hopefully
 	// will be better in future.
 
+	// Ugly hack, but it actually may help in some cases. Insert a
+	// semicolon right at the cursor location.
+	filesemi := make([]byte, len(file)+1)
+	copy(filesemi, file[:cursor])
+	filesemi[cursor] = ';'
+	copy(filesemi[cursor+1:], file[cursor:])
+
 	// Does full processing of the currently edited file (top-level declarations plus
 	// active function).
-	c.current.process_data(file)
+	c.current.process_data(filesemi)
 
 	// Updates cache of other files and packages. See the function for details of
 	// the process. At the end merges all the top-level declarations into the package
