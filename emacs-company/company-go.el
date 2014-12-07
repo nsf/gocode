@@ -10,10 +10,11 @@
 
 ;;; Code:
 
+(require 'company-template)
+
 (eval-when-compile
   (require 'cl)
   (require 'company)
-  (require 'company-template)
   (require 'go-mode))
 
 ;; Close gocode daemon at exit unless it was already running
