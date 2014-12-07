@@ -132,7 +132,7 @@
           (when (> (length ret) 2)
             (setq ret (substring ret 0 (- (length ret) 2)))))
         (setq ret (concat "(" ret ")"))
-        (yas/expand-snippet ret pos pos)))))
+        (yas-expand-snippet ret pos pos)))))
 
 (defun ac-go-split-args (args-str)
   (let ((cur 5)
