@@ -99,7 +99,13 @@ In order to install emacs script, you need to fulfill the following steps:
 
 Also, there is an alternative plugin for emacs using company-mode. See `emacs-company/README` for installation instructions.
 
-If you're a MacOSX user, you may find that script useful: https://github.com/purcell/exec-path-from-shell. It helps you with setting up the right environment variables as Go and gocode require it.
+If you're a MacOSX user, you may find that script useful: https://github.com/purcell/exec-path-from-shell. It helps you with setting up the right environment variables as Go and gocode require it. By default it pulls the PATH, but don't forget to add the GOPATH as well, e.g.:
+
+```
+(when (memq window-system '(mac ns))
+  (exec-path-from-shell-initialize))
+(exec-path-from-shell-copy-env "GOPATH")
+```
 
 ### Options
 
