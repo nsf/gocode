@@ -99,6 +99,8 @@ In order to install emacs script, you need to fulfill the following steps:
 
 Also, there is an alternative plugin for emacs using company-mode. See `emacs-company/README` for installation instructions.
 
+If you're a MacOSX user, you may find that script useful: https://github.com/purcell/exec-path-from-shell. It helps you with setting up the right environment variables as Go and gocode require it.
+
 ### Options
 
 You can change all available options using `gocode set` command. The config file uses json format and is usually stored somewhere in **~/.config/gocode** directory. On windows it's stored in the appropriate AppData folder. It's suggested to avoid modifying config file manually, do that using the `gocode set` command.
