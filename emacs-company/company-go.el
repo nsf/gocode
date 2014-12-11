@@ -25,7 +25,7 @@
        (unless (file-exists-p sock)
          (add-hook 'kill-emacs-hook #'(lambda ()
                                         (ignore-errors
-                                          (call-process "gocode" nil nil nil "close"))))))))
+                                          (call-process company-go-gocode-command nil nil nil "close"))))))))
 
 (defgroup company-go nil
   "Completion back-end for Go."
@@ -47,12 +47,17 @@ symbol is preceded by a \".\", ignoring `company-minimum-prefix-length'."
   :group 'company-go
   :type 'boolean)
 
+(defcustom company-go-gocode-command "gocode"
+  "The command to invoke `gocode'"
+  :group 'company-go
+  :type 'string)
+
 (defun company-go--invoke-autocomplete ()
   (let ((temp-buffer (generate-new-buffer "*gocode*")))
     (prog2
 	(call-process-region (point-min)
 			     (point-max)
-			     "gocode"
+			     company-go-gocode-command
 			     nil
 			     temp-buffer
 			     nil
