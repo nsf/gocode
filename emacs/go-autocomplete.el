@@ -43,8 +43,8 @@
   :prefix "ac-go-"
   :group 'auto-complete)
 
-(defcustom ac-go-expand-arguments-snippet t
-  "Enable expand arguments snippets. This feature requires `yasnippet'."
+(defcustom ac-go-expand-arguments-into-snippets t
+  "Expand function arguments into snippets. This feature requires `yasnippet'."
   :type 'boolean
   :group 'go-autocomplete)
 
@@ -126,7 +126,7 @@
     (when (stringp item)
       (setq symbol (get-text-property 0 'summary item))
       (message "%s" symbol)
-      (when (and (featurep 'yasnippet) ac-go-expand-arguments-snippet)
+      (when (and (featurep 'yasnippet) ac-go-expand-arguments-into-snippets)
         (ac-go-insert-yas-snippet-string symbol)))))
 
 (defun ac-go-insert-yas-snippet-string (s)
