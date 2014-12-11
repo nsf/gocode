@@ -38,6 +38,16 @@
   (require 'cl)
   (require 'auto-complete))
 
+(defgroup go-autocomplete nil
+  "auto-complete for go language."
+  :prefix "ac-go-"
+  :group 'auto-complete)
+
+(defcustom ac-go-expand-arguments-snippet t
+  "Enable expand arguments snippets. This feature requires `yasnippet'."
+  :type 'boolean
+  :group 'go-autocomplete)
+
 ;; Close gocode daemon at exit unless it was already running
 (eval-after-load "go-mode"
   '(progn
@@ -116,7 +126,7 @@
     (when (stringp item)
       (setq symbol (get-text-property 0 'summary item))
       (message "%s" symbol)
-      (when (featurep 'yasnippet)
+      (when (and (featurep 'yasnippet) ac-go-expand-arguments-snippet)
         (ac-go-insert-yas-snippet-string symbol)))))
 
 (defun ac-go-insert-yas-snippet-string (s)
