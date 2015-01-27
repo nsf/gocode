@@ -283,7 +283,10 @@ func find_global_file(imp string, context build.Context) (string, bool) {
 	p, err := context.Import(imp, "", build.AllowBinary|build.FindOnly)
 	if err == nil {
 		if g_config.Autobuild {
-			autobuild(p)
+			err = autobuild(p)
+			if err != nil && *g_debug {
+				log.Printf("Autobuild error: %s\n", err)
+			}
 		}
 		if file_exists(p.PkgObj) {
 			log_found_package_maybe(imp, p.PkgObj)
