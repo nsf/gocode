@@ -129,6 +129,10 @@ You can change all available options using `gocode set` command. The config file
 
    A boolean option. If **true**, gocode will try to automatically build out-of-date packages when their source files are modified, in order to obtain the freshest autocomplete results for them. This feature is experimental. Default: **false**.
 
+ - *force-debug-output*
+
+   A string option. If is not empty, gocode will forcefully redirect the logging into that file. Also forces enabling of the debug mode on the server side. Default: "" (empty).
+
 ### Debugging
 
 If something went wrong, the first thing you may want to do is manually start the gocode daemon with a debug mode enabled and in a separate terminal window. It will show you all the stack traces, panics if any and additional info about autocompletion requests. Shutdown the daemon if it was already started and run a new one explicitly with a debug mode enabled:

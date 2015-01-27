@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
-	"go/build"
 )
 
 // returns truncated 'data' and amount of bytes skipped (for cursor pos adjustment)
@@ -149,30 +149,30 @@ type go_build_context struct {
 
 func pack_build_context(ctx *build.Context) go_build_context {
 	return go_build_context{
-		GOARCH: ctx.GOARCH,
-		GOOS: ctx.GOOS,
-		GOROOT: ctx.GOROOT,
-		GOPATH: ctx.GOPATH,
-		CgoEnabled: ctx.CgoEnabled,
-		UseAllFiles: ctx.UseAllFiles,
-		Compiler: ctx.Compiler,
-		BuildTags: ctx.BuildTags,
-		ReleaseTags: ctx.ReleaseTags,
+		GOARCH:        ctx.GOARCH,
+		GOOS:          ctx.GOOS,
+		GOROOT:        ctx.GOROOT,
+		GOPATH:        ctx.GOPATH,
+		CgoEnabled:    ctx.CgoEnabled,
+		UseAllFiles:   ctx.UseAllFiles,
+		Compiler:      ctx.Compiler,
+		BuildTags:     ctx.BuildTags,
+		ReleaseTags:   ctx.ReleaseTags,
 		InstallSuffix: ctx.InstallSuffix,
 	}
 }
 
 func unpack_build_context(ctx *go_build_context) build.Context {
 	return build.Context{
-		GOARCH: ctx.GOARCH,
-		GOOS: ctx.GOOS,
-		GOROOT: ctx.GOROOT,
-		GOPATH: ctx.GOPATH,
-		CgoEnabled: ctx.CgoEnabled,
-		UseAllFiles: ctx.UseAllFiles,
-		Compiler: ctx.Compiler,
-		BuildTags: ctx.BuildTags,
-		ReleaseTags: ctx.ReleaseTags,
+		GOARCH:        ctx.GOARCH,
+		GOOS:          ctx.GOOS,
+		GOROOT:        ctx.GOROOT,
+		GOPATH:        ctx.GOPATH,
+		CgoEnabled:    ctx.CgoEnabled,
+		UseAllFiles:   ctx.UseAllFiles,
+		Compiler:      ctx.Compiler,
+		BuildTags:     ctx.BuildTags,
+		ReleaseTags:   ctx.ReleaseTags,
 		InstallSuffix: ctx.InstallSuffix,
 	}
 }

@@ -19,15 +19,17 @@ import (
 //-------------------------------------------------------------------------
 
 type config struct {
-	ProposeBuiltins bool   `json:"propose-builtins"`
-	LibPath         string `json:"lib-path"`
-	Autobuild       bool   `json:"autobuild"`
+	ProposeBuiltins  bool   `json:"propose-builtins"`
+	LibPath          string `json:"lib-path"`
+	Autobuild        bool   `json:"autobuild"`
+	ForceDebugOutput string `json:"force-debug-output"`
 }
 
 var g_config = config{
-	ProposeBuiltins: false,
-	LibPath:         "",
-	Autobuild:       false,
+	ProposeBuiltins:  false,
+	LibPath:          "",
+	Autobuild:        false,
+	ForceDebugOutput: "",
 }
 
 var g_string_to_bool = map[string]bool{

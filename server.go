@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"go/build"
 	"log"
@@ -9,11 +10,20 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"bytes"
 )
 
 func do_server() int {
 	g_config.read()
+	if g_config.ForceDebugOutput != "" {
+		// forcefully enable debugging and redirect logging into the
+		// specified file
+		*g_debug = true
+		f, err := os.Create(g_config.ForceDebugOutput)
+		if err != nil {
+			panic(err)
+		}
+		log.SetOutput(f)
+	}
 
 	addr := *g_addr
 	if *g_sock == "unix" {
