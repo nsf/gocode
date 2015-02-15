@@ -208,6 +208,9 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 	}
 
 	iter := new_token_iterator(file, cursor)
+	if len(iter.tokens) == 0 {
+		return cursor_context{nil, ""}, false
+	}
 
 	// figure out what is just before the cursor
 	iter.previous_token()
