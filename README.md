@@ -96,6 +96,7 @@ In order to install emacs script, you need to fulfill the following steps:
 
  		(require 'go-autocomplete)
 		(require 'auto-complete-config)
+		(ac-config-default)
 
 Also, there is an alternative plugin for emacs using company-mode. See `emacs-company/README` for installation instructions.
 
