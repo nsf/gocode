@@ -13,6 +13,29 @@ import (
 	"unicode/utf8"
 )
 
+// our own readdir, which skips the files it cannot lstat
+func readdir(name string) ([]os.FileInfo, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := f.Readdirnames(-1)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]os.FileInfo, 0, len(names))
+	for _, lname := range names {
+		s, err := os.Lstat(filepath.Join(name, lname))
+		if err != nil {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
 // returns truncated 'data' and amount of bytes skipped (for cursor pos adjustment)
 func filter_out_shebang(data []byte) ([]byte, int) {
 	if len(data) > 2 && data[0] == '#' && data[1] == '!' {

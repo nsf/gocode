@@ -6,7 +6,6 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -198,7 +197,7 @@ func autobuild(p *build.Package) error {
 		return build_package(p)
 	}
 	pt := ps.ModTime()
-	fs, err := ioutil.ReadDir(p.Dir)
+	fs, err := readdir(p.Dir)
 	if err != nil {
 		return err
 	}

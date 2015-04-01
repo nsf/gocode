@@ -6,7 +6,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -415,7 +414,7 @@ func find_other_package_files(filename, package_name string) []string {
 	}
 
 	dir, file := filepath.Split(filename)
-	files_in_dir, err := ioutil.ReadDir(dir)
+	files_in_dir, err := readdir(dir)
 	if err != nil {
 		panic(err)
 	}
