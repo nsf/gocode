@@ -19,6 +19,7 @@ func readdir(name string) ([]os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
 	names, err := f.Readdirnames(-1)
 	if err != nil {
