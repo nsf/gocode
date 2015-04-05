@@ -103,9 +103,14 @@ type emacs_formatter struct{}
 
 func (*emacs_formatter) write_candidates(candidates []candidate, num int) {
 	for _, c := range candidates {
-		hint := c.Class.String() + " " + c.Type
-		if c.Class == decl_func {
+		var hint string
+		switch {
+		case c.Class == decl_func:
 			hint = c.Type
+		case c.Type == "":
+			hint = c.Class.String()
+		default:
+			hint = c.Class.String() + " " + c.Type
 		}
 		fmt.Printf("%s,,%s\n", c.Name, hint)
 	}
