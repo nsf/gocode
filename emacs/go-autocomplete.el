@@ -111,10 +111,12 @@
 
 (defun ac-go-get-candidates (strings)
   (let ((prop (lambda (entry)
-		(let ((name (nth 0 entry))
-		      (summary (nth 1 entry)))
+		(let* ((name (nth 0 entry))
+		       (summary (nth 1 entry))
+		       (symbol (substring summary 0 1)))
 		  (propertize name
-			      'summary summary))))
+			      'summary summary
+			      'symbol symbol))))
 	(split (lambda (strings)
 		 (mapcar (lambda (str)
 			   (split-string str ",," t))
@@ -189,8 +191,7 @@
     (action . ac-go-action)
     (prefix . ac-go-prefix)
     (requires . 0)
-    (cache)
-    (symbol . "g")))
+    (cache)))
 
 (add-to-list 'ac-modes 'go-mode)
 
