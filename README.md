@@ -80,14 +80,6 @@ Add the following line to your **.vimrc**:
 
 And then update your packages by running `:PluginInstall`.
 
-#### Using vim-plug
-
-Add the following line to your **.vimrc**:
-
-`Plug 'nsf/gocode', { 'do': '~/.vim/plugged/gocode/vim/symlink.sh' }`
-
-And then update your packages by running `:PlugInstall`.
-
 #### Other
 
 Alternatively take a look at the vundle/pathogen friendly repo: https://github.com/Blackrush/vim-gocode.
