@@ -2,6 +2,7 @@
 *.a
 *.out
 gocode
+gocode.exe
 goremote
 gocodetest
 *.swp
