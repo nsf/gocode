@@ -174,11 +174,16 @@ triggers a completion immediately."
       (and (string-match "\\w+ \\w+\\(.+\\)" meta)
            (match-string 1 meta)))))
 
+(defun company-go--in-num-literal-p ()
+  "Returns t if point is in a numeric literal."
+  (string-match-p "^0x\\|^[0-9]+" (company-grab-word)))
+
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
   (case command
     (prefix (and (derived-mode-p 'go-mode)
                  (not (company-in-string-or-comment))
+                 (not (company-go--in-num-literal-p))
                  (or (company-go--prefix) 'stop)))
     (candidates (company-go--candidates))
     (meta (get-text-property 0 'meta arg))
