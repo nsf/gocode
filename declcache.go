@@ -280,6 +280,12 @@ func find_global_file(imp string, context build.Context) (string, bool) {
 				log_found_package_maybe(imp, pkg_path)
 				return pkg_path, true
 			}
+			// Also check the relevant pkg/OS/ARCH dir for the libpath, if provided.
+			pkg_path = filepath.Join(p, "pkg", context.GOOS, context.GOARCH, pkgfile)
+			if file_exists(pkg_path) {
+				log_found_package_maybe(imp, pkg_path)
+				return pkg_path, true
+			}
 		}
 	}
 
