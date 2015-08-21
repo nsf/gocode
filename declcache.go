@@ -265,9 +265,12 @@ func find_global_file(imp string, context build.Context) (string, bool) {
 
 	pkgfile := fmt.Sprintf("%s.a", imp)
 
-	// if lib-path is defined, use it
-	if g_config.LibPath != "" {
-		for _, p := range filepath.SplitList(g_config.LibPath) {
+	for _, list := range []string{g_config.LibPath, context.GOPATH} {
+		if list == "" {
+			continue
+		}
+
+		for _, p := range filepath.SplitList(list) {
 			pkg_path := filepath.Join(p, pkgfile)
 			if file_exists(pkg_path) {
 				log_found_package_maybe(imp, pkg_path)
