@@ -176,7 +176,9 @@ triggers a completion immediately."
 
 (defun company-go--in-num-literal-p ()
   "Returns t if point is in a numeric literal."
-  (string-match-p "^0x\\|^[0-9]+" (company-grab-word)))
+  (let ((word (company-grab-word)))
+    (when word
+      (string-match-p "^0x\\|^[0-9]+" word))))
 
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
