@@ -161,3 +161,4 @@ If you have troubles, please, contact me and I will try to do my best answering 
 ### Misc
 
  - It's a good idea to use the latest git version always. I'm trying to keep it in a working state.
+ - Use `go install` (not `go build`) for building a local source tree. The objects in `pkg/` are needed for Gocode to work.
