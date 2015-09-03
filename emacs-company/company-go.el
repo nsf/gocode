@@ -83,7 +83,10 @@ symbol is preceded by a \".\", ignoring `company-minimum-prefix-length'."
               (propertize (nth 1 candidate) 'meta (company-go--format-meta candidate)))) strings))
 
 (defun company-go--candidates ()
-  (company-go--get-candidates (split-string (company-go--invoke-autocomplete) "\n" t)))
+  (let ((candidates (company-go--get-candidates (split-string (company-go--invoke-autocomplete) "\n" t))))
+    (if (equal candidates '("PANIC"))
+        (error "GOCODE PANIC: Please check your code by \"go build\"")
+      candidates)))
 
 (defun company-go--location (arg)
   (when (require 'go-mode nil t)

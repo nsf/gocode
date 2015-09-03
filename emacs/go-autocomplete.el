@@ -175,7 +175,13 @@
         nil)))
 
 (defun ac-go-candidates ()
-  (ac-go-get-candidates (ac-go-format-autocomplete (ac-go-invoke-autocomplete))))
+  (let ((candidates (ac-go-get-candidates
+                     (ac-go-format-autocomplete (ac-go-invoke-autocomplete)))))
+    (if (equal candidates '("PANIC"))
+        (progn
+          (message "GOCODE PANIC: Please check your code by \"go build\"")
+          nil)
+      candidates)))
 
 (defun ac-go-prefix ()
   (or (ac-prefix-symbol)
