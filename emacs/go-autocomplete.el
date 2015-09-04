@@ -35,8 +35,11 @@
 ;;; Code:
 
 (eval-when-compile
-  (require 'cl)
-  (require 'auto-complete))
+  (require 'cl))
+
+(require 'auto-complete)
+
+(declare-function yas-expand-snippet "yasnippet")
 
 (defgroup go-autocomplete nil
   "auto-complete for go language."
@@ -126,10 +129,10 @@
 (defun ac-go-action ()
   (let ((item (cdr ac-last-completion)))
     (when (stringp item)
-      (setq symbol (get-text-property 0 'summary item))
-      (message "%s" symbol)
-      (when (and (featurep 'yasnippet) ac-go-expand-arguments-into-snippets)
-        (ac-go-insert-yas-snippet-string symbol)))))
+      (let ((symbol (get-text-property 0 'summary item)))
+        (message "%s" symbol)
+        (when (and (featurep 'yasnippet) ac-go-expand-arguments-into-snippets)
+          (ac-go-insert-yas-snippet-string symbol))))))
 
 (defun ac-go-insert-yas-snippet-string (s)
   (let ((ret "") (pos (point)) match-res match args)
