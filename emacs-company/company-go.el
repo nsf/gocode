@@ -4,7 +4,7 @@
 
 ;; Author: nsf <no.smile.face@gmail.com>
 ;; Keywords: languages
-;; Package-Requires: ((company "0.8.0"))
+;; Package-Requires: ((company "0.8.0") (go-mode "1.0.0"))
 
 ;; No license, this code is under public domain, do whatever you want.
 
@@ -13,9 +13,10 @@
 (require 'company-template)
 
 (eval-when-compile
-  (require 'cl)
-  (require 'company)
-  (require 'go-mode))
+  (require 'cl))
+
+(require 'go-mode)
+(require 'company)
 
 ;; Close gocode daemon at exit unless it was already running
 (eval-after-load "go-mode"
