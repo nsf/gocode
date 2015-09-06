@@ -15,7 +15,7 @@ var (
 	g_format    = flag.String("f", "nice", "output format (vim | emacs | nice | csv | json)")
 	g_input     = flag.String("in", "", "use this file instead of stdin input")
 	g_sock      = create_sock_flag("sock", "socket type (unix | tcp)")
-	g_addr      = flag.String("addr", "localhost:37373", "address for tcp socket")
+	g_addr      = flag.String("addr", "127.0.0.1:37373", "address for tcp socket")
 	g_debug     = flag.Bool("debug", false, "enable server-side debug mode")
 	g_profile   = flag.Int("profile", 0, "port on which to expose profiling information for pprof; 0 to disable profiling")
 )
