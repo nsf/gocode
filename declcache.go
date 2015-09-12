@@ -24,7 +24,7 @@ type package_import struct {
 
 // Parses import declarations until the first non-import declaration and fills
 // `packages` array with import information.
-func collect_package_imports(filename string, decls []ast.Decl, context build.Context) []package_import {
+func collect_package_imports(filename string, decls []ast.Decl, context *package_lookup_context) []package_import {
 	pi := make([]package_import, 0, 16)
 	for _, decl := range decls {
 		if gd, ok := decl.(*ast.GenDecl); ok && gd.Tok == token.IMPORT {
@@ -60,10 +60,10 @@ type decl_file_cache struct {
 	filescope *scope
 
 	fset    *token.FileSet
-	context build.Context
+	context *package_lookup_context
 }
 
-func new_decl_file_cache(name string, context build.Context) *decl_file_cache {
+func new_decl_file_cache(name string, context *package_lookup_context) *decl_file_cache {
 	return &decl_file_cache{
 		name:    name,
 		context: context,
@@ -147,7 +147,7 @@ func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
 	})
 }
 
-func abs_path_for_package(filename, p string, context build.Context) (string, bool) {
+func abs_path_for_package(filename, p string, context *package_lookup_context) (string, bool) {
 	dir, _ := filepath.Split(filename)
 	if len(p) == 0 {
 		return "", false
@@ -242,18 +242,19 @@ func log_found_package_maybe(imp, pkgpath string) {
 	}
 }
 
-func log_build_context(context build.Context) {
+func log_build_context(context *package_lookup_context) {
 	log.Printf(" GOROOT: %s\n", context.GOROOT)
 	log.Printf(" GOPATH: %s\n", context.GOPATH)
 	log.Printf(" GOOS: %s\n", context.GOOS)
 	log.Printf(" GOARCH: %s\n", context.GOARCH)
+	log.Printf(" GBProjectRoot: %q\n", context.GBProjectRoot)
 	log.Printf(" lib-path: %q\n", g_config.LibPath)
 }
 
 // find_global_file returns the file path of the compiled package corresponding to the specified
 // import, and a boolean stating whether such path is valid.
 // TODO: Return only one value, possibly empty string if not found.
-func find_global_file(imp string, context build.Context) (string, bool) {
+func find_global_file(imp string, context *package_lookup_context) (string, bool) {
 	// gocode synthetically generates the builtin package
 	// "unsafe", since the "unsafe.a" package doesn't really exist.
 	// Thus, when the user request for the package "unsafe" we
@@ -280,12 +281,16 @@ func find_global_file(imp string, context build.Context) (string, bool) {
 				log_found_package_maybe(imp, pkg_path)
 				return pkg_path, true
 			}
-			// Also check the relevant pkg/OS/ARCH dir for the libpath, if provided.
-			pkg_path = filepath.Join(p, "pkg", context.GOOS, context.GOARCH, pkgfile)
-			if file_exists(pkg_path) {
-				log_found_package_maybe(imp, pkg_path)
-				return pkg_path, true
-			}
+		}
+	}
+
+	// gb-specific lookup mode, only if the root dir was found
+	if g_config.PackageLookupMode == "gb" && context.GBProjectRoot != "" {
+		root := context.GBProjectRoot
+		pkg_path := filepath.Join(root, "pkg", context.GOOS+"-"+context.GOARCH, pkgfile)
+		if file_exists(pkg_path) {
+			log_found_package_maybe(imp, pkg_path)
+			return pkg_path, true
 		}
 	}
 
@@ -324,13 +329,18 @@ func package_name(file *ast.File) string {
 // Thread-safe collection of DeclFileCache entities.
 //-------------------------------------------------------------------------
 
+type package_lookup_context struct {
+	build.Context
+	GBProjectRoot string
+}
+
 type decl_cache struct {
 	cache   map[string]*decl_file_cache
-	context build.Context
+	context *package_lookup_context
 	sync.Mutex
 }
 
-func new_decl_cache(context build.Context) *decl_cache {
+func new_decl_cache(context *package_lookup_context) *decl_cache {
 	return &decl_cache{
 		cache:   make(map[string]*decl_file_cache),
 		context: context,

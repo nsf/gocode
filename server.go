@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"go/build"
 	"log"
 	"net"
 	"net/rpc"
@@ -55,7 +54,7 @@ type daemon struct {
 	autocomplete *auto_complete_context
 	pkgcache     package_cache
 	declcache    *decl_cache
-	context      build.Context
+	context      package_lookup_context
 }
 
 func new_daemon(network, address string) *daemon {
@@ -69,14 +68,14 @@ func new_daemon(network, address string) *daemon {
 
 	d.cmd_in = make(chan int, 1)
 	d.pkgcache = new_package_cache()
-	d.declcache = new_decl_cache(d.context)
+	d.declcache = new_decl_cache(&d.context)
 	d.autocomplete = new_auto_complete_context(d.pkgcache, d.declcache)
 	return d
 }
 
 func (this *daemon) drop_cache() {
 	this.pkgcache = new_package_cache()
-	this.declcache = new_decl_cache(this.context)
+	this.declcache = new_decl_cache(&this.context)
 	this.autocomplete = new_auto_complete_context(this.pkgcache, this.declcache)
 }
 
@@ -141,6 +140,16 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		g_daemon.context = context
 		g_daemon.drop_cache()
 	}
+	if g_config.PackageLookupMode == "gb" {
+		// when package lookup mode is gb, we set GOPATH to "" explicitly and
+		// GBProjectRoot becomes valid (or empty)
+		var err error
+		g_daemon.context.GOPATH = ""
+		g_daemon.context.GBProjectRoot, err = find_gb_project_root(filename)
+		if *g_debug {
+			log.Printf("Gb project root not found: %s", err)
+		}
+	}
 	if *g_debug {
 		var buf bytes.Buffer
 		log.Printf("Got autocompletion request for '%s'\n", filename)
@@ -202,5 +211,7 @@ func server_set(key, value string) string {
 	} else if value == "\x00" {
 		return g_config.list_option(key)
 	}
+	// drop cache on settings changes
+	g_daemon.drop_cache()
 	return g_config.set_option(key, value)
 }

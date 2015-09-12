@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"go/ast"
-	"go/build"
 	"go/parser"
 	"go/token"
 	"log"
@@ -35,10 +34,10 @@ type auto_complete_file struct {
 
 	cursor  int // for current file buffer only
 	fset    *token.FileSet
-	context build.Context
+	context *package_lookup_context
 }
 
-func new_auto_complete_file(name string, context build.Context) *auto_complete_file {
+func new_auto_complete_file(name string, context *package_lookup_context) *auto_complete_file {
 	p := new(auto_complete_file)
 	p.name = name
 	p.cursor = -1

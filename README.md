@@ -142,6 +142,10 @@ You can change all available options using `gocode set` command. The config file
 
    A string option. If is not empty, gocode will forcefully redirect the logging into that file. Also forces enabling of the debug mode on the server side. Default: "" (empty).
 
+ - *package-lookup-mode*
+
+   A string option. If **go**, use standard Go package lookup rules. If **gb**, use gb-specific lookup rules. See https://github.com/constabulary/gb for details. Default: **go**.
+
 ### Debugging
 
 If something went wrong, the first thing you may want to do is manually start the gocode daemon with a debug mode enabled and in a separate terminal window. It will show you all the stack traces, panics if any and additional info about autocompletion requests. Shutdown the daemon if it was already started and run a new one explicitly with a debug mode enabled:
