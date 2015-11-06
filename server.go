@@ -178,18 +178,6 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 	return candidates, d
 }
 
-func server_cursor_type_pkg(file []byte, filename string, cursor int) (typ, pkg string) {
-	defer func() {
-		if err := recover(); err != nil {
-			print_backtrace(err)
-
-			// drop cache
-			g_daemon.drop_cache()
-		}
-	}()
-	return g_daemon.autocomplete.cursor_type_pkg(file, filename, cursor)
-}
-
 func server_close(notused int) int {
 	g_daemon.close()
 	return 0

@@ -290,25 +290,3 @@ func struct_members_only(decl *decl) *decl {
 	}
 	return &new_decl
 }
-
-// deduce the type of the expression under the cursor, a bit of copy & paste from the method
-// above, returns true if deduction was successful (even if the result of it is nil)
-func (c *auto_complete_context) deduce_cursor_type_pkg(file []byte, cursor int) (ast.Expr, string, bool) {
-	if cursor <= 0 {
-		return nil, "", true
-	}
-
-	iter := new_token_iterator(file, cursor)
-
-	// read backwards to extract expression
-	e := string(iter.extract_go_expr())
-
-	expr, err := parser.ParseExpr(e)
-	if err != nil {
-		return nil, "", false
-	} else {
-		t, scope, _ := infer_type(expr, c.current.scope, -1)
-		return t, lookup_pkg(get_type_path(t), scope), t != nil
-	}
-	return nil, "", false
-}
