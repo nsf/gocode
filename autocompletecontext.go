@@ -206,6 +206,12 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 		if cc.decl.class == decl_package && !ast.IsExported(decl.name) {
 			continue
 		}
+		if cc.struct_field {
+			// if we're autocompleting struct field init, skip all methods
+			if _, ok := decl.typ.(*ast.FuncType); ok {
+				continue
+			}
+		}
 		b.append_decl(cc.partial, decl.name, decl, class)
 	}
 	// propose all children of an underlying struct/interface type
