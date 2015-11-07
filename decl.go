@@ -324,6 +324,9 @@ func method_of(d ast.Decl) string {
 		if t.Recv != nil {
 			switch t := t.Recv.List[0].Type.(type) {
 			case *ast.StarExpr:
+				if se, ok := t.X.(*ast.SelectorExpr); ok {
+					return se.Sel.Name
+				}
 				return t.X.(*ast.Ident).Name
 			case *ast.Ident:
 				return t.Name
