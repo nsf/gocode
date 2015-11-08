@@ -46,3 +46,6 @@ test.0045 - if statement
 test.0046 - ":=" statement
 test.0047 - completion on struct with undefined embedded type
 test.0048 - completion with cursor in the middle of existing token
+test.0049 - anonymous struct type as a function argument
+test.0050 - anonymous struct pointer type as a function argument
+test.0051 - go parser stops parsing after 10 errors without AllErrors flag
