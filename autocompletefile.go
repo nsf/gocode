@@ -56,7 +56,7 @@ func (f *auto_complete_file) process_data(data []byte) {
 	cur, filedata, block := rip_off_decl(data, f.cursor)
 	file, err := parser.ParseFile(f.fset, "", filedata, 0)
 	if err != nil && *g_debug {
-		log.Printf("Error parsing input file: %s", err)
+		log.Printf("Error parsing input file (outer block): %s", err)
 	}
 	f.package_name = package_name(file)
 
@@ -75,7 +75,10 @@ func (f *auto_complete_file) process_data(data []byte) {
 	}
 	if block != nil {
 		// process local function as top-level declaration
-		decls, _ := parse_decl_list(f.fset, block)
+		decls, err := parse_decl_list(f.fset, block)
+		if err != nil && *g_debug {
+			log.Printf("Error parsing input file (inner block): %s", err)
+		}
 
 		for _, d := range decls {
 			anonymify_ast(d, 0, f.filescope)
