@@ -314,13 +314,25 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 		// env var is up will bring more trouble. Because we also need to pass
 		// it from client to server, make sure their editors set it, etc.
 		// So, whatever, let's just pretend it's always on.
-		limp := filepath.Join(context.CurrentPackagePath, "vendor", imp)
-		if p, err := context.Import(limp, "", build.AllowBinary|build.FindOnly); err == nil {
-			try_autobuild(p)
-			if file_exists(p.PkgObj) {
-				log_found_package_maybe(imp, p.PkgObj)
-				return p.PkgObj, true
+		package_path := context.CurrentPackagePath
+		for {
+			limp := filepath.Join(package_path, "vendor", imp)
+			if p, err := context.Import(limp, "", build.AllowBinary|build.FindOnly); err == nil {
+				try_autobuild(p)
+				if file_exists(p.PkgObj) {
+					log_found_package_maybe(imp, p.PkgObj)
+					return p.PkgObj, true
+				}
 			}
+			if package_path == "" {
+				break
+			}
+			next_path := filepath.Base(package_path)
+			// let's protect ourselves from inf recursion here
+			if next_path == package_path {
+				break
+			}
+			package_path = next_path
 		}
 	}
 
