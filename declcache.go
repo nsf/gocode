@@ -327,7 +327,7 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 			if package_path == "" {
 				break
 			}
-			next_path := filepath.Base(package_path)
+			next_path := filepath.Dir(package_path)
 			// let's protect ourselves from inf recursion here
 			if next_path == package_path {
 				break
