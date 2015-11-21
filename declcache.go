@@ -236,6 +236,17 @@ func build_package(p *build.Package) error {
 	return nil
 }
 
+// executes autobuild function if autobuild option is enabled, logs error and
+// ignores it
+func try_autobuild(p *build.Package) {
+	if g_config.Autobuild {
+		err := autobuild(p)
+		if err != nil && *g_debug {
+			log.Printf("Autobuild error: %s\n", err)
+		}
+	}
+}
+
 func log_found_package_maybe(imp, pkgpath string) {
 	if *g_debug {
 		log.Printf("Found %q at %q\n", imp, pkgpath)
@@ -294,14 +305,27 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 		}
 	}
 
-	p, err := context.Import(imp, "", build.AllowBinary|build.FindOnly)
-	if err == nil {
-		if g_config.Autobuild {
-			err = autobuild(p)
-			if err != nil && *g_debug {
-				log.Printf("Autobuild error: %s\n", err)
+	if context.CurrentPackagePath != "" {
+		// Try vendor path first, see GO15VENDOREXPERIMENT.
+		// We don't check this environment variable however, seems like there is
+		// almost no harm in doing so (well.. if you experiment with vendoring,
+		// gocode will fail after enabling/disabling the flag, and you'll be
+		// forced to get rid of vendor binaries). But asking users to set this
+		// env var is up will bring more trouble. Because we also need to pass
+		// it from client to server, make sure their editors set it, etc.
+		// So, whatever, let's just pretend it's always on.
+		limp := filepath.Join(context.CurrentPackagePath, "vendor", imp)
+		if p, err := context.Import(limp, "", build.AllowBinary|build.FindOnly); err == nil {
+			try_autobuild(p)
+			if file_exists(p.PkgObj) {
+				log_found_package_maybe(imp, p.PkgObj)
+				return p.PkgObj, true
 			}
 		}
+	}
+
+	if p, err := context.Import(imp, "", build.AllowBinary|build.FindOnly); err == nil {
+		try_autobuild(p)
 		if file_exists(p.PkgObj) {
 			log_found_package_maybe(imp, p.PkgObj)
 			return p.PkgObj, true
@@ -331,7 +355,8 @@ func package_name(file *ast.File) string {
 
 type package_lookup_context struct {
 	build.Context
-	GBProjectRoot string
+	GBProjectRoot      string
+	CurrentPackagePath string
 }
 
 type decl_cache struct {
