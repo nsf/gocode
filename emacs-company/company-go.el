@@ -203,5 +203,6 @@ triggers a completion immediately."
        (company-go--insert-arguments
         (get-text-property 0 'meta arg))))))
 
+(add-to-list 'company-backends 'company-go)
 (provide 'company-go)
 ;;; company-go.el ends here
