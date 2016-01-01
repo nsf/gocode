@@ -138,7 +138,7 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 	}()
 	// TODO: Probably we don't care about comparing all the fields, checking GOROOT and GOPATH
 	// should be enough.
-	if !reflect.DeepEqual(g_daemon.context, context) {
+	if !reflect.DeepEqual(g_daemon.context.Context, context.Context) {
 		g_daemon.context = context
 		g_daemon.drop_cache()
 	}
