@@ -187,14 +187,14 @@ func find_go_dag_package(imp, filedir string) (string, bool) {
 
 // autobuild compares the mod time of the source files of the package, and if any of them is newer
 // than the package object file will rebuild it.
-func autobuild(p *build.Package) error {
+func autobuild(p *build.Package, context *package_lookup_context) error {
 	if p.Dir == "" {
 		return fmt.Errorf("no files to build")
 	}
 	ps, err := os.Stat(p.PkgObj)
 	if err != nil {
 		// Assume package file does not exist and build for the first time.
-		return build_package(p)
+		return build_package(p, context)
 	}
 	pt := ps.ModTime()
 	fs, err := readdir(p.Dir)
@@ -207,16 +207,20 @@ func autobuild(p *build.Package) error {
 		}
 		if f.ModTime().After(pt) {
 			// Source file is newer than package file; rebuild.
-			return build_package(p)
+			return build_package(p, context)
 		}
 	}
 	return nil
 }
 
+func gbgopath(root string) string {
+	return fmt.Sprintf("%s:%s/vendor", root, root)
+}
+
 // build_package builds the package by calling `go install package/import`. If everything compiles
 // correctly, the newly compiled package should then be in the usual place in the `$GOPATH/pkg`
 // directory, and gocode will pick it up from there.
-func build_package(p *build.Package) error {
+func build_package(p *build.Package, context *package_lookup_context) error {
 	if *g_debug {
 		log.Printf("-------------------")
 		log.Printf("rebuilding package %s", p.Name)
@@ -226,21 +230,30 @@ func build_package(p *build.Package) error {
 		log.Printf("package source files: %v", p.GoFiles)
 	}
 	// TODO: Should read STDERR rather than STDOUT.
-	out, err := exec.Command("go", "install", p.ImportPath).Output()
-	if err != nil {
-		return err
+	cmd := exec.Command("go", "install", p.ImportPath)
+
+	if context.GBProjectRoot != "" {
+		cmd.Env = append(cmd.Env, "GOPATH="+gbgopath(context.GBProjectRoot))
 	}
+
+	out, err := cmd.CombinedOutput()
+
 	if *g_debug {
 		log.Printf("build out: %s\n", string(out))
 	}
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // executes autobuild function if autobuild option is enabled, logs error and
 // ignores it
-func try_autobuild(p *build.Package) {
+func try_autobuild(p *build.Package, context *package_lookup_context) {
 	if g_config.Autobuild {
-		err := autobuild(p)
+		err := autobuild(p, context)
 		if err != nil && *g_debug {
 			log.Printf("Autobuild error: %s\n", err)
 		}
@@ -299,9 +312,29 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 	if g_config.PackageLookupMode == "gb" && context.GBProjectRoot != "" {
 		root := context.GBProjectRoot
 		pkg_path := filepath.Join(root, "pkg", context.GOOS+"-"+context.GOARCH, pkgfile)
+
+		if *g_debug {
+			log.Printf("GB: Calculated pkg_path: %s => %s", pkgfile, pkg_path)
+		}
+
 		if file_exists(pkg_path) {
 			log_found_package_maybe(imp, pkg_path)
 			return pkg_path, true
+		}
+
+		if p, err := context.gbContext.Import(imp, "", build.AllowBinary|build.FindOnly); err == nil {
+			log.Printf("GB: Found source, trying autobuild...")
+			try_autobuild(p, context)
+			if file_exists(p.PkgObj) {
+				log_found_package_maybe(imp, p.PkgObj)
+				return p.PkgObj, true
+			}
+		} else if *g_debug {
+			log.Printf("GB: unable to import source: %s", err)
+		}
+
+		if *g_debug {
+			log.Printf("GB: pkg not found (not compiled?)")
 		}
 	}
 
@@ -318,7 +351,7 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 		for {
 			limp := filepath.Join(package_path, "vendor", imp)
 			if p, err := context.Import(limp, "", build.AllowBinary|build.FindOnly); err == nil {
-				try_autobuild(p)
+				try_autobuild(p, context)
 				if file_exists(p.PkgObj) {
 					log_found_package_maybe(imp, p.PkgObj)
 					return p.PkgObj, true
@@ -337,7 +370,7 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 	}
 
 	if p, err := context.Import(imp, "", build.AllowBinary|build.FindOnly); err == nil {
-		try_autobuild(p)
+		try_autobuild(p, context)
 		if file_exists(p.PkgObj) {
 			log_found_package_maybe(imp, p.PkgObj)
 			return p.PkgObj, true
@@ -369,6 +402,8 @@ type package_lookup_context struct {
 	build.Context
 	GBProjectRoot      string
 	CurrentPackagePath string
+
+	gbContext build.Context
 }
 
 type decl_cache struct {

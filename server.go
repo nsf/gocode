@@ -150,7 +150,14 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		g_daemon.context.GOPATH = ""
 		g_daemon.context.GBProjectRoot, err = find_gb_project_root(filename)
 		if *g_debug {
-			log.Printf("Gb project root not found: %s", err)
+			if err != nil {
+				log.Printf("Gb project root not found: %s", err)
+			} else {
+				log.Printf("Gb project root: %s", g_daemon.context.GBProjectRoot)
+
+				g_daemon.context.gbContext = g_daemon.context.Context
+				g_daemon.context.gbContext.GOPATH = gbgopath(g_daemon.context.GBProjectRoot)
+			}
 		}
 	case "go":
 		// get current package path for GO15VENDOREXPERIMENT hack
