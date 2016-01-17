@@ -38,6 +38,8 @@ Also watch the [demo screencast](http://nosmileface.ru/images/gocode-demo.swf).
 
 #### Vim manual installation
 
+Note: As of go 1.5 there is no $GOROOT/misc/vim script. Suggested installation is via [vim-go plugin](https://github.com/fatih/vim-go).
+
 In order to install vim scripts, you need to fulfill the following steps:
 
  1. Install official Go vim scripts from **$GOROOT/misc/vim**. If you did that already, proceed to the step 2.
