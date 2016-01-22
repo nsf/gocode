@@ -149,7 +149,7 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		var err error
 		g_daemon.context.GOPATH = ""
 		g_daemon.context.GBProjectRoot, err = find_gb_project_root(filename)
-		if *g_debug {
+		if *g_debug && err != nil {
 			log.Printf("Gb project root not found: %s", err)
 		}
 	case "go":
@@ -157,6 +157,9 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		g_daemon.context.CurrentPackagePath = ""
 		pkg, err := g_daemon.context.ImportDir(filepath.Dir(filename), build.FindOnly)
 		if err == nil {
+			if *g_debug {
+				log.Printf("Go project path: %s", pkg.ImportPath)
+			}
 			g_daemon.context.CurrentPackagePath = pkg.ImportPath
 		} else if *g_debug {
 			log.Printf("Go project path not found: %s", err)
