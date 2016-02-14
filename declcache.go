@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -224,9 +225,23 @@ func build_package(p *build.Package) error {
 		log.Printf("package object: %s", p.PkgObj)
 		log.Printf("package source dir: %s", p.Dir)
 		log.Printf("package source files: %v", p.GoFiles)
+		log.Printf("GOPATH: %v", g_daemon.context.GOPATH)
+		log.Printf("GOROOT: %v", g_daemon.context.GOROOT)
 	}
+	env := os.Environ()
+	for i, v := range env {
+		if strings.HasPrefix(v, "GOPATH=") {
+			env[i] = "GOPATH=" + g_daemon.context.GOPATH
+		} else if strings.HasPrefix(v, "GOROOT=") {
+			env[i] = "GOROOT=" + g_daemon.context.GOROOT
+		}
+	}
+
+	cmd := exec.Command("go", "install", p.ImportPath)
+	cmd.Env = env
+
 	// TODO: Should read STDERR rather than STDOUT.
-	out, err := exec.Command("go", "install", p.ImportPath).Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return err
 	}
