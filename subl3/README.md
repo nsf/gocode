@@ -6,7 +6,7 @@ This plugin is written by me (nsf) as a result of frustration with GoSublime. I 
 
 The plugin does:
 
-1. Basic gocode autocompletion. I did my best presenting the results to the user. Maybe it's possible to improve that part a bit, not quite sure yet. For functions I use "{**name**}\t{**returns**}", for everything else "{**name**}\t{**type**}". In addition to that functions are properly augmented with argument snippets.
+1. Basic gocode autocompletion. I did my best presenting the results to the user. Maybe it's possible to improve that part a bit, not quite sure yet. For functions I use "{**class**} {**name**}\t{**returns**}", for everything else "{**class**} {**name**}\t{**type**}". In addition to that functions are properly augmented with argument snippets.
 
 2. Gofmt on save. Here I use difflib to calculate differences, which results in line by line changes. GoSublime uses [google-diff-match-patch](https://code.google.com/archive/p/google-diff-match-patch/) library, which calculates changes on finer granularity, maybe I should switch to that lib as well.
 

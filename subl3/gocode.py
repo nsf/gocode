@@ -70,10 +70,10 @@ def extract_arguments_and_returns(sig):
 def hint_and_subj(cls, name, type):
 	subj = name
 	if cls == "func":
-		hint = name
+		hint = cls + " " + name
 		args, returns = extract_arguments_and_returns(type)
 		if returns:
-			hint = hint + "\t" + ", ".join(returns)
+			hint += "\t" + ", ".join(returns)
 		if args:
 			sargs = []
 			for i, a in enumerate(args):
@@ -83,7 +83,7 @@ def hint_and_subj(cls, name, type):
 		else:
 			subj += "()"
 	else:
-		hint = name + "\t" + type
+		hint = cls + " " + name + "\t" + type
 	return hint, subj
 
 def diff_sanity_check(a, b):
@@ -108,16 +108,16 @@ class GocodeGofmtCommand(sublime_plugin.TextCommand):
 			if line.startswith("?"): # skip hint lines
 				continue
 
-			l = len(line)-2
+			l = (len(line)-2)+1
 			if line.startswith("-"):
-				diff_sanity_check(view.substr(sublime.Region(i, i+l)), line[2:])
+				diff_sanity_check(view.substr(sublime.Region(i, i+l-1)), line[2:])
 				view.erase(edit, sublime.Region(i, i+l))
 			elif line.startswith("+"):
-				view.insert(edit, i, line[2:])
-				i += l+1
+				view.insert(edit, i, line[2:]+"\n")
+				i += l
 			else:
-				diff_sanity_check(view.substr(sublime.Region(i, i+l)), line[2:])
-				i += l+1
+				diff_sanity_check(view.substr(sublime.Region(i, i+l-1)), line[2:])
+				i += l
 
 class Gocode(sublime_plugin.EventListener):
 	def on_query_completions(self, view, prefix, locations):
