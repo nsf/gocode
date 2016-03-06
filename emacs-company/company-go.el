@@ -199,7 +199,8 @@ triggers a completion immediately."
     (location (company-go--location arg))
     (sorted t)
     (post-completion
-     (when company-go-insert-arguments
+     (when (and company-go-insert-arguments
+                (not (char-equal ?\( (following-char))))
        (company-go--insert-arguments
         (get-text-property 0 'meta arg))))))
 
