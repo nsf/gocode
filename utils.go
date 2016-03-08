@@ -14,7 +14,7 @@ import (
 )
 
 // our own readdir, which skips the files it cannot lstat
-func readdir(name string) ([]os.FileInfo, error) {
+func readdir_lstat(name string) ([]os.FileInfo, error) {
 	f, err := os.Open(name)
 	if err != nil {
 		return nil, err
@@ -35,6 +35,20 @@ func readdir(name string) ([]os.FileInfo, error) {
 		out = append(out, s)
 	}
 	return out, nil
+}
+
+// our other readdir function, only opens and reads
+func readdir(dirname string) []os.FileInfo {
+	f, err := os.Open(dirname)
+	if err != nil {
+		return nil
+	}
+	fi, err := f.Readdir(-1)
+	f.Close()
+	if err != nil {
+		panic(err)
+	}
+	return fi
 }
 
 // returns truncated 'data' and amount of bytes skipped (for cursor pos adjustment)

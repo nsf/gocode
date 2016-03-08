@@ -198,7 +198,7 @@ func autobuild(p *build.Package) error {
 		return build_package(p)
 	}
 	pt := ps.ModTime()
-	fs, err := readdir(p.Dir)
+	fs, err := readdir_lstat(p.Dir)
 	if err != nil {
 		return err
 	}

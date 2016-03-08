@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -227,6 +228,45 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 	b.append_embedded(cc.partial, cc.decl, class)
 }
 
+func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {
+	pkgdir := fmt.Sprintf("%s_%s", g_daemon.context.GOOS, g_daemon.context.GOARCH)
+	srcdirs := g_daemon.context.SrcDirs()
+	for _, srcpath := range srcdirs {
+		// convert srcpath to pkgpath and get candidates
+		pkgpath := filepath.Join(filepath.Dir(srcpath), "pkg", pkgdir)
+		get_import_candidates_dir(pkgpath, partial, b)
+	}
+}
+
+func get_import_candidates_dir(root, partial string, b *out_buffers) {
+	var path string
+	var match bool
+	if strings.HasSuffix(partial, "/") {
+		path = filepath.Join(root, partial)
+	} else {
+		path = filepath.Join(root, filepath.Dir(partial))
+		match = true
+	}
+	fi := readdir(path)
+	for i := range fi {
+		name := fi[i].Name()
+		rel, err := filepath.Rel(root, filepath.Join(path, name))
+		if err != nil || match && !has_prefix(rel, partial, b.ignorecase) {
+			continue
+		} else if fi[i].IsDir() {
+			get_import_candidates_dir(root, rel+"/", b)
+		} else {
+			ext := filepath.Ext(name)
+			if ext != ".a" {
+				continue
+			} else {
+				rel = rel[0 : len(rel)-2]
+			}
+			b.candidates = append(b.candidates, candidate{Name: rel, Class: decl_import})
+		}
+	}
+}
+
 // returns three slices of the same length containing:
 // 1. apropos names
 // 2. apropos types (pretty-printed)
@@ -281,7 +321,14 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 		class = decl_package
 	}
 
-	if cc.decl == nil {
+	if cc.decl_import {
+		c.get_import_candidates(cc.partial, b)
+		if cc.partial != "" && len(b.candidates) == 0 {
+			// as a fallback, try case insensitive approach
+			b.ignorecase = true
+			c.get_import_candidates(cc.partial, b)
+		}
+	} else if cc.decl == nil {
 		// In case if no declaraion is a subject of completion, propose all:
 		set := c.make_decl_set(c.current.scope)
 		c.get_candidates_from_set(set, cc.partial, class, b)
@@ -405,7 +452,7 @@ func find_other_package_files(filename, package_name string) []string {
 	}
 
 	dir, file := filepath.Split(filename)
-	files_in_dir, err := readdir(dir)
+	files_in_dir, err := readdir_lstat(dir)
 	if err != nil {
 		panic(err)
 	}
