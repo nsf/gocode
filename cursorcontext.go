@@ -13,6 +13,7 @@ type cursor_context struct {
 	decl         *decl
 	partial      string
 	struct_field bool
+	decl_import  bool
 }
 
 type token_iterator struct {
@@ -281,6 +282,49 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 
 	// figure out what is just before the cursor
 	switch tok := iter.token(); tok.tok {
+	case token.STRING:
+		// make sure cursor is inside the string
+		s := tok.literal()
+		if len(s) > 1 && s[len(s)-1] == '"' && tok.off+len(s) <= cursor {
+			return cursor_context{}, true
+		}
+		// now figure out if inside an import declaration
+		var ptok = token.STRING
+		for iter.go_back() {
+			itok := iter.token().tok
+			switch itok {
+			case token.STRING:
+				switch ptok {
+				case token.SEMICOLON, token.IDENT, token.PERIOD:
+				default:
+					return cursor_context{}, true
+				}
+			case token.LPAREN, token.SEMICOLON:
+				switch ptok {
+				case token.STRING, token.IDENT, token.PERIOD:
+				default:
+					return cursor_context{}, true
+				}
+			case token.IDENT, token.PERIOD:
+				switch ptok {
+				case token.STRING:
+				default:
+					return cursor_context{}, true
+				}
+			case token.IMPORT:
+				switch ptok {
+				case token.STRING, token.IDENT, token.PERIOD, token.LPAREN:
+					path_len := cursor - tok.off
+					path := s[1:path_len]
+					return cursor_context{decl_import: true, partial: path}, true
+				default:
+					return cursor_context{}, true
+				}
+			default:
+				return cursor_context{}, true
+			}
+			ptok = itok
+		}
 	case token.PERIOD:
 		// we're '<whatever>.'
 		// figure out decl, Partial is ""
