@@ -165,7 +165,7 @@ func abs_path_for_package(filename, p string, context *package_lookup_context) (
 
 func path_and_alias(imp *ast.ImportSpec) (string, string) {
 	path := ""
-	if imp.Path != nil {
+	if imp.Path != nil && len(imp.Path.Value) > 0 {
 		path = string(imp.Path.Value)
 		path = path[1 : len(path)-1]
 	}
