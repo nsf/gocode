@@ -234,7 +234,7 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 	for _, srcpath := range srcdirs {
 		// convert srcpath to pkgpath and get candidates
 		pkgpath := filepath.Join(filepath.Dir(srcpath), "pkg", pkgdir)
-		partial = strings.Replace(partial, `\`, `/`, -1)
+		partial = filepath.ToSlash(partial)
 		get_import_candidates_dir(pkgpath, partial, b)
 	}
 }
@@ -263,7 +263,7 @@ func get_import_candidates_dir(root, partial string, b *out_buffers) {
 			} else {
 				rel = rel[0 : len(rel)-2]
 			}
-			rel = strings.Replace(rel, `\`, `/`, -1)
+			rel = filepath.ToSlash(rel)
 			b.candidates = append(b.candidates, candidate{Name: rel, Class: decl_import})
 		}
 	}
