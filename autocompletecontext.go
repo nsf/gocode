@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -233,30 +234,34 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 	srcdirs := g_daemon.context.SrcDirs()
 	for _, srcpath := range srcdirs {
 		// convert srcpath to pkgpath and get candidates
-		pkgpath := filepath.Join(filepath.Dir(srcpath), "pkg", pkgdir)
-		get_import_candidates_dir(pkgpath, partial, b)
+		pkgpath := path.Join(path.Dir(srcpath), "pkg", pkgdir)
+		get_import_candidates_dir(filepath.ToSlash(pkgpath), partial, b)
 	}
 }
 
 func get_import_candidates_dir(root, partial string, b *out_buffers) {
-	var path string
+	var fpath string
 	var match bool
 	if strings.HasSuffix(partial, "/") {
-		path = filepath.Join(root, partial)
+		fpath = path.Join(root, partial)
 	} else {
-		path = filepath.Join(root, filepath.Dir(partial))
+		fpath = path.Join(root, path.Dir(partial))
 		match = true
 	}
-	fi := readdir(path)
+	fi := readdir(fpath)
 	for i := range fi {
 		name := fi[i].Name()
-		rel, err := filepath.Rel(root, filepath.Join(path, name))
-		if err != nil || match && !has_prefix(rel, partial, b.ignorecase) {
+		rel, err := filepath.Rel(root, path.Join(fpath, name))
+		if err != nil {
+			continue
+		}
+		rel = filepath.ToSlash(rel)
+		if match && !has_prefix(rel, partial, b.ignorecase) {
 			continue
 		} else if fi[i].IsDir() {
 			get_import_candidates_dir(root, rel+"/", b)
 		} else {
-			ext := filepath.Ext(name)
+			ext := path.Ext(name)
 			if ext != ".a" {
 				continue
 			} else {
