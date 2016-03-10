@@ -253,7 +253,7 @@ func get_import_candidates_dir(root, partial string, b *out_buffers) {
 		name := fi[i].Name()
 		rel, err := filepath.Rel(root, path.Join(fpath, name))
 		if err != nil {
-			continue
+			panic(err)
 		}
 		rel = filepath.ToSlash(rel)
 		if match && !has_prefix(rel, partial, b.ignorecase) {
