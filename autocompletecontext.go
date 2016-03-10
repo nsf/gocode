@@ -234,8 +234,8 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 	srcdirs := g_daemon.context.SrcDirs()
 	for _, srcpath := range srcdirs {
 		// convert srcpath to pkgpath and get candidates
-		pkgpath := path.Join(path.Dir(srcpath), "pkg", pkgdir)
-		get_import_candidates_dir(filepath.ToSlash(pkgpath), partial, b)
+		pkgpath := path.Join(path.Dir(filepath.ToSlash(srcpath)), "pkg", pkgdir)
+		get_import_candidates_dir(pkgpath, partial, b)
 	}
 }
 
