@@ -55,11 +55,12 @@ type gc_bin_parser struct {
 	buf  []byte // for reading strings
 
 	// object lists
-	strList  []string         // in order of appearance
-	pkgList  []aliasedPkgName // in order of appearance
-	typList  []ast.Expr       // in order of appearance
-	callback func(pkg string, decl ast.Decl)
-	pfc      *package_file_cache
+	strList       []string         // in order of appearance
+	pkgList       []aliasedPkgName // in order of appearance
+	typList       []ast.Expr       // in order of appearance
+	callback      func(pkg string, decl ast.Decl)
+	pfc           *package_file_cache
+	trackAllTypes bool
 
 	// position encoding
 	posInfoFormat bool
@@ -69,6 +70,7 @@ type gc_bin_parser struct {
 	// debugging support
 	debugFormat bool
 	read        int // bytes read
+
 }
 
 func (p *gc_bin_parser) init(data []byte, pfc *package_file_cache) {
@@ -90,6 +92,7 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 		panic(fmt.Errorf("invalid encoding format in export data: got %q; want 'c' or 'd'", format))
 	}
 
+	p.trackAllTypes = p.rawByte() == 'a'
 	p.posInfoFormat = p.int() != 0
 
 	// --- generic export data ---
@@ -235,9 +238,21 @@ func (p *gc_bin_parser) qualifiedName() (pkg aliasedPkgName, name string) {
 	return
 }
 
-func (p *gc_bin_parser) recordReserve() int {
-	p.typList = append(p.typList, nil)
-	return len(p.typList) - 1
+func (p *gc_bin_parser) reserveMaybe() int {
+	if p.trackAllTypes {
+		p.typList = append(p.typList, nil)
+		return len(p.typList) - 1
+	} else {
+		return -1
+	}
+}
+
+func (p *gc_bin_parser) recordMaybe(idx int, t ast.Expr) ast.Expr {
+	if idx == -1 {
+		return t
+	}
+	p.typList[idx] = t
+	return t
 }
 
 func (p *gc_bin_parser) record(t ast.Expr) {
@@ -307,66 +322,55 @@ func (p *gc_bin_parser) typ(parent aliasedPkgName) ast.Expr {
 		}
 		return t
 	case arrayTag:
-		i := p.recordReserve()
+		i := p.reserveMaybe()
 		n := p.int64()
 		elt := p.typ(parent)
-		p.typList[i] = &ast.ArrayType{
+		return p.recordMaybe(i, &ast.ArrayType{
 			Len: &ast.BasicLit{Kind: token.INT, Value: fmt.Sprint(n)},
 			Elt: elt,
-		}
-		return p.typList[i]
+		})
 
 	case sliceTag:
-		i := p.recordReserve()
+		i := p.reserveMaybe()
 		elt := p.typ(parent)
-		p.typList[i] = &ast.ArrayType{
-			Len: nil,
-			Elt: elt,
-		}
-		return p.typList[i]
+		return p.recordMaybe(i, &ast.ArrayType{Len: nil, Elt: elt})
 
 	case dddTag:
-		i := p.recordReserve()
+		i := p.reserveMaybe()
 		elt := p.typ(parent)
-		p.typList[i] = &ast.Ellipsis{Elt: elt}
-		return p.typList[i]
+		return p.recordMaybe(i, &ast.Ellipsis{Elt: elt})
 
 	case structTag:
-		i := p.recordReserve()
-		p.typList[i] = p.structType(parent)
-		return p.typList[i]
+		i := p.reserveMaybe()
+		return p.recordMaybe(i, p.structType(parent))
 
 	case pointerTag:
-		i := p.recordReserve()
+		i := p.reserveMaybe()
 		elt := p.typ(parent)
-		p.typList[i] = &ast.StarExpr{X: elt}
-		return p.typList[i]
+		return p.recordMaybe(i, &ast.StarExpr{X: elt})
 
 	case signatureTag:
-		i := p.recordReserve()
+		i := p.reserveMaybe()
 		params := p.paramList()
 		results := p.paramList()
-		p.typList[i] = &ast.FuncType{Params: params, Results: results}
-		return p.typList[i]
+		return p.recordMaybe(i, &ast.FuncType{Params: params, Results: results})
 
 	case interfaceTag:
-		i := p.recordReserve()
+		i := p.reserveMaybe()
 		if p.int() != 0 {
 			panic("unexpected embedded interface")
 		}
 		methods := p.methodList(parent)
-		p.typList[i] = &ast.InterfaceType{Methods: &ast.FieldList{List: methods}}
-		return p.typList[i]
+		return p.recordMaybe(i, &ast.InterfaceType{Methods: &ast.FieldList{List: methods}})
 
 	case mapTag:
-		i := p.recordReserve()
+		i := p.reserveMaybe()
 		key := p.typ(parent)
 		val := p.typ(parent)
-		p.typList[i] = &ast.MapType{Key: key, Value: val}
-		return p.typList[i]
+		return p.recordMaybe(i, &ast.MapType{Key: key, Value: val})
 
 	case chanTag:
-		i := p.recordReserve()
+		i := p.reserveMaybe()
 		dir := ast.SEND | ast.RECV
 		switch d := p.int(); d {
 		case 1:
@@ -379,8 +383,7 @@ func (p *gc_bin_parser) typ(parent aliasedPkgName) ast.Expr {
 			panic(fmt.Sprintf("unexpected channel dir %d", d))
 		}
 		elt := p.typ(parent)
-		p.typList[i] = &ast.ChanType{Dir: dir, Value: elt}
-		return p.typList[i]
+		return p.recordMaybe(i, &ast.ChanType{Dir: dir, Value: elt})
 
 	default:
 		panic(fmt.Sprintf("unexpected type tag %d", i))
@@ -479,10 +482,12 @@ func (p *gc_bin_parser) param(named bool) *ast.Field {
 		if name == "" {
 			panic("expected named parameter")
 		}
+		if name != "_" {
+			p.pkg()
+		}
 		if i := strings.Index(name, "·"); i > 0 {
 			name = name[:i] // cut off gc-specific parameter numbering
 		}
-		p.pkg()
 	}
 
 	// read and discard compiler-specific info
