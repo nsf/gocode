@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
 	"os"
 	"strings"
@@ -96,7 +97,7 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	// find import section
 	i := bytes.Index(data, []byte{'\n', '$', '$'})
 	if i == -1 {
-		panic("Can't find the import section in the package file")
+		panic(fmt.Sprintf("Can't find the import section in the package file %s", m.name))
 	}
 	data = data[i+len("\n$$"):]
 
