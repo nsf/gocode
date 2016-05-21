@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"time"
 )
 
 func do_server() int {
@@ -96,17 +97,24 @@ func (this *daemon) loop() {
 			conn_in <- c
 		}
 	}()
+
+	timeout := time.Duration(g_config.CloseTimeout) * time.Second
+	countdown := time.NewTimer(timeout)
+
 	for {
 		// handle connections or server CMDs (currently one CMD)
 		select {
 		case c := <-conn_in:
 			rpc.ServeConn(c)
+			countdown.Reset(timeout)
 			runtime.GC()
 		case cmd := <-this.cmd_in:
 			switch cmd {
 			case daemon_close:
 				return
 			}
+		case <-countdown.C:
+			return
 		}
 	}
 }
