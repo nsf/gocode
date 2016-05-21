@@ -169,6 +169,10 @@ You can change all available options using `gocode set` command. The config file
 
    A string option. If **go**, use standard Go package lookup rules. If **gb**, use gb-specific lookup rules. See https://github.com/constabulary/gb for details. Default: **go**.
 
+ - *close-timeout*
+
+   An integer option. If there have been no completion requests after this number of seconds, the gocode process will terminate. Defaults to 86400 (1 day).
+
 ### Debugging
 
 If something went wrong, the first thing you may want to do is manually start the gocode daemon with a debug mode enabled and in a separate terminal window. It will show you all the stack traces, panics if any and additional info about autocompletion requests. Shutdown the daemon if it was already started and run a new one explicitly with a debug mode enabled:
