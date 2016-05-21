@@ -24,6 +24,7 @@ type config struct {
 	Autobuild         bool   `json:"autobuild"`
 	ForceDebugOutput  string `json:"force-debug-output"`
 	PackageLookupMode string `json:"package-lookup-mode"`
+	CloseTimeout      int    `json:"close-timeout"`
 }
 
 var g_config = config{
@@ -32,6 +33,7 @@ var g_config = config{
 	Autobuild:         false,
 	ForceDebugOutput:  "",
 	PackageLookupMode: "go",
+	CloseTimeout:      86400,
 }
 
 var g_string_to_bool = map[string]bool{
