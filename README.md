@@ -171,7 +171,7 @@ You can change all available options using `gocode set` command. The config file
 
  - *close-timeout*
 
-   An integer option. If there have been no completion requests after this number of seconds, the gocode process will terminate. Defaults to 86400 (1 day).
+   An integer option. If there have been no completion requests after this number of seconds, the gocode process will terminate. Defaults to 1800 (30 minutes).
 
 ### Debugging
 
