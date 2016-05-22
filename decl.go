@@ -330,7 +330,10 @@ func method_of(d ast.Decl) string {
 				if se, ok := t.X.(*ast.SelectorExpr); ok {
 					return se.Sel.Name
 				}
-				return t.X.(*ast.Ident).Name
+				if ident, ok := t.X.(*ast.Ident); ok {
+					return ident.Name
+				}
+				return ""
 			case *ast.Ident:
 				return t.Name
 			default:
