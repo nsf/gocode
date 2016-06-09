@@ -293,7 +293,7 @@ func (p *gc_bin_parser) typ(parent aliasedPkgName) ast.Expr {
 		t0 := p.typ(parent)
 		tdecl.Specs[0].(*ast.TypeSpec).Type = t0
 
-		p.callback(parent.alias, tdecl)
+		p.callback(parent.path, tdecl)
 
 		// interfaces have no methods
 		if _, ok := t0.(*ast.InterfaceType); ok {
@@ -314,7 +314,7 @@ func (p *gc_bin_parser) typ(parent aliasedPkgName) ast.Expr {
 			results := p.paramList()
 
 			strip_method_receiver(recv)
-			p.callback(parent.alias, &ast.FuncDecl{
+			p.callback(parent.path, &ast.FuncDecl{
 				Recv: recv,
 				Name: ast.NewIdent(name),
 				Type: &ast.FuncType{Params: params, Results: results},
