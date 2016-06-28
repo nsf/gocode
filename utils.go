@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"go/build"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -167,6 +169,59 @@ type file_reader_type struct {
 	in chan file_read_request
 }
 
+func find_file_in_ar(arFile string, fileName string) (io.Reader, error) {
+	ar, err := OpenArchive(arFile)
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		entry, err := ar.ReadNextEntry()
+		if err != nil {
+			return nil, err
+		} else if entry == nil {
+			// No more entries in archive
+			break
+		} else if entry.Name == fileName {
+			return bytes.NewBufferString(entry.Content), nil
+		}
+	}
+	return nil, nil // Not found
+}
+
+func read_plain_or_gzip_file(reader io.Reader) ([]byte, error) {
+	zipReader, err := gzip.NewReader(reader)
+	if err == nil {
+		return ioutil.ReadAll(zipReader)
+	}
+	return ioutil.ReadAll(reader)
+}
+
+func read_file_in_ar(arFile string, fileName string) ([]byte, error) {
+	reader, err := find_file_in_ar(arFile, fileName)
+	if err != nil {
+		return nil, err
+	} else if reader == nil {
+		return nil, fmt.Errorf("%s is not in archive %s", fileName, arFile)
+	}
+	return read_plain_or_gzip_file(reader)
+}
+
+func new_package_def_reader() *file_reader_type {
+	this := new(file_reader_type)
+	this.in = make(chan file_read_request)
+
+	go func() {
+		var rsp file_read_response
+		for {
+			req := <-this.in
+			rsp.data, rsp.error = read_file_in_ar(req.filename, "__.PKGDEF")
+			req.out <- rsp
+		}
+	}()
+	return this
+}
+
 func new_file_reader() *file_reader_type {
 	this := new(file_reader_type)
 	this.in = make(chan file_read_request)
@@ -192,6 +247,7 @@ func (this *file_reader_type) read_file(filename string) ([]byte, error) {
 }
 
 var file_reader = new_file_reader()
+var package_reader = new_package_def_reader()
 
 //-------------------------------------------------------------------------
 // copy of the build.Context without func fields
