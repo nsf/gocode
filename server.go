@@ -151,6 +151,15 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		g_daemon.drop_cache()
 	}
 	switch g_config.PackageLookupMode {
+	case "bzl":
+		// when package lookup mode is bzl, we set GOPATH to "" explicitly and
+		// BzlProjectRoot becomes valid (or empty)
+		var err error
+		g_daemon.context.GOPATH = ""
+		g_daemon.context.BzlProjectRoot, err = find_bzl_project_root(g_config.LibPath, filename)
+		if *g_debug && err != nil {
+			log.Printf("Bzl project root not found: %s", err)
+		}
 	case "gb":
 		// when package lookup mode is gb, we set GOPATH to "" explicitly and
 		// GBProjectRoot becomes valid (or empty)

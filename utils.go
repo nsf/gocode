@@ -95,6 +95,32 @@ func has_prefix(s, prefix string, ignorecase bool) bool {
 	return strings.HasPrefix(s, prefix)
 }
 
+func find_bzl_project_root(libpath, path string) (string, error) {
+	if libpath == "" {
+		return "", fmt.Errorf("could not find project root, libpath is empty")
+	}
+
+	pathMap := map[string]struct{}{}
+	for _, lp := range strings.Split(libpath, ":") {
+		lp := strings.TrimSpace(lp)
+		pathMap[filepath.Clean(lp)] = struct{}{}
+	}
+
+	path = filepath.Dir(path)
+	if path == "" {
+		return "", fmt.Errorf("project root is blank")
+	}
+
+	start := path
+	for path != "/" {
+		if _, ok := pathMap[filepath.Clean(path)]; ok {
+			return path, nil
+		}
+		path = filepath.Dir(path)
+	}
+	return "", fmt.Errorf("could not find project root in %q or its parents", start)
+}
+
 // Code taken directly from `gb`, I hope author doesn't mind.
 func find_gb_project_root(path string) (string, error) {
 	path = filepath.Dir(path)
