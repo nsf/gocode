@@ -70,6 +70,11 @@ func file_exists(filename string) bool {
 	return true
 }
 
+func is_dir(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
+}
+
 func char_to_byte_offset(s []byte, offset_c int) (offset_b int) {
 	for offset_b = 0; offset_c > 0 && offset_b < len(s); offset_b++ {
 		if utf8.RuneStart(s[offset_b]) {

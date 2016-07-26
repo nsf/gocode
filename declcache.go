@@ -422,6 +422,70 @@ type package_lookup_context struct {
 	CurrentPackagePath string
 }
 
+// gopath returns the list of Go path directories.
+func (ctxt *package_lookup_context) gopath() []string {
+	var all []string
+	for _, p := range filepath.SplitList(ctxt.GOPATH) {
+		if p == "" || p == ctxt.GOROOT {
+			// Empty paths are uninteresting.
+			// If the path is the GOROOT, ignore it.
+			// People sometimes set GOPATH=$GOROOT.
+			// Do not get confused by this common mistake.
+			continue
+		}
+		if strings.HasPrefix(p, "~") {
+			// Path segments starting with ~ on Unix are almost always
+			// users who have incorrectly quoted ~ while setting GOPATH,
+			// preventing it from expanding to $HOME.
+			// The situation is made more confusing by the fact that
+			// bash allows quoted ~ in $PATH (most shells do not).
+			// Do not get confused by this, and do not try to use the path.
+			// It does not exist, and printing errors about it confuses
+			// those users even more, because they think "sure ~ exists!".
+			// The go command diagnoses this situation and prints a
+			// useful error.
+			// On Windows, ~ is used in short names, such as c:\progra~1
+			// for c:\program files.
+			continue
+		}
+		all = append(all, p)
+	}
+	return all
+}
+
+func (ctxt *package_lookup_context) pkg_dirs() []string {
+	pkgdir := fmt.Sprintf("%s_%s", ctxt.GOOS, ctxt.GOARCH)
+
+	var all []string
+	if ctxt.GOROOT != "" {
+		dir := filepath.Join(ctxt.GOROOT, "pkg", pkgdir)
+		if is_dir(dir) {
+			all = append(all, dir)
+		}
+	}
+
+	switch g_config.PackageLookupMode {
+	case "go":
+		for _, p := range ctxt.gopath() {
+			dir := filepath.Join(p, "pkg", pkgdir)
+			if is_dir(dir) {
+				all = append(all, dir)
+			}
+		}
+	case "gb":
+		if ctxt.GBProjectRoot != "" {
+			pkgdir := fmt.Sprintf("%s-%s", ctxt.GOOS, ctxt.GOARCH)
+			dir := filepath.Join(ctxt.GBProjectRoot, "pkg", pkgdir)
+			if is_dir(dir) {
+				all = append(all, dir)
+			}
+		}
+	case "bzl":
+		// TODO: Support bazel mode
+	}
+	return all
+}
+
 type decl_cache struct {
 	cache   map[string]*decl_file_cache
 	context *package_lookup_context

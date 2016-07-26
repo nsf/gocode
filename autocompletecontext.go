@@ -229,12 +229,10 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 }
 
 func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {
-	pkgdir := fmt.Sprintf("%s_%s", g_daemon.context.GOOS, g_daemon.context.GOARCH)
-	srcdirs := g_daemon.context.SrcDirs()
-	for _, srcpath := range srcdirs {
+	pkgdirs := g_daemon.context.pkg_dirs()
+	for _, pkgdir := range pkgdirs {
 		// convert srcpath to pkgpath and get candidates
-		pkgpath := filepath.Join(filepath.Dir(srcpath), "pkg", pkgdir)
-		get_import_candidates_dir(pkgpath, filepath.FromSlash(partial), b)
+		get_import_candidates_dir(pkgdir, filepath.FromSlash(partial), b)
 	}
 }
 
