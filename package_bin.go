@@ -51,8 +51,9 @@ type aliasedPkgName struct {
 }
 
 type gc_bin_parser struct {
-	data []byte
-	buf  []byte // for reading strings
+	data    []byte
+	buf     []byte // for reading strings
+	version int
 
 	// object lists
 	strList       []string         // in order of appearance
@@ -99,12 +100,14 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 		if s := p.string(); s != go17version {
 			panic(fmt.Errorf("importer: unknown export data format: %s (imported package compiled with old compiler?)", s))
 		}
+		p.version = 0
 	} else {
 		// Go1.8 extensible encoding
 		const exportVersion = "version 1"
 		if s := p.rawStringln(b); s != exportVersion {
 			panic(fmt.Errorf("importer: unknown export data format: %s (imported package compiled with old compiler?)", s))
 		}
+		p.version = 1
 		p.debugFormat = p.rawStringln(p.rawByte()) == "debug"
 		p.trackAllTypes = p.int() != 0
 		p.posInfoFormat = p.int() != 0
@@ -451,15 +454,17 @@ func (p *gc_bin_parser) method(parent aliasedPkgName) *ast.Field {
 }
 
 func (p *gc_bin_parser) fieldName(parent aliasedPkgName) (aliasedPkgName, string) {
-	pkg := parent
 	name := p.string()
-	if name == "" {
-		return pkg, "" // anonymous
+	pkg := parent
+	if p.version < 1 && name == "_" {
+		// versions < 1 don't export a package for _ fields
+		// TODO: remove once versions are not supported anymore
+		return pkg, name
 	}
-	if name == "?" || name != "_" && !exported(name) {
+	if name != "" && !exported(name) {
 		// explicitly qualified field
 		if name == "?" {
-			name = "" // anonymous
+			name = ""
 		}
 		pkg = p.pkg()
 	}
