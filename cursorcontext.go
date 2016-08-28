@@ -14,6 +14,11 @@ type cursor_context struct {
 	partial      string
 	struct_field bool
 	decl_import  bool
+
+	// store expression that was supposed to be deduced to "decl", however
+	// if decl is nil, then deduction failed, we could try to resolve it to
+	// unimported package instead
+	expr ast.Expr
 }
 
 type token_iterator struct {
@@ -238,12 +243,12 @@ func token_items_to_string(tokens []token_item) string {
 
 // this function is called when the cursor is at the '.' and you need to get the
 // declaration before that dot
-func (c *auto_complete_context) deduce_cursor_decl(iter *token_iterator) *decl {
+func (c *auto_complete_context) deduce_cursor_decl(iter *token_iterator) (*decl, ast.Expr) {
 	expr, err := parser.ParseExpr(iter.extract_go_expr())
 	if err != nil {
-		return nil
+		return nil, nil
 	}
-	return expr_to_decl(expr, c.current.scope)
+	return expr_to_decl(expr, c.current.scope), expr
 }
 
 // try to find and extract the surrounding struct literal type
@@ -328,8 +333,8 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 	case token.PERIOD:
 		// we're '<whatever>.'
 		// figure out decl, Partial is ""
-		decl := c.deduce_cursor_decl(&iter)
-		return cursor_context{decl: decl}, decl != nil
+		decl, expr := c.deduce_cursor_decl(&iter)
+		return cursor_context{decl: decl, expr: expr}, decl != nil
 	case token.IDENT, token.TYPE, token.CONST, token.VAR, token.FUNC, token.PACKAGE:
 		// we're '<whatever>.<ident>'
 		// parse <ident> as Partial and figure out decl
@@ -354,8 +359,8 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 		iter.go_back()
 		switch iter.token().tok {
 		case token.PERIOD:
-			decl := c.deduce_cursor_decl(&iter)
-			return cursor_context{decl: decl, partial: partial}, decl != nil
+			decl, expr := c.deduce_cursor_decl(&iter)
+			return cursor_context{decl: decl, partial: partial, expr: expr}, decl != nil
 		case token.COMMA, token.LBRACE:
 			// This can happen for struct fields:
 			// &Struct{Hello: 1, Wor#} // (# - the cursor)
@@ -380,4 +385,173 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 	}
 
 	return cursor_context{}, true
+}
+
+// Decl deduction failed, but we're on "<ident>.", this ident can be an
+// unexported package, let's try to match the ident against a set of known
+// packages and if it matches try to import it.
+// TODO: Right now I've made a static list of built-in packages, but in theory
+// we could scan all GOPATH packages as well. Now, don't forget that default
+// package name has nothing to do with package file name, that's why we need to
+// scan the packages. And many of them will have conflicts. Can we make a smart
+// prediction algorithm which will prefer certain packages over another ones?
+func resolveKnownPackageIdent(ident string, filename string, context *package_lookup_context) *decl {
+	importPath, ok := knownPackageIdents[ident]
+	if !ok {
+		return nil
+	}
+
+	path, ok := abs_path_for_package(filename, importPath, context)
+	if !ok {
+		return nil
+	}
+
+	p := new_package_file_cache(path)
+	p.update_cache()
+	return p.main
+}
+
+var knownPackageIdents = map[string]string{
+	"adler32":         "hash/adler32",
+	"aes":             "crypto/aes",
+	"ascii85":         "encoding/ascii85",
+	"asn1":            "encoding/asn1",
+	"ast":             "go/ast",
+	"atomic":          "sync/atomic",
+	"base32":          "encoding/base32",
+	"base64":          "encoding/base64",
+	"big":             "math/big",
+	"binary":          "encoding/binary",
+	"bufio":           "bufio",
+	"build":           "go/build",
+	"bytes":           "bytes",
+	"bzip2":           "compress/bzip2",
+	"cgi":             "net/http/cgi",
+	"cgo":             "runtime/cgo",
+	"cipher":          "crypto/cipher",
+	"cmplx":           "math/cmplx",
+	"color":           "image/color",
+	"constant":        "go/constant",
+	"context":         "context",
+	"cookiejar":       "net/http/cookiejar",
+	"crc32":           "hash/crc32",
+	"crc64":           "hash/crc64",
+	"crypto":          "crypto",
+	"csv":             "encoding/csv",
+	"debug":           "runtime/debug",
+	"des":             "crypto/des",
+	"doc":             "go/doc",
+	"draw":            "image/draw",
+	"driver":          "database/sql/driver",
+	"dsa":             "crypto/dsa",
+	"dwarf":           "debug/dwarf",
+	"ecdsa":           "crypto/ecdsa",
+	"elf":             "debug/elf",
+	"elliptic":        "crypto/elliptic",
+	"encoding":        "encoding",
+	"errors":          "errors",
+	"exec":            "os/exec",
+	"expvar":          "expvar",
+	"fcgi":            "net/http/fcgi",
+	"filepath":        "path/filepath",
+	"flag":            "flag",
+	"flate":           "compress/flate",
+	"fmt":             "fmt",
+	"fnv":             "hash/fnv",
+	"format":          "go/format",
+	"gif":             "image/gif",
+	"gob":             "encoding/gob",
+	"gosym":           "debug/gosym",
+	"gzip":            "compress/gzip",
+	"hash":            "hash",
+	"heap":            "container/heap",
+	"hex":             "encoding/hex",
+	"hmac":            "crypto/hmac",
+	"hpack":           "vendor/golang_org/x/net/http2/hpack",
+	"html":            "html",
+	"http":            "net/http",
+	"httplex":         "vendor/golang_org/x/net/lex/httplex",
+	"httptest":        "net/http/httptest",
+	"httptrace":       "net/http/httptrace",
+	"httputil":        "net/http/httputil",
+	"image":           "image",
+	"importer":        "go/importer",
+	"io":              "io",
+	"iotest":          "testing/iotest",
+	"ioutil":          "io/ioutil",
+	"jpeg":            "image/jpeg",
+	"json":            "encoding/json",
+	"jsonrpc":         "net/rpc/jsonrpc",
+	"list":            "container/list",
+	"log":             "log",
+	"lzw":             "compress/lzw",
+	"macho":           "debug/macho",
+	"mail":            "net/mail",
+	"math":            "math",
+	"md5":             "crypto/md5",
+	"mime":            "mime",
+	"multipart":       "mime/multipart",
+	"net":             "net",
+	"os":              "os",
+	"palette":         "image/color/palette",
+	"parse":           "text/template/parse",
+	"parser":          "go/parser",
+	"path":            "path",
+	"pe":              "debug/pe",
+	"pem":             "encoding/pem",
+	"pkix":            "crypto/x509/pkix",
+	"plan9obj":        "debug/plan9obj",
+	"png":             "image/png",
+	"pprof":           "net/http/pprof",
+	"printer":         "go/printer",
+	"quick":           "testing/quick",
+	"quotedprintable": "mime/quotedprintable",
+	"race":            "runtime/race",
+	"rand":            "math/rand",
+	"rc4":             "crypto/rc4",
+	"reflect":         "reflect",
+	"regexp":          "regexp",
+	"ring":            "container/ring",
+	"rpc":             "net/rpc",
+	"rsa":             "crypto/rsa",
+	"runtime":         "runtime",
+	"scanner":         "text/scanner",
+	"sha1":            "crypto/sha1",
+	"sha256":          "crypto/sha256",
+	"sha512":          "crypto/sha512",
+	"signal":          "os/signal",
+	"smtp":            "net/smtp",
+	"sort":            "sort",
+	"sql":             "database/sql",
+	"strconv":         "strconv",
+	"strings":         "strings",
+	"subtle":          "crypto/subtle",
+	"suffixarray":     "index/suffixarray",
+	"sync":            "sync",
+	"syntax":          "regexp/syntax",
+	"syscall":         "syscall",
+	"syslog":          "log/syslog",
+	"tabwriter":       "text/tabwriter",
+	"tar":             "archive/tar",
+	"template":        "html/template",
+	"testing":         "testing",
+	"textproto":       "net/textproto",
+	"time":            "time",
+	"tls":             "crypto/tls",
+	"token":           "go/token",
+	"trace":           "runtime/trace",
+	"types":           "go/types",
+	"unicode":         "unicode",
+	"url":             "net/url",
+	"user":            "os/user",
+	"utf16":           "unicode/utf16",
+	"utf8":            "unicode/utf8",
+	"x509":            "crypto/x509",
+	"xml":             "encoding/xml",
+	"zip":             "archive/zip",
+	"zlib":            "compress/zlib",
+	//"scanner": "go/scanner", // DUP: prefer text/scanner
+	//"template": "text/template", // DUP: prefer html/template
+	//"pprof": "runtime/pprof", // DUP: prefer net/http/pprof
+	//"rand": "crypto/rand", // DUP: prefer math/rand
 }

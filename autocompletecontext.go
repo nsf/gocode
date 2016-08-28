@@ -305,7 +305,14 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	partial := 0
 	cc, ok := c.deduce_cursor_context(file, cursor)
 	if !ok {
-		return nil, 0
+		var d *decl
+		if ident, ok := cc.expr.(*ast.Ident); ok && g_config.UnimportedPackages {
+			d = resolveKnownPackageIdent(ident.Name, c.current.name, c.current.context)
+		}
+		if d == nil {
+			return nil, 0
+		}
+		cc.decl = d
 	}
 
 	class := decl_invalid
