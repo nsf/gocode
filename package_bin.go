@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -76,6 +77,7 @@ type gc_bin_parser struct {
 
 func (p *gc_bin_parser) init(data []byte, pfc *package_file_cache) {
 	p.data = data
+	p.version = -1           // unknown version
 	p.strList = []string{""} // empty string is mapped to 0
 	p.pfc = pfc
 }
@@ -84,6 +86,7 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 	p.callback = callback
 
 	// read version info
+	var versionstr string
 	if b := p.rawByte(); b == 'c' || b == 'd' {
 		// Go1.7 encoding; first byte encodes low-level
 		// encoding format (compact vs debug).
@@ -96,21 +99,34 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 		}
 		p.trackAllTypes = p.rawByte() == 'a'
 		p.posInfoFormat = p.int() != 0
-		const go17version = "v1"
-		if s := p.string(); s != go17version {
-			panic(fmt.Errorf("importer: unknown export data format: %s (imported package compiled with old compiler?)", s))
+		versionstr = p.string()
+		if versionstr == "v1" {
+			p.version = 0
 		}
-		p.version = 0
 	} else {
 		// Go1.8 extensible encoding
-		const exportVersion = "version 1"
-		if s := p.rawStringln(b); s != exportVersion {
-			panic(fmt.Errorf("importer: unknown export data format: %s (imported package compiled with old compiler?)", s))
+		// read version string and extract version number (ignore anything after the version number)
+		versionstr = p.rawStringln(b)
+		if s := strings.SplitN(versionstr, " ", 3); len(s) >= 2 && s[0] == "version" {
+			if v, err := strconv.Atoi(s[1]); err == nil && v > 0 {
+				p.version = v
+			}
 		}
-		p.version = 1
+	}
+
+	// read version specific flags - extend as necessary
+	switch p.version {
+	// case 2:
+	// 	...
+	//	fallthrough
+	case 1:
 		p.debugFormat = p.rawStringln(p.rawByte()) == "debug"
 		p.trackAllTypes = p.int() != 0
 		p.posInfoFormat = p.int() != 0
+	case 0:
+		// Go1.7 encoding format - nothing to do here
+	default:
+		panic(fmt.Errorf("unknown export format version %d (%q)", p.version, versionstr))
 	}
 
 	// --- generic export data ---
@@ -456,7 +472,7 @@ func (p *gc_bin_parser) method(parent aliasedPkgName) *ast.Field {
 func (p *gc_bin_parser) fieldName(parent aliasedPkgName) (aliasedPkgName, string) {
 	name := p.string()
 	pkg := parent
-	if p.version < 1 && name == "_" {
+	if p.version == 0 && name == "_" {
 		// versions < 1 don't export a package for _ fields
 		// TODO: remove once versions are not supported anymore
 		return pkg, name
