@@ -120,7 +120,6 @@ func (f *auto_complete_file) process_decl_locals(decl ast.Decl) {
 			f.process_field_list(t.Type.Params, s)
 			f.process_field_list(t.Type.Results, s)
 			f.process_block_stmt(t.Body)
-
 		}
 	default:
 		v := new(func_lit_visitor)

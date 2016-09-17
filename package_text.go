@@ -46,12 +46,12 @@ import (
 //-------------------------------------------------------------------------
 
 type gc_parser struct {
-	scanner       scanner.Scanner
-	tok           rune
-	lit           string
-	path_to_alias map[string]string
-	beautify      bool
-	pfc           *package_file_cache
+	scanner      scanner.Scanner
+	tok          rune
+	lit          string
+	path_to_name map[string]string
+	beautify     bool
+	pfc          *package_file_cache
 }
 
 func (p *gc_parser) init(data []byte, pfc *package_file_cache) {
@@ -62,8 +62,8 @@ func (p *gc_parser) init(data []byte, pfc *package_file_cache) {
 	p.scanner.Whitespace = 1<<'\t' | 1<<' ' | 1<<'\r' | 1<<'\v' | 1<<'\f'
 	p.scanner.Filename = "package.go"
 	p.next()
-	// and the built-in "unsafe" package to the pathToAlias map
-	p.path_to_alias = map[string]string{"unsafe": "unsafe"}
+	// and the built-in "unsafe" package to the path_to_name map
+	p.path_to_name = map[string]string{"unsafe": "unsafe"}
 	p.pfc = pfc
 }
 
@@ -171,12 +171,10 @@ func (p *gc_parser) parse_package() *ast.Ident {
 func (p *gc_parser) parse_exported_name() *ast.SelectorExpr {
 	p.expect('@')
 	pkg := p.parse_package()
-	if p.beautify {
-		if pkg.Name == "" {
-			pkg.Name = "#" + p.pfc.defalias
-		} else {
-			pkg.Name = p.path_to_alias[pkg.Name]
-		}
+	if pkg.Name == "" {
+		pkg.Name = "#" + p.pfc.defalias
+	} else {
+		pkg.Name = p.path_to_name[pkg.Name]
 	}
 	p.expect('.')
 	name := ast.NewIdent(p.parse_dot_ident())
@@ -474,8 +472,9 @@ func (p *gc_parser) parse_import_decl() {
 	p.expect_keyword("import")
 	alias := p.expect(scanner.Ident)
 	path := p.parse_package()
-	p.path_to_alias[path.Name] = alias
-	p.pfc.add_package_to_scope(alias, path.Name)
+	fullName := "!" + path.Name + "!" + alias
+	p.path_to_name[path.Name] = fullName
+	p.pfc.add_package_to_scope(fullName, path.Name)
 }
 
 // ConstDecl   = "const" ExportedName [ Type ] "=" Literal .
@@ -488,7 +487,6 @@ func (p *gc_parser) parse_const_decl() (string, *ast.GenDecl) {
 	// TODO: do we really need actual const value? gocode doesn't use this
 	p.expect_keyword("const")
 	name := p.parse_exported_name()
-	p.beautify = true
 
 	var typ ast.Expr
 	if p.tok != '=' {
@@ -540,7 +538,6 @@ func (p *gc_parser) parse_const_decl() (string, *ast.GenDecl) {
 func (p *gc_parser) parse_type_decl() (string, *ast.GenDecl) {
 	p.expect_keyword("type")
 	name := p.parse_exported_name()
-	p.beautify = true
 	typ := p.parse_type()
 	return name.X.(*ast.Ident).Name, &ast.GenDecl{
 		Tok: token.TYPE,
@@ -557,7 +554,6 @@ func (p *gc_parser) parse_type_decl() (string, *ast.GenDecl) {
 func (p *gc_parser) parse_var_decl() (string, *ast.GenDecl) {
 	p.expect_keyword("var")
 	name := p.parse_exported_name()
-	p.beautify = true
 	typ := p.parse_type()
 	return name.X.(*ast.Ident).Name, &ast.GenDecl{
 		Tok: token.VAR,
@@ -587,7 +583,6 @@ func (p *gc_parser) parse_func_body() {
 func (p *gc_parser) parse_func_decl() (string, *ast.FuncDecl) {
 	// "func" was already consumed by lookahead
 	name := p.parse_exported_name()
-	p.beautify = true
 	typ := p.parse_signature()
 	if p.tok == '{' {
 		p.parse_func_body()
@@ -628,7 +623,6 @@ func strip_method_receiver(recv *ast.FieldList) string {
 // Receiver = "(" ( identifier | "?" ) [ "*" ] ExportedName ")" [ FuncBody ] .
 func (p *gc_parser) parse_method_decl() (string, *ast.FuncDecl) {
 	recv := p.parse_parameters()
-	p.beautify = true
 	pkg := strip_method_receiver(recv)
 	name, _ := p.parse_name()
 	typ := p.parse_signature()
@@ -676,7 +670,6 @@ func (p *gc_parser) parse_export(callback func(string, ast.Decl)) {
 	p.expect('\n')
 
 	for p.tok != '$' && p.tok != scanner.EOF {
-		p.beautify = false
 		pkg, decl := p.parse_decl()
 		if decl != nil {
 			callback(pkg, decl)

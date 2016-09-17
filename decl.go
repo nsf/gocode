@@ -1070,8 +1070,15 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr) {
 				// it's always true
 				fmt.Fprintf(out, "interface{}")
 			}
-		} else if strings.HasPrefix(t.Name, "#") {
+		} else if !*g_debug && strings.HasPrefix(t.Name, "#") {
 			fmt.Fprintf(out, t.Name[1:])
+		} else if !*g_debug && strings.HasPrefix(t.Name, "!") {
+			// these are full package names for disambiguating and pretty
+			// printing packages withing packages, e.g.
+			// !go/ast!ast vs. !github.com/nsf/my/ast!ast
+			// another ugly hack, if people are punished in hell for ugly hacks
+			// I'm screwed...
+			fmt.Fprintf(out, t.Name[strings.LastIndex(t.Name, "!")+1:])
 		} else {
 			fmt.Fprintf(out, t.Name)
 		}

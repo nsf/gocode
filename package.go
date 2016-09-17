@@ -141,15 +141,16 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	})
 
 	// hack, add ourselves to the package scope
-	m.add_package_to_scope("#"+m.defalias, m.name)
+	mainName := "#" + m.defalias
+	m.add_package_to_scope(mainName, m.name)
 
-	// WTF is that? :D
-	for key, value := range m.scope.entities {
-		if strings.HasPrefix(key, "$") {
+	// replace dummy package decls in package scope to actual packages
+	for key := range m.scope.entities {
+		if !strings.HasPrefix(key, "#") && !strings.HasPrefix(key, "!") {
 			continue
 		}
-		pkg, ok := m.others[value.name]
-		if !ok && value.name == m.name {
+		pkg, ok := m.others[key]
+		if !ok && key == mainName {
 			pkg = m.main
 		}
 		m.scope.replace_decl(key, pkg)

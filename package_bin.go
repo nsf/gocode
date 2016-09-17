@@ -46,20 +46,15 @@ import (
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //-------------------------------------------------------------------------
 
-type aliasedPkgName struct {
-	alias string
-	path  string
-}
-
 type gc_bin_parser struct {
 	data    []byte
 	buf     []byte // for reading strings
 	version int
 
 	// object lists
-	strList       []string         // in order of appearance
-	pkgList       []aliasedPkgName // in order of appearance
-	typList       []ast.Expr       // in order of appearance
+	strList       []string   // in order of appearance
+	pkgList       []string   // in order of appearance
+	typList       []ast.Expr // in order of appearance
 	callback      func(pkg string, decl ast.Decl)
 	pfc           *package_file_cache
 	trackAllTypes bool
@@ -135,7 +130,7 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 	p.typList = append(p.typList, predeclared...)
 
 	// read package data
-	p.pfc.defalias = p.pkg().alias
+	p.pfc.defalias = p.pkg()[1:]
 
 	// read objects of phase 1 only (see cmd/compiler/internal/gc/bexport.go)
 	objcount := 0
@@ -154,7 +149,7 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 	}
 }
 
-func (p *gc_bin_parser) pkg() aliasedPkgName {
+func (p *gc_bin_parser) pkg() string {
 	// if the package was seen before, i is its index (>= 0)
 	i := p.tagOrIndex()
 	if i >= 0 {
@@ -181,12 +176,16 @@ func (p *gc_bin_parser) pkg() aliasedPkgName {
 		panic(fmt.Sprintf("package path %q for pkg index %d", path, len(p.pkgList)))
 	}
 
+	var fullName string
 	if path != "" {
-		p.pfc.add_package_to_scope(name, path)
+		fullName = "!" + path + "!" + name
+		p.pfc.add_package_to_scope(fullName, path)
+	} else {
+		fullName = "#" + name
 	}
 
 	// if the package was imported before, use that one; otherwise create a new one
-	p.pkgList = append(p.pkgList, aliasedPkgName{alias: name, path: path})
+	p.pkgList = append(p.pkgList, fullName)
 	return p.pkgList[len(p.pkgList)-1]
 }
 
@@ -195,9 +194,9 @@ func (p *gc_bin_parser) obj(tag int) {
 	case constTag:
 		p.pos()
 		pkg, name := p.qualifiedName()
-		typ := p.typ(aliasedPkgName{})
+		typ := p.typ("")
 		p.skipValue() // ignore const value, gocode's not interested
-		p.callback(pkg.alias, &ast.GenDecl{
+		p.callback(pkg, &ast.GenDecl{
 			Tok: token.CONST,
 			Specs: []ast.Spec{
 				&ast.ValueSpec{
@@ -208,13 +207,13 @@ func (p *gc_bin_parser) obj(tag int) {
 			},
 		})
 	case typeTag:
-		_ = p.typ(aliasedPkgName{})
+		_ = p.typ("")
 
 	case varTag:
 		p.pos()
 		pkg, name := p.qualifiedName()
-		typ := p.typ(aliasedPkgName{})
-		p.callback(pkg.alias, &ast.GenDecl{
+		typ := p.typ("")
+		p.callback(pkg, &ast.GenDecl{
 			Tok: token.VAR,
 			Specs: []ast.Spec{
 				&ast.ValueSpec{
@@ -228,7 +227,7 @@ func (p *gc_bin_parser) obj(tag int) {
 		pkg, name := p.qualifiedName()
 		params := p.paramList()
 		results := p.paramList()
-		p.callback(pkg.alias, &ast.FuncDecl{
+		p.callback(pkg, &ast.FuncDecl{
 			Name: ast.NewIdent(name),
 			Type: &ast.FuncType{Params: params, Results: results},
 		})
@@ -259,13 +258,10 @@ func (p *gc_bin_parser) pos() {
 	// TODO(gri) register new position
 }
 
-func (p *gc_bin_parser) qualifiedName() (pkg aliasedPkgName, name string) {
+func (p *gc_bin_parser) qualifiedName() (pkg string, name string) {
 	name = p.string()
 	pkg = p.pkg()
-	if pkg.path == "" {
-		pkg.alias = "#" + p.pfc.defalias
-	}
-	return
+	return pkg, name
 }
 
 func (p *gc_bin_parser) reserveMaybe() int {
@@ -293,7 +289,7 @@ func (p *gc_bin_parser) record(t ast.Expr) {
 // the package currently imported. The parent package is needed for
 // exported struct fields and interface methods which don't contain
 // explicit package information in the export data.
-func (p *gc_bin_parser) typ(parent aliasedPkgName) ast.Expr {
+func (p *gc_bin_parser) typ(parent string) ast.Expr {
 	// if the type was seen before, i is its index (>= 0)
 	i := p.tagOrIndex()
 	if i >= 0 {
@@ -316,14 +312,14 @@ func (p *gc_bin_parser) typ(parent aliasedPkgName) ast.Expr {
 		}
 
 		// record it right away (underlying type can contain refs to t)
-		t := &ast.SelectorExpr{X: ast.NewIdent(parent.alias), Sel: ast.NewIdent(name)}
+		t := &ast.SelectorExpr{X: ast.NewIdent(parent), Sel: ast.NewIdent(name)}
 		p.record(t)
 
 		// parse underlying type
 		t0 := p.typ(parent)
 		tdecl.Specs[0].(*ast.TypeSpec).Type = t0
 
-		p.callback(parent.path, tdecl)
+		p.callback(parent, tdecl)
 
 		// interfaces have no methods
 		if _, ok := t0.(*ast.InterfaceType); ok {
@@ -345,7 +341,7 @@ func (p *gc_bin_parser) typ(parent aliasedPkgName) ast.Expr {
 			p.int() // go:nointerface pragma - discarded
 
 			strip_method_receiver(recv)
-			p.callback(parent.path, &ast.FuncDecl{
+			p.callback(parent, &ast.FuncDecl{
 				Recv: recv,
 				Name: ast.NewIdent(name),
 				Type: &ast.FuncType{Params: params, Results: results},
@@ -421,7 +417,7 @@ func (p *gc_bin_parser) typ(parent aliasedPkgName) ast.Expr {
 	}
 }
 
-func (p *gc_bin_parser) structType(parent aliasedPkgName) *ast.StructType {
+func (p *gc_bin_parser) structType(parent string) *ast.StructType {
 	var fields []*ast.Field
 	if n := p.int(); n > 0 {
 		fields = make([]*ast.Field, n)
@@ -433,7 +429,7 @@ func (p *gc_bin_parser) structType(parent aliasedPkgName) *ast.StructType {
 	return &ast.StructType{Fields: &ast.FieldList{List: fields}}
 }
 
-func (p *gc_bin_parser) field(parent aliasedPkgName) *ast.Field {
+func (p *gc_bin_parser) field(parent string) *ast.Field {
 	p.pos()
 	_, name := p.fieldName(parent)
 	typ := p.typ(parent)
@@ -448,7 +444,7 @@ func (p *gc_bin_parser) field(parent aliasedPkgName) *ast.Field {
 	}
 }
 
-func (p *gc_bin_parser) methodList(parent aliasedPkgName) (methods []*ast.Field) {
+func (p *gc_bin_parser) methodList(parent string) (methods []*ast.Field) {
 	if n := p.int(); n > 0 {
 		methods = make([]*ast.Field, n)
 		for i := range methods {
@@ -458,7 +454,7 @@ func (p *gc_bin_parser) methodList(parent aliasedPkgName) (methods []*ast.Field)
 	return
 }
 
-func (p *gc_bin_parser) method(parent aliasedPkgName) *ast.Field {
+func (p *gc_bin_parser) method(parent string) *ast.Field {
 	p.pos()
 	_, name := p.fieldName(parent)
 	params := p.paramList()
@@ -469,7 +465,7 @@ func (p *gc_bin_parser) method(parent aliasedPkgName) *ast.Field {
 	}
 }
 
-func (p *gc_bin_parser) fieldName(parent aliasedPkgName) (aliasedPkgName, string) {
+func (p *gc_bin_parser) fieldName(parent string) (string, string) {
 	name := p.string()
 	pkg := parent
 	if p.version == 0 && name == "_" {
@@ -507,7 +503,7 @@ func (p *gc_bin_parser) paramList() *ast.FieldList {
 }
 
 func (p *gc_bin_parser) param(named bool) *ast.Field {
-	t := p.typ(aliasedPkgName{})
+	t := p.typ("")
 
 	name := "?"
 	if named {
