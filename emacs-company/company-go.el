@@ -53,19 +53,27 @@ symbol is preceded by a \".\", ignoring `company-minimum-prefix-length'."
   :group 'company-go
   :type 'string)
 
+(defcustom company-go-gocode-args nil
+  "Additional arguments to pass to `gocode'"
+  :group 'company-go
+  :type '(repeat string))
+
 (defun company-go--invoke-autocomplete ()
-  (let ((temp-buffer (generate-new-buffer "*gocode*")))
+  (let ((temp-buffer (generate-new-buffer "*gocode*"))
+        (gocode-args (append company-go-gocode-args
+                             (list "-f=csv"
+                                   "autocomplete"
+                                   (or (buffer-file-name) "")
+                                   (concat "c" (int-to-string (- (point) 1)))))))
     (prog2
-        (call-process-region (point-min)
-                             (point-max)
-                             company-go-gocode-command
-                             nil
-                             temp-buffer
-                             nil
-                             "-f=csv"
-                             "autocomplete"
-                             (or (buffer-file-name) "")
-                             (concat "c" (int-to-string (- (point) 1))))
+        (apply #'call-process-region
+               (point-min)
+               (point-max)
+               company-go-gocode-command
+               nil
+               temp-buffer
+               nil
+               gocode-args)
         (with-current-buffer temp-buffer (buffer-string))
       (kill-buffer temp-buffer))))
 
