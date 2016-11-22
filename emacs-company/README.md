@@ -1,5 +1,5 @@
 # Company-go
-Company-go is an alternative emacs plugin for autocompletion. Is uses [company-mode](http://company-mode.github.io).
+Company-go is an alternative emacs plugin for autocompletion. It uses [company-mode](http://company-mode.github.io).
 Completion will start automatically whenever the current symbol is preceded by a `.`, or after you type `company-minimum-prefix-length` letters.
 
 ## Setup
@@ -49,3 +49,11 @@ By default company-mode loads every backend it has. If you want to only have com
    ((((type x)) (:inherit company-tooltip-selection :weight bold))
     (t (:inherit company-tooltip-selection)))))
 ```
+
+### Common Errors
+
+gocode uses the output from `go install` to provide its suggestions. You have a few options to ensure you always get up-to-date suggestions:
+
+- Run `go install ./...` in your package when you make a change
+- Run `gocode set autobuild true` to have gocode attempt to run `go install ./...` for you
+- You can configure your task runner to run `go install ./...` command on every save
