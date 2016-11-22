@@ -1,5 +1,5 @@
 # Company-go
-Company-go is an alternative emacs plugin for autocompletion. Is uses [company-mode](http://company-mode.github.io).
+Company-go is an alternative emacs plugin for autocompletion. It uses [company-mode](http://company-mode.github.io).
 Completion will start automatically whenever the current symbol is preceded by a `.`, or after you type `company-minimum-prefix-length` letters.
 
 ## Setup
