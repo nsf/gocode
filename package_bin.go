@@ -49,7 +49,7 @@ import (
 type gc_bin_parser struct {
 	data    []byte
 	buf     []byte // for reading strings
-	version int
+	version int    // export format version
 
 	// object lists
 	strList       []string   // in order of appearance
@@ -115,13 +115,6 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 	// 	...
 	//	fallthrough
 	case 3, 2, 1:
-		// Support for Go 1.8 type aliases will be added very
-		// soon (Oct 2016).  In the meantime, we make a
-		// best-effort attempt to read v3 export data, failing
-		// if we encounter a type alias.  This allows the
-		// automated builders to make progress since
-		// type aliases are not yet used in practice.
-		// TODO(gri): add support for type aliases.
 		p.debugFormat = p.rawStringln(p.rawByte()) == "debug"
 		p.trackAllTypes = p.int() != 0
 		p.posInfoFormat = p.int() != 0
@@ -197,6 +190,12 @@ func (p *gc_bin_parser) pkg() string {
 }
 
 func (p *gc_bin_parser) obj(tag int) {
+	var aliasName string
+	if tag == aliasTag {
+		aliasName = p.string()
+		tag = p.tagOrIndex()
+	}
+
 	switch tag {
 	case constTag:
 		p.pos()
@@ -241,6 +240,20 @@ func (p *gc_bin_parser) obj(tag int) {
 
 	default:
 		panic(fmt.Sprintf("unexpected object tag %d", tag))
+	}
+
+	if aliasName != "" {
+		pkg, _ := p.qualifiedName()
+		typ := p.typ("")
+		p.callback(pkg, &ast.GenDecl{
+			Tok: token.TYPE,
+			Specs: []ast.Spec{
+				&ast.TypeSpec{
+					Name: ast.NewIdent(aliasName),
+					Type: typ,
+				},
+			},
+		})
 	}
 }
 
@@ -710,7 +723,11 @@ const (
 	fractionTag // not used by gc
 	complexTag
 	stringTag
+	nilTag     // only used by gc (appears in exported inlined function bodies)
 	unknownTag // not used by gc (only appears in packages with errors)
+
+	// Aliases
+	aliasTag
 )
 
 var predeclared = []ast.Expr{
