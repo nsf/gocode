@@ -111,10 +111,10 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 
 	// read version specific flags - extend as necessary
 	switch p.version {
-	// case 4:
+	// case 5:
 	// 	...
 	//	fallthrough
-	case 3, 2, 1:
+	case 4, 3, 2, 1:
 		p.debugFormat = p.rawStringln(p.rawByte()) == "debug"
 		p.trackAllTypes = p.int() != 0
 		p.posInfoFormat = p.int() != 0
@@ -207,6 +207,21 @@ func (p *gc_bin_parser) obj(tag int) {
 			},
 		})
 
+	case aliasTag:
+		// TODO(gri) verify type alias hookup is correct
+		p.pos()
+		pkg, name := p.qualifiedName()
+		typ := p.typ("")
+		p.callback(pkg, &ast.GenDecl{
+			Tok: token.TYPE,
+			Specs: []ast.Spec{
+				&ast.TypeSpec{
+					Name: ast.NewIdent(name),
+					Type: typ,
+				},
+			},
+		})
+
 	case typeTag:
 		_ = p.typ("")
 
@@ -232,24 +247,6 @@ func (p *gc_bin_parser) obj(tag int) {
 		p.callback(pkg, &ast.FuncDecl{
 			Name: ast.NewIdent(name),
 			Type: &ast.FuncType{Params: params, Results: results},
-		})
-
-	case aliasTag:
-		p.pos()
-		name := p.string()
-		var orig ast.Expr
-		pkg, name := p.qualifiedName()
-		if pkg != "" {
-			orig = p.typ(name)
-		}
-		p.callback(pkg, &ast.GenDecl{
-			Tok: token.TYPE,
-			Specs: []ast.Spec{
-				&ast.TypeSpec{
-					Name: ast.NewIdent(name),
-					Type: orig,
-				},
-			},
 		})
 
 	default:
@@ -280,9 +277,7 @@ func (p *gc_bin_parser) pos() {
 
 func (p *gc_bin_parser) qualifiedName() (pkg string, name string) {
 	name = p.string()
-	if name != "" {
-		pkg = p.pkg()
-	}
+	pkg = p.pkg()
 	return pkg, name
 }
 
@@ -444,17 +439,17 @@ func (p *gc_bin_parser) structType(parent string) *ast.StructType {
 	if n := p.int(); n > 0 {
 		fields = make([]*ast.Field, n)
 		for i := range fields {
-			fields[i] = p.field(parent)
-			p.string() // tag, not interested in tags
+			fields[i], _ = p.field(parent) // (*ast.Field, tag), not interested in tags
 		}
 	}
 	return &ast.StructType{Fields: &ast.FieldList{List: fields}}
 }
 
-func (p *gc_bin_parser) field(parent string) *ast.Field {
+func (p *gc_bin_parser) field(parent string) (*ast.Field, string) {
 	p.pos()
-	_, name := p.fieldName(parent)
+	_, name, _ := p.fieldName(parent)
 	typ := p.typ(parent)
+	tag := p.string()
 
 	var names []*ast.Ident
 	if name != "" {
@@ -463,7 +458,7 @@ func (p *gc_bin_parser) field(parent string) *ast.Field {
 	return &ast.Field{
 		Names: names,
 		Type:  typ,
-	}
+	}, tag
 }
 
 func (p *gc_bin_parser) methodList(parent string) (methods []*ast.Field) {
@@ -478,7 +473,7 @@ func (p *gc_bin_parser) methodList(parent string) (methods []*ast.Field) {
 
 func (p *gc_bin_parser) method(parent string) *ast.Field {
 	p.pos()
-	_, name := p.fieldName(parent)
+	_, name, _ := p.fieldName(parent)
 	params := p.paramList()
 	results := p.paramList()
 	return &ast.Field{
@@ -487,22 +482,32 @@ func (p *gc_bin_parser) method(parent string) *ast.Field {
 	}
 }
 
-func (p *gc_bin_parser) fieldName(parent string) (string, string) {
+func (p *gc_bin_parser) fieldName(parent string) (string, string, bool) {
 	name := p.string()
 	pkg := parent
 	if p.version == 0 && name == "_" {
-		// versions < 1 don't export a package for _ fields
-		// TODO: remove once versions are not supported anymore
-		return pkg, name
+		// version 0 didn't export a package for _ fields
+		return pkg, name, false
 	}
-	if name != "" && !exported(name) {
-		// explicitly qualified field
-		if name == "?" {
-			name = ""
-		}
+	var alias bool
+	switch name {
+	case "":
+		// 1) field name matches base type name and is exported: nothing to do
+	case "?":
+		// 2) field name matches base type name and is not exported: need package
+		name = ""
 		pkg = p.pkg()
+	case "@":
+		// 3) field name doesn't match type name (alias)
+		name = p.string()
+		alias = true
+		fallthrough
+	default:
+		if !exported(name) {
+			pkg = p.pkg()
+		}
 	}
-	return pkg, name
+	return pkg, name, alias
 }
 
 func (p *gc_bin_parser) paramList() *ast.FieldList {
@@ -728,7 +733,7 @@ const (
 	nilTag     // only used by gc (appears in exported inlined function bodies)
 	unknownTag // not used by gc (only appears in packages with errors)
 
-	// Aliases
+	// Type aliases
 	aliasTag
 )
 
@@ -752,7 +757,7 @@ var predeclared = []ast.Expr{
 	ast.NewIdent("complex128"),
 	ast.NewIdent("string"),
 
-	// aliases
+	// basic type aliases
 	ast.NewIdent("byte"),
 	ast.NewIdent("rune"),
 
