@@ -190,12 +190,6 @@ func (p *gc_bin_parser) pkg() string {
 }
 
 func (p *gc_bin_parser) obj(tag int) {
-	var aliasName string
-	if tag == aliasTag {
-		aliasName = p.string()
-		tag = p.tagOrIndex()
-	}
-
 	switch tag {
 	case constTag:
 		p.pos()
@@ -212,6 +206,7 @@ func (p *gc_bin_parser) obj(tag int) {
 				},
 			},
 		})
+
 	case typeTag:
 		_ = p.typ("")
 
@@ -228,6 +223,7 @@ func (p *gc_bin_parser) obj(tag int) {
 				},
 			},
 		})
+
 	case funcTag:
 		p.pos()
 		pkg, name := p.qualifiedName()
@@ -238,22 +234,23 @@ func (p *gc_bin_parser) obj(tag int) {
 			Type: &ast.FuncType{Params: params, Results: results},
 		})
 
-	default:
-		panic(fmt.Sprintf("unexpected object tag %d", tag))
-	}
-
-	if aliasName != "" {
-		pkg, _ := p.qualifiedName()
-		typ := p.typ("")
+	case aliasTag:
+		p.pos()
+		aliasName := p.string()
+		pkg, name := p.qualifiedName()
+		obj := p.typ(name)
 		p.callback(pkg, &ast.GenDecl{
 			Tok: token.TYPE,
 			Specs: []ast.Spec{
 				&ast.TypeSpec{
 					Name: ast.NewIdent(aliasName),
-					Type: typ,
+					Type: obj,
 				},
 			},
 		})
+
+	default:
+		panic(fmt.Sprintf("unexpected object tag %d", tag))
 	}
 }
 
