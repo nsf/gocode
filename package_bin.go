@@ -236,15 +236,18 @@ func (p *gc_bin_parser) obj(tag int) {
 
 	case aliasTag:
 		p.pos()
-		aliasName := p.string()
+		name := p.string()
+		var orig ast.Expr
 		pkg, name := p.qualifiedName()
-		obj := p.typ(name)
+		if pkg != "" {
+			orig = p.typ(name)
+		}
 		p.callback(pkg, &ast.GenDecl{
 			Tok: token.TYPE,
 			Specs: []ast.Spec{
 				&ast.TypeSpec{
-					Name: ast.NewIdent(aliasName),
-					Type: obj,
+					Name: ast.NewIdent(name),
+					Type: orig,
 				},
 			},
 		})
@@ -277,7 +280,9 @@ func (p *gc_bin_parser) pos() {
 
 func (p *gc_bin_parser) qualifiedName() (pkg string, name string) {
 	name = p.string()
-	pkg = p.pkg()
+	if name != "" {
+		pkg = p.pkg()
+	}
 	return pkg, name
 }
 
