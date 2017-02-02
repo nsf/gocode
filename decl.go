@@ -1301,6 +1301,11 @@ func (f *decl_pack) value_index(i int) (v ast.Expr, vi int) {
 
 func (f *decl_pack) type_value_index(i int) (ast.Expr, ast.Expr, int) {
 	if f.typ != nil {
+		// If there is a type and have f.values, it's type alias decl.
+		// Return the both of type and first value.
+		if len(f.values) == 1 {
+			return f.typ, f.values[0], -1
+		}
 		// If there is a type, we don't care about value, just return the type
 		// and zero value.
 		return f.typ, nil, -1
