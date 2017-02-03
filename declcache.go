@@ -121,6 +121,14 @@ func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
 		for i, name := range data.names {
 			typ, v, vi := data.type_value_index(i)
 
+			// If typ is *ast.Ident, it holds the underlying type of type alias.
+			// Replace the typ to underlying types ast.Expr.
+			if id, ok := typ.(*ast.Ident); ok && id.Obj != nil {
+				if t, ok := id.Obj.Decl.(*ast.TypeSpec); ok {
+					typ = t.Type
+				}
+			}
+
 			d := new_decl_full(name.Name, class, 0, typ, v, vi, scope)
 			if d == nil {
 				return
