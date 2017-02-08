@@ -125,6 +125,10 @@ func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
 			// Replace the typ to underlying types ast.Expr.
 			if id, ok := typ.(*ast.Ident); ok && id.Obj != nil {
 				if t, ok := id.Obj.Decl.(*ast.TypeSpec); ok {
+					if d, ok := decls[t.Name.Name]; ok {
+						scope.typealias[name.Name] = d
+					}
+
 					typ = t.Type
 				}
 			}
@@ -138,6 +142,11 @@ func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
 			if methodof != "" {
 				decl, ok := decls[methodof]
 				if ok {
+					if d, ok := scope.typealias[methodof]; ok {
+						for _, d := range d.children {
+							decl.add_child(d)
+						}
+					}
 					decl.add_child(d)
 				} else {
 					decl = new_decl(methodof, decl_methods_stub, scope)
