@@ -114,7 +114,7 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 	// case 4:
 	// 	...
 	//	fallthrough
-	case 3, 2, 1:
+	case 4, 3, 2, 1:
 		// Support for Go 1.8 type aliases will be added very
 		// soon (Oct 2016).  In the meantime, we make a
 		// best-effort attempt to read v3 export data, failing
