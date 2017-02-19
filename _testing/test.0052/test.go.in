@@ -1,0 +1,13 @@
+package main
+
+type FooBar struct {
+	A int
+	B int
+	C float64
+}
+
+func main() {
+	x := []FooBar{
+		{},
+	}
+}

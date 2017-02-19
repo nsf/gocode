@@ -130,6 +130,11 @@ func (ti *token_iterator) extract_struct_type() string {
 	if !ti.go_back() {
 		return ""
 	}
+	if ti.token().tok == token.LBRACE {
+		if !ti.go_back() {
+			return ""
+		}
+	}
 	if ti.token().tok != token.IDENT {
 		return ""
 	}
