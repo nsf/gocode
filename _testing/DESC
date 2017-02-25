@@ -50,3 +50,4 @@ test.0049 - anonymous struct type as a function argument
 test.0050 - anonymous struct pointer type as a function argument
 test.0051 - go parser stops parsing after 10 errors without AllErrors flag
 test.0052 - implicit type of a struct within slice/array literal
+test.0053 - type redefinition should not inherit method sets

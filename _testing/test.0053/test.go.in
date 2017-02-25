@@ -1,0 +1,18 @@
+package main
+
+type FooBar struct {
+	A int
+	B int
+	C float64
+}
+
+func (b *FooBar) Foobarer() string { return "foobarer" }
+
+type Bar FooBar
+
+func (b *Bar) Fooer() string { return "fooer" }
+
+func main() {
+	var b Bar
+	b.
+}

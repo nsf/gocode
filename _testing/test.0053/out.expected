@@ -1,0 +1,5 @@
+Found 4 candidates:
+  func Fooer() string
+  var A int
+  var B int
+  var C float64
