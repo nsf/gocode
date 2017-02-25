@@ -130,7 +130,7 @@ func ast_decl_class(d ast.Decl) decl_class {
 		case token.CONST:
 			return decl_const
 		case token.TYPE:
-			if t.Specs[0].(*ast.TypeSpec).Assign != 0 {
+			if isAliasTypeSpec(t.Specs[0].(*ast.TypeSpec)) {
 				return decl_type_alias
 			} else {
 				return decl_type

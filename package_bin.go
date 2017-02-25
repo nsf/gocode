@@ -213,14 +213,8 @@ func (p *gc_bin_parser) obj(tag int) {
 		pkg, name := p.qualifiedName()
 		typ := p.typ("")
 		p.callback(pkg, &ast.GenDecl{
-			Tok: token.TYPE,
-			Specs: []ast.Spec{
-				&ast.TypeSpec{
-					Name:   ast.NewIdent(name),
-					Assign: 1, // fake, but gocode only cares if it's there or not
-					Type:   typ,
-				},
-			},
+			Tok:   token.TYPE,
+			Specs: []ast.Spec{typeAliasSpec(name, typ)},
 		})
 
 	case typeTag:
