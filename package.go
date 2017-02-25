@@ -168,7 +168,7 @@ func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
 		for i, name := range data.names {
 			typ, v, vi := data.type_value_index(i)
 
-			d := new_decl_full(name.Name, class, decl_foreign, typ, v, vi, scope)
+			d := new_decl_full(name.Name, class, decl_foreign|ast_decl_flags(data.decl), typ, v, vi, scope)
 			if d == nil {
 				return
 			}

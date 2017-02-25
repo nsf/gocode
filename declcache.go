@@ -121,7 +121,7 @@ func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
 		for i, name := range data.names {
 			typ, v, vi := data.type_value_index(i)
 
-			d := new_decl_full(name.Name, class, 0, typ, v, vi, scope)
+			d := new_decl_full(name.Name, class, ast_decl_flags(data.decl), typ, v, vi, scope)
 			if d == nil {
 				return
 			}

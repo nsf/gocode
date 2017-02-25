@@ -23,7 +23,6 @@ const (
 	decl_import
 	decl_package
 	decl_type
-	decl_type_alias
 	decl_var
 
 	// this one serves as a temporary type for those methods that were
@@ -45,8 +44,6 @@ func (this decl_class) String() string {
 		return "package"
 	case decl_type:
 		return "type"
-	case decl_type_alias:
-		return "type"
 	case decl_var:
 		return "var"
 	case decl_methods_stub:
@@ -59,11 +56,14 @@ func (this decl_class) String() string {
 type decl_flags int16
 
 const (
-	decl_foreign = decl_flags(1 << iota) // imported from another package
+	decl_foreign decl_flags = 1 << iota // imported from another package
 
 	// means that the decl is a part of the range statement
 	// its type is inferred in a special way
 	decl_rangevar
+
+	// decl of decl_type class is a type alias
+	decl_alias
 
 	// for preventing infinite recursions and loops in type inference code
 	decl_visited
@@ -121,6 +121,19 @@ func ast_decl_type(d ast.Decl) ast.Expr {
 	return nil
 }
 
+func ast_decl_flags(d ast.Decl) decl_flags {
+	switch t := d.(type) {
+	case *ast.GenDecl:
+		switch t.Tok {
+		case token.TYPE:
+			if isAliasTypeSpec(t.Specs[0].(*ast.TypeSpec)) {
+				return decl_alias
+			}
+		}
+	}
+	return 0
+}
+
 func ast_decl_class(d ast.Decl) decl_class {
 	switch t := d.(type) {
 	case *ast.GenDecl:
@@ -130,11 +143,7 @@ func ast_decl_class(d ast.Decl) decl_class {
 		case token.CONST:
 			return decl_const
 		case token.TYPE:
-			if isAliasTypeSpec(t.Specs[0].(*ast.TypeSpec)) {
-				return decl_type_alias
-			} else {
-				return decl_type
-			}
+			return decl_type
 		}
 	case *ast.FuncDecl:
 		return decl_func
@@ -733,7 +742,7 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 				return ast.NewIdent(t.Name), scope, false
 			}
 			typ, scope := d.infer_type()
-			return typ, scope, d.class == decl_type || d.class == decl_type_alias
+			return typ, scope, d.class == decl_type
 		}
 	case *ast.UnaryExpr:
 		switch t.Op {
@@ -885,7 +894,7 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		if d := type_to_decl(it, s); d != nil {
 			c := d.find_child_and_in_embedded(t.Sel.Name)
 			if c != nil {
-				if c.class == decl_type || c.class == decl_type_alias {
+				if c.class == decl_type {
 					return t, scope, true
 				} else {
 					typ, s := c.infer_type()
@@ -934,7 +943,7 @@ func (d *decl) infer_type() (ast.Expr, *scope) {
 	case decl_package:
 		// package is handled specially in inferType
 		return nil, nil
-	case decl_type, decl_type_alias:
+	case decl_type:
 		return ast.NewIdent(d.name), d.scope
 	}
 
@@ -969,7 +978,7 @@ func (d *decl) find_child(name string) *decl {
 
 	// type aliases don't really have any children on their own, but they
 	// point to a different type, let's try to find one
-	if d.class == decl_type_alias {
+	if d.flags&decl_alias != 0 {
 		dd := d.type_dealias()
 		if dd != nil {
 			return dd.find_child(name)
