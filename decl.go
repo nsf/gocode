@@ -23,6 +23,7 @@ const (
 	decl_import
 	decl_package
 	decl_type
+	decl_type_alias
 	decl_var
 
 	// this one serves as a temporary type for those methods that were
@@ -43,6 +44,8 @@ func (this decl_class) String() string {
 	case decl_package:
 		return "package"
 	case decl_type:
+		return "type"
+	case decl_type_alias:
 		return "type"
 	case decl_var:
 		return "var"
@@ -127,7 +130,11 @@ func ast_decl_class(d ast.Decl) decl_class {
 		case token.CONST:
 			return decl_const
 		case token.TYPE:
-			return decl_type
+			if t.Specs[0].(*ast.TypeSpec).Assign != 0 {
+				return decl_type_alias
+			} else {
+				return decl_type
+			}
 		}
 	case *ast.FuncDecl:
 		return decl_func
@@ -726,7 +733,7 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 				return ast.NewIdent(t.Name), scope, false
 			}
 			typ, scope := d.infer_type()
-			return typ, scope, d.class == decl_type
+			return typ, scope, d.class == decl_type || d.class == decl_type_alias
 		}
 	case *ast.UnaryExpr:
 		switch t.Op {
@@ -878,7 +885,7 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		if d := type_to_decl(it, s); d != nil {
 			c := d.find_child_and_in_embedded(t.Sel.Name)
 			if c != nil {
-				if c.class == decl_type {
+				if c.class == decl_type || c.class == decl_type_alias {
 					return t, scope, true
 				} else {
 					typ, s := c.infer_type()
@@ -927,7 +934,7 @@ func (d *decl) infer_type() (ast.Expr, *scope) {
 	case decl_package:
 		// package is handled specially in inferType
 		return nil, nil
-	case decl_type:
+	case decl_type, decl_type_alias:
 		return ast.NewIdent(d.name), d.scope
 	}
 
@@ -948,12 +955,30 @@ func (d *decl) infer_type() (ast.Expr, *scope) {
 	return d.typ, scope
 }
 
+func (d *decl) type_dealias() *decl {
+	dd := type_to_decl(d.typ, d.scope)
+	return dd
+}
+
 func (d *decl) find_child(name string) *decl {
 	if d.flags&decl_visited != 0 {
 		return nil
 	}
 	d.flags |= decl_visited
 	defer d.clear_visited()
+
+	// type aliases don't really have any children on their own, but they
+	// point to a different type, let's try to find one
+	if d.class == decl_type_alias {
+		dd := d.type_dealias()
+		if dd != nil {
+			return dd.find_child(name)
+		}
+
+		// note that type alias can also point to a type literal, something like
+		// type A = struct { A int }
+		// in this case we rely on "advance_to_struct_or_interface" below
+	}
 
 	if d.children != nil {
 		if c, ok := d.children[name]; ok {
@@ -1301,11 +1326,6 @@ func (f *decl_pack) value_index(i int) (v ast.Expr, vi int) {
 
 func (f *decl_pack) type_value_index(i int) (ast.Expr, ast.Expr, int) {
 	if f.typ != nil {
-		// If there is a type and have f.values, it's type alias decl.
-		// Return the both of type and first value.
-		if len(f.values) == 1 {
-			return f.typ, f.values[0], -1
-		}
 		// If there is a type, we don't care about value, just return the type
 		// and zero value.
 		return f.typ, nil, -1

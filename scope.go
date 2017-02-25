@@ -5,16 +5,14 @@ package main
 //-------------------------------------------------------------------------
 
 type scope struct {
-	parent    *scope // nil for universe scope
-	entities  map[string]*decl
-	typealias map[string]*decl
+	parent   *scope // nil for universe scope
+	entities map[string]*decl
 }
 
 func new_scope(outer *scope) *scope {
 	s := new(scope)
 	s.parent = outer
 	s.entities = make(map[string]*decl)
-	s.typealias = make(map[string]*decl)
 	return s
 }
 

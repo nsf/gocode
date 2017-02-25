@@ -1,0 +1,21 @@
+package main
+
+type Baz struct {
+	Jim string
+	John string
+	Kim string
+}
+
+type FooBar struct {
+	A int
+	B int
+	C float64
+}
+
+func (b *FooBar) Foobarer() Baz { return Baz{} }
+
+func main() {
+	type Bar = FooBar
+	var b Bar
+	b.Foobarer().
+}

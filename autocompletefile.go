@@ -135,7 +135,7 @@ func (f *auto_complete_file) process_decl(decl ast.Decl) {
 	prevscope := f.scope
 	foreach_decl(decl, func(data *foreach_decl_struct) {
 		class := ast_decl_class(data.decl)
-		if class != decl_type {
+		if class != decl_type && class != decl_type_alias {
 			f.scope, prevscope = advance_scope(f.scope)
 		}
 		for i, name := range data.names {

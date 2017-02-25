@@ -201,7 +201,28 @@ func (c *auto_complete_context) get_candidates_from_set(set map[string]*decl, pa
 	}
 }
 
+func (c *auto_complete_context) get_candidates_from_decl_alias(cc cursor_context, class decl_class, b *out_buffers) {
+	if cc.decl.flags&decl_visited != 0 {
+		return
+	}
+
+	cc.decl = cc.decl.type_dealias()
+	if cc.decl == nil {
+		return
+	}
+	cc.decl.flags |= decl_visited
+	defer cc.decl.clear_visited()
+
+	c.get_candidates_from_decl(cc, class, b)
+	return
+}
+
 func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, class decl_class, b *out_buffers) {
+	if cc.decl.class == decl_type_alias {
+		c.get_candidates_from_decl_alias(cc, class, b)
+		return
+	}
+
 	// propose all children of a subject declaration and
 	for _, decl := range cc.decl.children {
 		if cc.decl.class == decl_package && !ast.IsExported(decl.name) {
@@ -595,6 +616,7 @@ var g_decl_class_to_color = [...]string{
 	decl_const:        color_white_bold,
 	decl_var:          color_magenta,
 	decl_type:         color_cyan,
+	decl_type_alias:   color_cyan,
 	decl_func:         color_green,
 	decl_package:      color_red,
 	decl_methods_stub: color_red,
@@ -604,6 +626,7 @@ var g_decl_class_to_string_status = [...]string{
 	decl_const:        "  const",
 	decl_var:          "    var",
 	decl_type:         "   type",
+	decl_type_alias:   "   type",
 	decl_func:         "   func",
 	decl_package:      "package",
 	decl_methods_stub: "   stub",

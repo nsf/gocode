@@ -216,8 +216,9 @@ func (p *gc_bin_parser) obj(tag int) {
 			Tok: token.TYPE,
 			Specs: []ast.Spec{
 				&ast.TypeSpec{
-					Name: ast.NewIdent(name),
-					Type: typ,
+					Name:   ast.NewIdent(name),
+					Assign: 1, // fake, but gocode only cares if it's there or not
+					Type:   typ,
 				},
 			},
 		})
