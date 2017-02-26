@@ -340,7 +340,7 @@ func new_decl_var(name string, typ ast.Expr, value ast.Expr, vindex int, scope *
 
 func method_of(d ast.Decl) string {
 	if t, ok := d.(*ast.FuncDecl); ok {
-		if t.Recv != nil {
+		if t.Recv != nil && len(t.Recv.List) != 0 {
 			switch t := t.Recv.List[0].Type.(type) {
 			case *ast.StarExpr:
 				if se, ok := t.X.(*ast.SelectorExpr); ok {
