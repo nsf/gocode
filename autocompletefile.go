@@ -243,7 +243,9 @@ func (f *auto_complete_file) process_select_stmt(a *ast.SelectStmt) {
 			if astmt, ok := last_cursor_after.Comm.(*ast.AssignStmt); ok && astmt.Tok == token.DEFINE {
 				vname := astmt.Lhs[0].(*ast.Ident).Name
 				v := new_decl_var(vname, nil, astmt.Rhs[0], -1, prevscope)
-				f.scope.add_named_decl(v)
+				if v != nil {
+					f.scope.add_named_decl(v)
+				}
 			}
 		}
 		for _, s := range last_cursor_after.Body {
