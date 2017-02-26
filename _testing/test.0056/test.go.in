@@ -1,0 +1,19 @@
+package main
+
+func (x *Baz) MethodMe() bool { return true }
+
+func (x *Bar) MethodYou() bool { return false }
+
+type Foo struct {
+	A int
+	B int
+	C int
+}
+
+type Bar = Foo
+type Baz = Bar
+
+func main() {
+	var f Foo
+	f.
+}

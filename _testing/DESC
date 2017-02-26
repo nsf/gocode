@@ -53,3 +53,4 @@ test.0052 - implicit type of a struct within slice/array literal
 test.0053 - type redefinition should not inherit method sets
 test.0054 - type alias dealiasing
 test.0055 - type alias inference
+test.0056 - type alias method propagation

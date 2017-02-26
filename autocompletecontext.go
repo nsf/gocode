@@ -104,10 +104,10 @@ func (b *out_buffers) append_embedded(p string, decl *decl, class decl_class) {
 		}
 
 		// prevent infinite recursion here
-		if typedecl.flags&decl_visited != 0 {
+		if typedecl.is_visited() {
 			continue
 		}
-		typedecl.flags |= decl_visited
+		typedecl.set_visited()
 		defer typedecl.clear_visited()
 
 		for _, c := range typedecl.children {
@@ -183,6 +183,12 @@ func (c *auto_complete_context) merge_decls() {
 		merge_decls(f.filescope, c.pkg, f.decls)
 		merge_decls_from_packages(c.pkg, f.packages, c.pcache)
 	}
+
+	// special pass for type aliases which also have methods, while this is
+	// valid code, it shouldn't happen a lot in practice, so, whatever
+	// let's move all type alias methods to their first non-alias type down in
+	// the chain
+	propagate_type_alias_methods(c.pkg)
 }
 
 func (c *auto_complete_context) make_decl_set(scope *scope) map[string]*decl {
@@ -202,7 +208,7 @@ func (c *auto_complete_context) get_candidates_from_set(set map[string]*decl, pa
 }
 
 func (c *auto_complete_context) get_candidates_from_decl_alias(cc cursor_context, class decl_class, b *out_buffers) {
-	if cc.decl.flags&decl_visited != 0 {
+	if cc.decl.is_visited() {
 		return
 	}
 
@@ -210,7 +216,8 @@ func (c *auto_complete_context) get_candidates_from_decl_alias(cc cursor_context
 	if cc.decl == nil {
 		return
 	}
-	cc.decl.flags |= decl_visited
+
+	cc.decl.set_visited()
 	defer cc.decl.clear_visited()
 
 	c.get_candidates_from_decl(cc, class, b)
@@ -218,7 +225,7 @@ func (c *auto_complete_context) get_candidates_from_decl_alias(cc cursor_context
 }
 
 func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, class decl_class, b *out_buffers) {
-	if cc.decl.flags&decl_alias != 0 {
+	if cc.decl.is_alias() {
 		c.get_candidates_from_decl_alias(cc, class, b)
 		return
 	}
@@ -409,6 +416,52 @@ func update_packages(ps map[string]*package_file_cache) {
 		if !<-done {
 			panic("One of the package cache updaters panicked")
 		}
+	}
+}
+
+func collect_type_alias_methods(d *decl) map[string]*decl {
+	if d == nil || d.is_visited() || !d.is_alias() {
+		return nil
+	}
+	d.set_visited()
+	defer d.clear_visited()
+
+	// add own methods
+	m := map[string]*decl{}
+	for k, v := range d.children {
+		m[k] = v
+	}
+
+	// recurse into more aliases
+	dd := type_to_decl(d.typ, d.scope)
+	for k, v := range collect_type_alias_methods(dd) {
+		m[k] = v
+	}
+
+	return m
+}
+
+func propagate_type_alias_methods(s *scope) {
+	for _, e := range s.entities {
+		if !e.is_alias() {
+			continue
+		}
+
+		methods := collect_type_alias_methods(e)
+		if len(methods) == 0 {
+			continue
+		}
+
+		dd := e.type_dealias()
+		if dd == nil {
+			continue
+		}
+
+		decl := dd.deep_copy()
+		for _, v := range methods {
+			decl.add_child(v)
+		}
+		s.entities[decl.name] = decl
 	}
 }
 
