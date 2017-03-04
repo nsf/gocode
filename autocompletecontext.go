@@ -257,18 +257,19 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 }
 
 func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {
-	pkgdirs := g_daemon.context.pkg_dirs()
+	currentPackagePath, pkgdirs := g_daemon.context.pkg_dirs()
+	fmt.Println(pkgdirs)
 	resultSet := map[string]struct{}{}
 	for _, pkgdir := range pkgdirs {
 		// convert srcpath to pkgpath and get candidates
-		get_import_candidates_dir(pkgdir, filepath.FromSlash(partial), b.ignorecase, resultSet)
+		get_import_candidates_dir(pkgdir, filepath.FromSlash(partial), b.ignorecase, currentPackagePath, resultSet)
 	}
 	for k := range resultSet {
 		b.candidates = append(b.candidates, candidate{Name: k, Class: decl_import})
 	}
 }
 
-func get_import_candidates_dir(root, partial string, ignorecase bool, r map[string]struct{}) {
+func get_import_candidates_dir(root, partial string, ignorecase bool, currentPackagePath string, r map[string]struct{}) {
 	var fpath string
 	var match bool
 	if strings.HasSuffix(partial, "/") {
@@ -287,7 +288,7 @@ func get_import_candidates_dir(root, partial string, ignorecase bool, r map[stri
 		if match && !has_prefix(rel, partial, ignorecase) {
 			continue
 		} else if fi[i].IsDir() {
-			get_import_candidates_dir(root, rel+string(filepath.Separator), ignorecase, r)
+			get_import_candidates_dir(root, rel+string(filepath.Separator), ignorecase, currentPackagePath, r)
 		} else {
 			ext := filepath.Ext(name)
 			if ext != ".a" {
@@ -295,7 +296,9 @@ func get_import_candidates_dir(root, partial string, ignorecase bool, r map[stri
 			} else {
 				rel = rel[0 : len(rel)-2]
 			}
-			r[vendorlessImportPath(filepath.ToSlash(rel))] = struct{}{}
+			if ipath, ok := vendorlessImportPath(filepath.ToSlash(rel), currentPackagePath); ok {
+				r[ipath] = struct{}{}
+			}
 		}
 	}
 }

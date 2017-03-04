@@ -453,9 +453,10 @@ func (ctxt *package_lookup_context) gopath() []string {
 	return all
 }
 
-func (ctxt *package_lookup_context) pkg_dirs() []string {
+func (ctxt *package_lookup_context) pkg_dirs() (string, []string) {
 	pkgdir := fmt.Sprintf("%s_%s", ctxt.GOOS, ctxt.GOARCH)
 
+	var currentPackagePath string
 	var all []string
 	if ctxt.GOROOT != "" {
 		dir := filepath.Join(ctxt.GOROOT, "pkg", pkgdir)
@@ -466,6 +467,7 @@ func (ctxt *package_lookup_context) pkg_dirs() []string {
 
 	switch g_config.PackageLookupMode {
 	case "go":
+		currentPackagePath = ctxt.CurrentPackagePath
 		for _, p := range ctxt.gopath() {
 			dir := filepath.Join(p, "pkg", pkgdir)
 			if is_dir(dir) {
@@ -483,7 +485,7 @@ func (ctxt *package_lookup_context) pkg_dirs() []string {
 	case "bzl":
 		// TODO: Support bazel mode
 	}
-	return all
+	return currentPackagePath, all
 }
 
 type decl_cache struct {
