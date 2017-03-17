@@ -314,7 +314,11 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 	// gb-specific lookup mode, only if the root dir was found
 	if g_config.PackageLookupMode == "gb" && context.GBProjectRoot != "" {
 		root := context.GBProjectRoot
-		pkg_path := filepath.Join(root, "pkg", context.GOOS+"-"+context.GOARCH, pkgfile)
+		pkgdir := filepath.Join(root, "pkg", context.GOOS+"-"+context.GOARCH)
+		if !is_dir(pkgdir) {
+			pkgdir = filepath.Join(root, "pkg", context.GOOS+"-"+context.GOARCH+"-race")
+		}
+		pkg_path := filepath.Join(pkgdir, pkgfile)
 		if file_exists(pkg_path) {
 			log_found_package_maybe(imp, pkg_path)
 			return pkg_path, true
@@ -477,6 +481,9 @@ func (ctxt *package_lookup_context) pkg_dirs() (string, []string) {
 	case "gb":
 		if ctxt.GBProjectRoot != "" {
 			pkgdir := fmt.Sprintf("%s-%s", ctxt.GOOS, ctxt.GOARCH)
+			if !is_dir(pkgdir) {
+				pkgdir = fmt.Sprintf("%s-%s-race", ctxt.GOOS, ctxt.GOARCH)
+			}
 			dir := filepath.Join(ctxt.GBProjectRoot, "pkg", pkgdir)
 			if is_dir(dir) {
 				all = append(all, dir)
