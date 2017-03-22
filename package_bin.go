@@ -396,10 +396,19 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 
 	case interfaceTag:
 		i := p.reserveMaybe()
-		if p.int() != 0 {
-			panic("unexpected embedded interface")
+		var embeddeds []*ast.SelectorExpr
+		for n := p.int(); n > 0; n-- {
+			p.pos()
+			if named, ok := p.typ(parent).(*ast.SelectorExpr); ok {
+				embeddeds = append(embeddeds, named)
+			}
 		}
 		methods := p.methodList(parent)
+		if embeddeds != nil {
+			for _, field := range embeddeds {
+				methods = append(methods, &ast.Field{Type: field})
+			}
+		}
 		return p.recordMaybe(i, &ast.InterfaceType{Methods: &ast.FieldList{List: methods}})
 
 	case mapTag:
