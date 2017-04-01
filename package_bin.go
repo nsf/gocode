@@ -404,10 +404,8 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 			}
 		}
 		methods := p.methodList(parent)
-		if embeddeds != nil {
-			for _, field := range embeddeds {
-				methods = append(methods, &ast.Field{Type: field})
-			}
+		for _, field := range embeddeds {
+			methods = append(methods, &ast.Field{Type: field})
 		}
 		return p.recordMaybe(i, &ast.InterfaceType{Methods: &ast.FieldList{List: methods}})
 
