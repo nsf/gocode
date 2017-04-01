@@ -240,11 +240,6 @@ package unsafe
 	func @"".Offsetof (? any) uintptr
 	func @"".Sizeof (? any) uintptr
 	func @"".Alignof (? any) uintptr
-	func @"".Typeof (i interface { }) interface { }
-	func @"".Reflect (i interface { }) (typ interface { }, addr @"".Pointer)
-	func @"".Unreflect (typ interface { }, addr @"".Pointer) interface { }
-	func @"".New (typ interface { }) @"".Pointer
-	func @"".NewArray (typ interface { }, n int) @"".Pointer
 
 $$
 `)
