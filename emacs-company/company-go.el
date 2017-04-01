@@ -195,7 +195,9 @@ triggers a completion immediately."
 
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
+  (interactive (list 'interactive))
   (case command
+    (interactive (company-begin-backend 'company-go))
     (prefix (and (derived-mode-p 'go-mode)
                  (not (company-in-string-or-comment))
                  (not (company-go--in-num-literal-p))
