@@ -1,0 +1,3 @@
+Found 2 candidates:
+  func Read(p []byte) (n int, err error)
+  func Write(p []byte) (n int, err error)
