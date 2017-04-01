@@ -989,7 +989,7 @@ func (d *decl) type_dealias() *decl {
 	defer d.clear_visited()
 
 	dd := type_to_decl(d.typ, d.scope)
-	if dd.is_alias() {
+	if dd != nil && dd.is_alias() {
 		return dd.type_dealias()
 	}
 	return dd
