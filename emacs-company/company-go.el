@@ -195,14 +195,17 @@ triggers a completion immediately."
 
 (defun company-go--syntax-highlight (str)
   "Apply syntax highlighting to STR."
-  (with-temp-buffer
-    (insert str)
-    (delay-mode-hooks (go-mode))
-    (if (fboundp 'font-lock-ensure)
-        (font-lock-ensure)
-      (with-no-warnings
-        (font-lock-fontify-buffer)))
-    (buffer-string)))
+  ;; If the user has disabled font-lock, respect that.
+  (if global-font-lock-mode
+      (with-temp-buffer
+        (insert str)
+        (delay-mode-hooks (go-mode))
+        (if (fboundp 'font-lock-ensure)
+            (font-lock-ensure)
+          (with-no-warnings
+            (font-lock-fontify-buffer)))
+        (buffer-string))
+    str))
 
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
