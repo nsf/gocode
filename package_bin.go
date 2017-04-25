@@ -53,6 +53,7 @@ type gc_bin_parser struct {
 
 	// object lists
 	strList       []string   // in order of appearance
+	pathList      []string   // in order of appearance
 	pkgList       []string   // in order of appearance
 	typList       []ast.Expr // in order of appearance
 	callback      func(pkg string, decl ast.Decl)
@@ -74,6 +75,7 @@ func (p *gc_bin_parser) init(data []byte, pfc *package_file_cache) {
 	p.data = data
 	p.version = -1           // unknown version
 	p.strList = []string{""} // empty string is mapped to 0
+	p.pathList = []string{""} // empty string is mapped to 0
 	p.pfc = pfc
 }
 
@@ -111,10 +113,10 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 
 	// read version specific flags - extend as necessary
 	switch p.version {
-	// case 5:
+	// case 6:
 	// 	...
 	//	fallthrough
-	case 4, 3, 2, 1:
+	case 5, 4, 3, 2, 1:
 		p.debugFormat = p.rawStringln(p.rawByte()) == "debug"
 		p.trackAllTypes = p.int() != 0
 		p.posInfoFormat = p.int() != 0
@@ -158,12 +160,17 @@ func (p *gc_bin_parser) pkg() string {
 
 	// otherwise, i is the package tag (< 0)
 	if i != packageTag {
-		panic(fmt.Sprintf("unexpected package tag %d", i))
+		panic(fmt.Sprintf("unexpected package tag %d version %d", i, p.version))
 	}
 
 	// read package data
 	name := p.string()
-	path := p.string()
+	var path string
+	if p.version >= 5 {
+		path = p.path()
+	} else {
+		path = p.string()
+	}
 
 	// we should never see an empty package name
 	if name == "" {
@@ -249,6 +256,8 @@ func (p *gc_bin_parser) obj(tag int) {
 	}
 }
 
+const deltaNewFile = -64 // see cmd/compile/internal/gc/bexport.go
+
 func (p *gc_bin_parser) pos() {
 	if !p.posInfoFormat {
 		return
@@ -256,15 +265,26 @@ func (p *gc_bin_parser) pos() {
 
 	file := p.prevFile
 	line := p.prevLine
-	if delta := p.int(); delta != 0 {
-		// line changed
-		line += delta
-	} else if n := p.int(); n >= 0 {
-		// file changed
-		file = p.prevFile[:n] + p.string()
-		p.prevFile = file
-		line = p.int()
+	delta := p.int()
+	line += delta
+	if p.version >= 5 {
+		if delta == deltaNewFile {
+			if n := p.int(); n >= 0 {
+				// file changed
+				file = p.path()
+				line = n
+			}
+		}
+	} else {
+		if delta == 0 {
+			if n := p.int(); n >= 0 {
+				// file changed
+				file = p.prevFile[:n] + p.string()
+				line = p.int()
+			}
+		}
 	}
+	p.prevFile = file
 	p.prevLine = line
 
 	// TODO(gri) register new position
@@ -614,6 +634,26 @@ func (p *gc_bin_parser) int64() int64 {
 	}
 
 	return p.rawInt64()
+}
+
+func (p *gc_bin_parser) path() string {
+	if p.debugFormat {
+		p.marker('p')
+	}
+	// if the path was seen before, i is its index (>= 0)
+	// (the empty string is at index 0)
+	i := p.rawInt64()
+	if i >= 0 {
+		return p.pathList[i]
+	}
+	// otherwise, i is the negative path length (< 0)
+	a := make([]string, -i)
+	for n := range a {
+		a[n] = p.string()
+	}
+	s := strings.Join(a, "/")
+	p.pathList = append(p.pathList, s)
+	return s
 }
 
 func (p *gc_bin_parser) string() string {
