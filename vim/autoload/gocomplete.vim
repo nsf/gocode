@@ -63,7 +63,7 @@ fu! s:gocodeCursor()
 		let buf .= c == 1 ? "" : getline('.')[:c-2]
 		return printf('%d', len(iconv(buf, &encoding, "utf-8")))
 	endif
-	return printf('%d', line2byte(line('.')) + (col('.')-2))
+	return printf('%d', line2byte(line('.')) + (col('.')-1))
 endf
 
 fu! s:gocodeAutocomplete()
