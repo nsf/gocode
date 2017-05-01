@@ -83,7 +83,7 @@ func (m *package_file_cache) update_cache() {
 	if m.mtime != statmtime {
 		m.mtime = statmtime
 
-		data, err := file_reader.read_file(fname)
+		data, err := package_reader.read_file(fname)
 		if err != nil {
 			return
 		}
