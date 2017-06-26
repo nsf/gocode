@@ -51,6 +51,11 @@
   :type 'boolean
   :group 'go-autocomplete)
 
+(defcustom ac-go-gocode-bin "gocode"
+  "Overwrite path to gocode binary"
+  :type 'string
+  :group 'go-autocomplete)
+
 ;; Close gocode daemon at exit unless it was already running
 (eval-after-load "go-mode"
   '(progn
@@ -95,7 +100,7 @@
         (progn
           (call-process-region (point-min)
                                (point-max)
-                               "gocode"
+                               ac-go-gocode-bin
                                nil
                                temp-buffer
                                nil
