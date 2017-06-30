@@ -1,0 +1,2 @@
+Found 1 candidates:
+  func NewPackage(fset *token.FileSet, files map[string]*myast.File, importer myast.Importer, universe *myast.Scope) (*myast.Package, error)

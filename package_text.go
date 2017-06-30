@@ -172,7 +172,7 @@ func (p *gc_parser) parse_exported_name() *ast.SelectorExpr {
 	p.expect('@')
 	pkg := p.parse_package()
 	if pkg.Name == "" {
-		pkg.Name = "#" + p.pfc.defalias
+		pkg.Name = "!" + p.pfc.name + "!" + p.pfc.defalias
 	} else {
 		pkg.Name = p.path_to_name[pkg.Name]
 	}

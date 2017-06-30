@@ -73,8 +73,8 @@ type gc_bin_parser struct {
 
 func (p *gc_bin_parser) init(data []byte, pfc *package_file_cache) {
 	p.data = data
-	p.version = -1           // unknown version
-	p.strList = []string{""} // empty string is mapped to 0
+	p.version = -1            // unknown version
+	p.strList = []string{""}  // empty string is mapped to 0
 	p.pathList = []string{""} // empty string is mapped to 0
 	p.pfc = pfc
 }
@@ -132,7 +132,8 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 	p.typList = append(p.typList, predeclared...)
 
 	// read package data
-	p.pfc.defalias = p.pkg()[1:]
+	pkgName := p.pkg()
+	p.pfc.defalias = pkgName[strings.LastIndex(pkgName, "!")+1:]
 
 	// read objects of phase 1 only (see cmd/compiler/internal/gc/bexport.go)
 	objcount := 0
@@ -188,7 +189,7 @@ func (p *gc_bin_parser) pkg() string {
 		fullName = "!" + path + "!" + name
 		p.pfc.add_package_to_scope(fullName, path)
 	} else {
-		fullName = "#" + name
+		fullName = "!" + p.pfc.name + "!" + name
 	}
 
 	// if the package was imported before, use that one; otherwise create a new one

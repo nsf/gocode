@@ -28,11 +28,12 @@ type candidate struct {
 }
 
 type out_buffers struct {
-	tmpbuf     *bytes.Buffer
-	candidates []candidate
-	ctx        *auto_complete_context
-	tmpns      map[string]bool
-	ignorecase bool
+	tmpbuf            *bytes.Buffer
+	candidates        []candidate
+	canonical_aliases map[string]string
+	ctx               *auto_complete_context
+	tmpns             map[string]bool
+	ignorecase        bool
 }
 
 func new_out_buffers(ctx *auto_complete_context) *out_buffers {
@@ -40,6 +41,10 @@ func new_out_buffers(ctx *auto_complete_context) *out_buffers {
 	b.tmpbuf = bytes.NewBuffer(make([]byte, 0, 1024))
 	b.candidates = make([]candidate, 0, 64)
 	b.ctx = ctx
+	b.canonical_aliases = make(map[string]string)
+	for _, imp := range b.ctx.current.packages {
+		b.canonical_aliases[imp.path] = imp.alias
+	}
 	return b
 }
 
@@ -71,7 +76,7 @@ func (b *out_buffers) append_decl(p, name string, decl *decl, class decl_class) 
 		return
 	}
 
-	decl.pretty_print_type(b.tmpbuf)
+	decl.pretty_print_type(b.tmpbuf, b.canonical_aliases)
 	b.candidates = append(b.candidates, candidate{
 		Name:  name,
 		Type:  b.tmpbuf.String(),

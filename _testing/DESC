@@ -54,3 +54,6 @@ test.0053 - type redefinition should not inherit method sets
 test.0054 - type alias dealiasing
 test.0055 - type alias inference
 test.0056 - type alias method propagation
+test.0057 - embedded interfaces
+test.0058 - canonical import aliases
+test.0059 - canonical import aliases, more complicated case (doesn't work as you might expect)

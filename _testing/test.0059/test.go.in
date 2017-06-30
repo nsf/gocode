@@ -1,0 +1,8 @@
+package main
+
+import myio "io"
+import "compress/bzip2"
+
+func main() {
+	bzip2.NewR
+}
