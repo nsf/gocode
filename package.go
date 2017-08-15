@@ -219,16 +219,16 @@ func new_package_cache() package_cache {
 // In case if package is not in the cache, it creates one and adds one to the cache.
 func (c package_cache) append_packages(ps map[string]*package_file_cache, pkgs []package_import) {
 	for _, m := range pkgs {
-		if _, ok := ps[m.path]; ok {
+		if _, ok := ps[m.abspath]; ok {
 			continue
 		}
 
-		if mod, ok := c[m.path]; ok {
-			ps[m.path] = mod
+		if mod, ok := c[m.abspath]; ok {
+			ps[m.abspath] = mod
 		} else {
-			mod = new_package_file_cache(m.path)
-			ps[m.path] = mod
-			c[m.path] = mod
+			mod = new_package_file_cache(m.abspath)
+			ps[m.abspath] = mod
+			c[m.abspath] = mod
 		}
 	}
 }

@@ -19,8 +19,9 @@ import (
 //-------------------------------------------------------------------------
 
 type package_import struct {
-	alias string
-	path  string
+	alias   string
+	abspath string
+	path    string
 }
 
 // Parses import declarations until the first non-import declaration and fills
@@ -32,9 +33,9 @@ func collect_package_imports(filename string, decls []ast.Decl, context *package
 			for _, spec := range gd.Specs {
 				imp := spec.(*ast.ImportSpec)
 				path, alias := path_and_alias(imp)
-				path, ok := abs_path_for_package(filename, path, context)
+				abspath, ok := abs_path_for_package(filename, path, context)
 				if ok && alias != "_" {
-					pi = append(pi, package_import{alias, path})
+					pi = append(pi, package_import{alias, abspath, path})
 				}
 			}
 		} else {

@@ -43,7 +43,7 @@ func new_out_buffers(ctx *auto_complete_context) *out_buffers {
 	b.ctx = ctx
 	b.canonical_aliases = make(map[string]string)
 	for _, imp := range b.ctx.current.packages {
-		b.canonical_aliases[imp.path] = imp.alias
+		b.canonical_aliases[imp.abspath] = imp.alias
 	}
 	return b
 }
@@ -482,7 +482,7 @@ func merge_decls(filescope *scope, pkg *scope, decls map[string]*decl) {
 
 func merge_decls_from_packages(pkgscope *scope, pkgs []package_import, pcache package_cache) {
 	for _, p := range pkgs {
-		path, alias := p.path, p.alias
+		path, alias := p.abspath, p.alias
 		if alias != "." {
 			continue
 		}
@@ -500,7 +500,7 @@ func merge_decls_from_packages(pkgscope *scope, pkgs []package_import, pcache pa
 
 func fixup_packages(filescope *scope, pkgs []package_import, pcache package_cache) {
 	for _, p := range pkgs {
-		path, alias := p.path, p.alias
+		path, alias := p.abspath, p.alias
 		if alias == "" {
 			alias = pcache[path].defalias
 		}
