@@ -22,9 +22,10 @@ import (
 
 // fields must be exported for RPC
 type candidate struct {
-	Name  string
-	Type  string
-	Class decl_class
+	Name    string
+	Type    string
+	Class   decl_class
+	Package string
 }
 
 type out_buffers struct {
@@ -65,7 +66,7 @@ func (b *out_buffers) Swap(i, j int) {
 	b.candidates[i], b.candidates[j] = b.candidates[j], b.candidates[i]
 }
 
-func (b *out_buffers) append_decl(p, name string, decl *decl, class decl_class) {
+func (b *out_buffers) append_decl(p, name, pkg string, decl *decl, class decl_class) {
 	c1 := !g_config.ProposeBuiltins && decl.scope == g_universe_scope && decl.name != "Error"
 	c2 := class != decl_invalid && decl.class != class
 	c3 := class == decl_invalid && !has_prefix(name, p, b.ignorecase)
@@ -78,14 +79,15 @@ func (b *out_buffers) append_decl(p, name string, decl *decl, class decl_class) 
 
 	decl.pretty_print_type(b.tmpbuf, b.canonical_aliases)
 	b.candidates = append(b.candidates, candidate{
-		Name:  name,
-		Type:  b.tmpbuf.String(),
-		Class: decl.class,
+		Name:    name,
+		Type:    b.tmpbuf.String(),
+		Class:   decl.class,
+		Package: pkg,
 	})
 	b.tmpbuf.Reset()
 }
 
-func (b *out_buffers) append_embedded(p string, decl *decl, class decl_class) {
+func (b *out_buffers) append_embedded(p string, decl *decl, pkg string, class decl_class) {
 	if decl.embedded == nil {
 		return
 	}
@@ -119,10 +121,10 @@ func (b *out_buffers) append_embedded(p string, decl *decl, class decl_class) {
 			if _, has := b.tmpns[c.name]; has {
 				continue
 			}
-			b.append_decl(p, c.name, c, class)
+			b.append_decl(p, c.name, pkg, c, class)
 			b.tmpns[c.name] = true
 		}
-		b.append_embedded(p, typedecl, class)
+		b.append_embedded(p, typedecl, pkg, class)
 	}
 
 	if first_level {
@@ -208,7 +210,11 @@ func (c *auto_complete_context) get_candidates_from_set(set map[string]*decl, pa
 			continue
 		}
 		value.infer_type()
-		b.append_decl(partial, key, value, class)
+		pkgname := ""
+		if pkg, ok := c.pcache[value.name]; ok {
+			pkgname = pkg.import_name
+		}
+		b.append_decl(partial, key, pkgname, value, class)
 	}
 }
 
@@ -246,19 +252,25 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 				continue
 			}
 		}
-		b.append_decl(cc.partial, decl.name, decl, class)
+		pkgname := ""
+		if pkg, ok := c.pcache[decl.scope.pkgname]; ok {
+			pkgname = pkg.import_name
+		}
+		b.append_decl(cc.partial, decl.name, pkgname, decl, class)
 	}
 	// propose all children of an underlying struct/interface type
 	adecl := advance_to_struct_or_interface(cc.decl)
 	if adecl != nil && adecl != cc.decl {
 		for _, decl := range adecl.children {
 			if decl.class == decl_var {
-				b.append_decl(cc.partial, decl.name, decl, class)
+				pkgname := c.pcache[decl.name].import_name
+				b.append_decl(cc.partial, decl.name, pkgname, decl, class)
 			}
 		}
 	}
 	// propose all children of its embedded types
-	b.append_embedded(cc.partial, cc.decl, class)
+	pkgname := c.pcache[cc.decl.name].import_name
+	b.append_embedded(cc.partial, cc.decl, pkgname, class)
 }
 
 func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {

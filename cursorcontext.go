@@ -413,7 +413,7 @@ func resolveKnownPackageIdent(ident string, filename string, context *package_lo
 		return nil
 	}
 
-	p := new_package_file_cache(path)
+	p := new_package_file_cache(path, path)
 	p.update_cache()
 	return p.main
 }

@@ -20,18 +20,20 @@ type package_parser interface {
 //-------------------------------------------------------------------------
 
 type package_file_cache struct {
-	name     string // file name
-	mtime    int64
-	defalias string
+	name        string // file name
+	import_name string
+	mtime       int64
+	defalias    string
 
 	scope  *scope
 	main   *decl // package declaration
 	others map[string]*decl
 }
 
-func new_package_file_cache(name string) *package_file_cache {
+func new_package_file_cache(absname, name string) *package_file_cache {
 	m := new(package_file_cache)
-	m.name = name
+	m.name = absname
+	m.import_name = name
 	m.mtime = 0
 	m.defalias = ""
 	return m
@@ -92,7 +94,7 @@ func (m *package_file_cache) update_cache() {
 }
 
 func (m *package_file_cache) process_package_data(data []byte) {
-	m.scope = new_scope(g_universe_scope)
+	m.scope = new_named_scope(g_universe_scope, m.name)
 
 	// find import section
 	i := bytes.Index(data, []byte{'\n', '$', '$'})
@@ -226,7 +228,7 @@ func (c package_cache) append_packages(ps map[string]*package_file_cache, pkgs [
 		if mod, ok := c[m.abspath]; ok {
 			ps[m.abspath] = mod
 		} else {
-			mod = new_package_file_cache(m.abspath)
+			mod = new_package_file_cache(m.abspath, m.path)
 			ps[m.abspath] = mod
 			c[m.abspath] = mod
 		}
