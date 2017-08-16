@@ -90,7 +90,10 @@ symbol is preceded by a \".\", ignoring `company-minimum-prefix-length'."
 (defun company-go--get-candidates (strings)
   (mapcar (lambda (str)
             (let ((candidate (split-string str ",,")))
-              (propertize (nth 1 candidate) 'meta (company-go--format-meta candidate)))) strings))
+              (propertize (nth 1 candidate)
+                          'meta (company-go--format-meta candidate)
+                          'package (nth 3 candidate))))
+          strings))
 
 (defun company-go--candidates ()
   (let ((candidates (company-go--get-candidates (split-string (company-go--invoke-autocomplete) "\n" t))))
@@ -207,6 +210,15 @@ triggers a completion immediately."
         (buffer-string))
     str))
 
+(defun company-go--godoc-as-buffer (arg)
+  "Return Go documentation for QUERY as a buffer."
+  (let ((package (get-text-property 0 'package arg)))
+    (unless (or (string= arg "") (string= package ""))
+      (let* ((query (format "%s.%s" package arg))
+             (buf (godoc--get-buffer query)))
+        (call-process-shell-command (concat godoc-command " " query) nil buf nil)
+        buf))))
+
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
   (interactive (list 'interactive))
@@ -223,6 +235,8 @@ triggers a completion immediately."
      (when company-go-show-annotation
        (company-go--extract-annotation (get-text-property 0 'meta arg))))
     (location (company-go--location arg))
+    (doc-buffer
+     (company-go--godoc-as-buffer arg))
     (sorted t)
     (post-completion
      (when (and company-go-insert-arguments
