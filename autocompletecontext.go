@@ -235,6 +235,16 @@ func (c *auto_complete_context) get_candidates_from_decl_alias(cc cursor_context
 	return
 }
 
+func (c *auto_complete_context) decl_package_import_path(decl *decl) string {
+	if decl == nil || decl.scope == nil {
+		return ""
+	}
+	if pkg, ok := c.pcache[decl.scope.pkgname]; ok {
+		return pkg.import_name
+	}
+	return ""
+}
+
 func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, class decl_class, b *out_buffers) {
 	if cc.decl.is_alias() {
 		c.get_candidates_from_decl_alias(cc, class, b)
@@ -252,25 +262,19 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 				continue
 			}
 		}
-		pkgname := ""
-		if pkg, ok := c.pcache[decl.scope.pkgname]; ok {
-			pkgname = pkg.import_name
-		}
-		b.append_decl(cc.partial, decl.name, pkgname, decl, class)
+		b.append_decl(cc.partial, decl.name, c.decl_package_import_path(decl), decl, class)
 	}
 	// propose all children of an underlying struct/interface type
 	adecl := advance_to_struct_or_interface(cc.decl)
 	if adecl != nil && adecl != cc.decl {
 		for _, decl := range adecl.children {
 			if decl.class == decl_var {
-				pkgname := c.pcache[decl.name].import_name
-				b.append_decl(cc.partial, decl.name, pkgname, decl, class)
+				b.append_decl(cc.partial, decl.name, c.decl_package_import_path(decl), decl, class)
 			}
 		}
 	}
 	// propose all children of its embedded types
-	pkgname := c.pcache[cc.decl.name].import_name
-	b.append_embedded(cc.partial, cc.decl, pkgname, class)
+	b.append_embedded(cc.partial, cc.decl, c.decl_package_import_path(cc.decl), class)
 }
 
 func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {
