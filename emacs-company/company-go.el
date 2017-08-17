@@ -58,6 +58,16 @@ symbol is preceded by a \".\", ignoring `company-minimum-prefix-length'."
   :group 'company-go
   :type '(repeat string))
 
+(defcustom company-go-godoc-command "go doc"
+  "The command to invoke `go doc' with."
+  :group 'company-go
+  :type 'string)
+
+(defcustom company-go-godoc-args "-u"
+  "Arguments to pass to `go doc'."
+  :group 'company-go
+  :type 'string)
+
 (defun company-go--invoke-autocomplete ()
   (let ((code-buffer (current-buffer))
         (gocode-args (append company-go-gocode-args
@@ -212,12 +222,19 @@ triggers a completion immediately."
 
 (defun company-go--godoc-as-buffer (arg)
   "Return Go documentation for QUERY as a buffer."
-  (let ((package (get-text-property 0 'package arg)))
-    (unless (or (string= arg "") (string= package ""))
-      (let* ((query (format "%s.%s" package arg))
-             (buf (godoc--get-buffer query)))
-        (call-process-shell-command (concat godoc-command " " query) nil buf nil)
-        buf))))
+  (unless (string= arg "")
+    (let* ((package (get-text-property 0 'package arg))
+           (query (if (string= package "")
+                      arg
+                      (format "%s.%s" package arg)))
+           (buf (godoc--get-buffer query))
+           (exit-code (call-process-shell-command
+                       (concat company-go-godoc-command " " company-go-godoc-args " " query)
+                       nil buf nil)))
+      (if (zerop exit-code)
+          buf
+        (kill-buffer buf)
+        nil))))
 
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
