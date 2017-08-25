@@ -58,6 +58,16 @@ symbol is preceded by a \".\", ignoring `company-minimum-prefix-length'."
   :group 'company-go
   :type '(repeat string))
 
+(defcustom company-go-godoc-command "go doc"
+  "The command to invoke `go doc' with."
+  :group 'company-go
+  :type 'string)
+
+(defcustom company-go-godoc-args "-u"
+  "Arguments to pass to `go doc'."
+  :group 'company-go
+  :type 'string)
+
 (defun company-go--invoke-autocomplete ()
   (let ((code-buffer (current-buffer))
         (gocode-args (append company-go-gocode-args
@@ -90,7 +100,10 @@ symbol is preceded by a \".\", ignoring `company-minimum-prefix-length'."
 (defun company-go--get-candidates (strings)
   (mapcar (lambda (str)
             (let ((candidate (split-string str ",,")))
-              (propertize (nth 1 candidate) 'meta (company-go--format-meta candidate)))) strings))
+              (propertize (nth 1 candidate)
+                          'meta (company-go--format-meta candidate)
+                          'package (nth 3 candidate))))
+          strings))
 
 (defun company-go--candidates ()
   (let ((candidates (company-go--get-candidates (split-string (company-go--invoke-autocomplete) "\n" t))))
@@ -207,6 +220,22 @@ triggers a completion immediately."
         (buffer-string))
     str))
 
+(defun company-go--godoc-as-buffer (arg)
+  "Return Go documentation for QUERY as a buffer."
+  (unless (string= arg "")
+    (let* ((package (get-text-property 0 'package arg))
+           (query (if (string= package "")
+                      arg
+                      (format "%s.%s" package arg)))
+           (buf (godoc--get-buffer query))
+           (exit-code (call-process-shell-command
+                       (concat company-go-godoc-command " " company-go-godoc-args " " query)
+                       nil buf nil)))
+      (if (zerop exit-code)
+          buf
+        (kill-buffer buf)
+        nil))))
+
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
   (interactive (list 'interactive))
@@ -223,6 +252,8 @@ triggers a completion immediately."
      (when company-go-show-annotation
        (company-go--extract-annotation (get-text-property 0 'meta arg))))
     (location (company-go--location arg))
+    (doc-buffer
+     (company-go--godoc-as-buffer arg))
     (sorted t)
     (post-completion
      (when (and company-go-insert-arguments

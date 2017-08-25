@@ -124,7 +124,7 @@ type csv_formatter struct{}
 
 func (*csv_formatter) write_candidates(candidates []candidate, num int) {
 	for _, c := range candidates {
-		fmt.Printf("%s,,%s,,%s\n", c.Class, c.Name, c.Type)
+		fmt.Printf("%s,,%s,,%s,,%s\n", c.Class, c.Name, c.Type, c.Package)
 	}
 }
 
@@ -145,8 +145,8 @@ func (*json_formatter) write_candidates(candidates []candidate, num int) {
 		if i != 0 {
 			fmt.Printf(", ")
 		}
-		fmt.Printf(`{"class": "%s", "name": "%s", "type": "%s"}`,
-			c.Class, c.Name, c.Type)
+		fmt.Printf(`{"class": "%s", "name": "%s", "type": "%s", "package": "%s"}`,
+			c.Class, c.Name, c.Type, c.Package)
 	}
 	fmt.Print("]]")
 }

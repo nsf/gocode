@@ -5,12 +5,23 @@ package main
 //-------------------------------------------------------------------------
 
 type scope struct {
+	// the package name that this scope resides in
+	pkgname  string
 	parent   *scope // nil for universe scope
 	entities map[string]*decl
 }
 
+func new_named_scope(outer *scope, name string) *scope {
+	s := new_scope(outer)
+	s.pkgname = name
+	return s
+}
+
 func new_scope(outer *scope) *scope {
 	s := new(scope)
+	if outer != nil {
+		s.pkgname = outer.pkgname
+	}
 	s.parent = outer
 	s.entities = make(map[string]*decl)
 	return s
