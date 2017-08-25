@@ -124,6 +124,18 @@ type csv_formatter struct{}
 
 func (*csv_formatter) write_candidates(candidates []candidate, num int) {
 	for _, c := range candidates {
+		fmt.Printf("%s,,%s,,%s\n", c.Class, c.Name, c.Type)
+	}
+}
+
+//-------------------------------------------------------------------------
+// csv_with_package_formatter
+//-------------------------------------------------------------------------
+
+type csv_with_package_formatter struct{}
+
+func (*csv_with_package_formatter) write_candidates(candidates []candidate, num int) {
+	for _, c := range candidates {
 		fmt.Printf("%s,,%s,,%s,,%s\n", c.Class, c.Name, c.Type, c.Package)
 	}
 }
@@ -163,6 +175,8 @@ func get_formatter(name string) formatter {
 		return new(nice_formatter)
 	case "csv":
 		return new(csv_formatter)
+	case "csv-with-package":
+		return new(csv_with_package_formatter)
 	case "json":
 		return new(json_formatter)
 	case "godit":
