@@ -1132,7 +1132,7 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr, canonical_aliases map[str
 			}
 		} else if !*g_debug && strings.HasPrefix(t.Name, "!") {
 			// these are full package names for disambiguating and pretty
-			// printing packages withing packages, e.g.
+			// printing packages within packages, e.g.
 			// !go/ast!ast vs. !github.com/nsf/my/ast!ast
 			// another ugly hack, if people are punished in hell for ugly hacks
 			// I'm screwed...
