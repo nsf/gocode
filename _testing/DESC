@@ -57,3 +57,4 @@ test.0056 - type alias method propagation
 test.0057 - embedded interfaces
 test.0058 - canonical import aliases
 test.0059 - canonical import aliases, more complicated case (doesn't work as you might expect)
+test.0060 - shortcut syntax for return value types in functions

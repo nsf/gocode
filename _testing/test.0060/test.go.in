@@ -1,0 +1,10 @@
+package main
+
+import "io"
+
+func f() (a, b io.Reader, c error) { return a }
+
+func main() {
+	a, b, c := f()
+	b.
+}

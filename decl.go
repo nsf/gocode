@@ -514,17 +514,14 @@ func func_return_type(f *ast.FuncType, index int) ast.Expr {
 	i := 0
 	var field *ast.Field
 	for _, field = range f.Results.List {
-		if i >= index {
+		n := 1
+		if field.Names != nil {
+			n = len(field.Names)
+		}
+		if i <= index && index < i+n {
 			return field.Type
 		}
-		if field.Names != nil {
-			i += len(field.Names)
-		} else {
-			i++
-		}
-	}
-	if i >= index {
-		return field.Type
+		i += n
 	}
 	return nil
 }
