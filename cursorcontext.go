@@ -116,6 +116,27 @@ func (this *token_iterator) skip_to_left_curly() bool {
 	return this.skip_to_left(token.LBRACE, token.RBRACE)
 }
 
+func (ti *token_iterator) extract_type_alike() string {
+	if ti.token().tok != token.IDENT { // not Foo, return nothing
+		return ""
+	}
+	b := ti.token().literal()
+	if !ti.go_back() { // just Foo
+		return b
+	}
+	if ti.token().tok != token.PERIOD { // not .Foo, return Foo
+		return b
+	}
+	if !ti.go_back() { // just .Foo, return Foo (best choice recovery)
+		return b
+	}
+	if ti.token().tok != token.IDENT { // not lib.Foo, return Foo
+		return b
+	}
+	ti.go_back()
+	return ti.token().literal() + "." + b // lib.Foo
+}
+
 // Extract the type expression right before the enclosing curly bracket block.
 // Examples (# - the cursor):
 //   &lib.Struct{Whatever: 1, Hel#} // returns "lib.Struct"
@@ -130,30 +151,21 @@ func (ti *token_iterator) extract_struct_type() string {
 	if !ti.go_back() {
 		return ""
 	}
-	if ti.token().tok == token.LBRACE {
+	if ti.token().tok == token.LBRACE { // Foo{#{}}
 		if !ti.go_back() {
 			return ""
 		}
-	} else if ti.token().tok == token.COMMA {
+	} else if ti.token().tok == token.COMMA { // Foo{abc,#{}}
 		return ti.extract_struct_type()
 	}
-	if ti.token().tok != token.IDENT {
+	typ := ti.extract_type_alike()
+	if typ == "" {
 		return ""
 	}
-	b := ti.token().literal()
-	if !ti.go_back() {
-		return b
+	if ti.token().tok == token.RPAREN || ti.token().tok == token.MUL {
+		return ""
 	}
-	if ti.token().tok != token.PERIOD {
-		return b
-	}
-	if !ti.go_back() {
-		return b
-	}
-	if ti.token().tok != token.IDENT {
-		return b
-	}
-	return ti.token().literal() + "." + b
+	return typ
 }
 
 // Starting from the token under the cursor move back and extract something

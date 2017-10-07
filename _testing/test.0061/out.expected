@@ -1,0 +1,4 @@
+Found 3 candidates:
+  func Foo() *http.Request
+  func main()
+  package http 

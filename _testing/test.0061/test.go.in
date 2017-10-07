@@ -1,0 +1,10 @@
+package main
+
+import "net/http"
+
+func Foo() *http.Request {
+	
+}
+
+func main() {
+}
