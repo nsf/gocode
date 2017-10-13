@@ -133,8 +133,9 @@ func (ti *token_iterator) extract_type_alike() string {
 	if ti.token().tok != token.IDENT { // not lib.Foo, return Foo
 		return b
 	}
+	out := ti.token().literal() + "." + b // lib.Foo
 	ti.go_back()
-	return ti.token().literal() + "." + b // lib.Foo
+	return out
 }
 
 // Extract the type expression right before the enclosing curly bracket block.
