@@ -58,3 +58,6 @@ test.0057 - embedded interfaces
 test.0058 - canonical import aliases
 test.0059 - canonical import aliases, more complicated case (doesn't work as you might expect)
 test.0060 - shortcut syntax for return value types in functions
+test.0061 - function body vs struct literal cursor context detection
+test.0062 - struct type alias embedding
+test.0063 - fields autocompletion for a struct literal which is defined by a type alias

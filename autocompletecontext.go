@@ -110,6 +110,11 @@ func (b *out_buffers) append_embedded(p string, decl *decl, pkg string, class de
 			continue
 		}
 
+		// could be type alias
+		if typedecl.is_alias() {
+			typedecl = typedecl.type_dealias()
+		}
+
 		// prevent infinite recursion here
 		if typedecl.is_visited() {
 			continue

@@ -1,0 +1,15 @@
+package main
+
+type ABC struct {
+	A int
+	B int
+	C int
+}
+
+type ABCAlias = ABC
+
+func main() {
+	x := ABCAlias{
+		
+	}
+}

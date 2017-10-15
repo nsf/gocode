@@ -286,7 +286,14 @@ func (c *auto_complete_context) deduce_struct_type_decl(iter *token_iterator) *d
 	if decl == nil {
 		return nil
 	}
-	if _, ok := decl.typ.(*ast.StructType); !ok {
+
+	// we allow only struct types here, but also support type aliases
+	if decl.is_alias() {
+		dd := decl.type_dealias()
+		if _, ok := dd.typ.(*ast.StructType); !ok {
+			return nil
+		}
+	} else if _, ok := decl.typ.(*ast.StructType); !ok {
 		return nil
 	}
 	return decl

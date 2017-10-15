@@ -1,0 +1,5 @@
+Found 4 candidates:
+  var A int
+  var ABCAlias ABCAlias
+  var B int
+  var C int
