@@ -478,6 +478,10 @@ func (ctxt *package_lookup_context) pkg_dirs() (string, []string) {
 			if is_dir(dir) {
 				all = append(all, dir)
 			}
+			dir = filepath.Join(dir, currentPackagePath, "vendor")
+			if is_dir(dir) {
+				all = append(all, dir)
+			}
 		}
 	case "gb":
 		if ctxt.GBProjectRoot != "" {
