@@ -367,7 +367,9 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	if !ok {
 		var d *decl
 		if ident, ok := cc.expr.(*ast.Ident); ok && g_config.UnimportedPackages {
-			d = resolveKnownPackageIdent(ident.Name, c.current.name, c.current.context)
+			p := resolveKnownPackageIdent(ident.Name, c.current.name, c.current.context)
+			c.pcache[p.name] = p
+			d = p.main
 		}
 		if d == nil {
 			return nil, 0
