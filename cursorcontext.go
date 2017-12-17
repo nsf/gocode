@@ -35,10 +35,8 @@ type token_item struct {
 func (i token_item) literal() string {
 	if i.tok.IsLiteral() {
 		return i.lit
-	} else {
-		return i.tok.String()
 	}
-	return ""
+	return i.tok.String()
 }
 
 func new_token_iterator(src []byte, cursor int) token_iterator {
