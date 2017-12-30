@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 )
 
@@ -28,9 +29,25 @@ type config struct {
 	PackageLookupMode  string `json:"package-lookup-mode"`
 	CloseTimeout       int    `json:"close-timeout"`
 	UnimportedPackages bool   `json:"unimported-packages"`
+	Partials           bool   `json:"partials"`
+	IgnoreCase         bool   `json:"ignore-case"`
 }
 
-var g_config = config{
+var g_config_desc = map[string]string{
+	"propose-builtins":    "If set to {true}, gocode will add built-in types, functions and constants to autocompletion proposals.",
+	"lib-path":            "A string option. Allows you to add search paths for packages. By default, gocode only searches {$GOPATH/pkg/$GOOS_$GOARCH} and {$GOROOT/pkg/$GOOS_$GOARCH} in terms of previously existed environment variables. Also you can specify multiple paths using ':' (colon) as a separator (on Windows use semicolon ';'). The paths specified by {lib-path} are prepended to the default ones.",
+	"custom-pkg-prefix":   "",
+	"custom-vendor-dir":   "",
+	"autobuild":           "If set to {true}, gocode will try to automatically build out-of-date packages when their source files are modified, in order to obtain the freshest autocomplete results for them. This feature is experimental.",
+	"force-debug-output":  "If is not empty, gocode will forcefully redirect the logging into that file. Also forces enabling of the debug mode on the server side.",
+	"package-lookup-mode": "If set to {go}, use standard Go package lookup rules. If set to {gb}, use gb-specific lookup rules. See {https://github.com/constabulary/gb} for details.",
+	"close-timeout":       "If there have been no completion requests after this number of seconds, the gocode process will terminate. Default is 30 minutes.",
+	"unimported-packages": "If set to {true}, gocode will try to import certain known packages automatically for identifiers which cannot be resolved otherwise. Currently only a limited set of standard library packages is supported.",
+	"partials":            "If set to {false}, gocode will not filter autocompletion results based on entered prefix before the cursor. Instead it will return all available autocompletion results viable for a given context. Whether this option is set to {true} or {false}, gocode will return a valid prefix length for output formats which support it. Setting this option to a non-default value may result in editor misbehaviour.",
+	"ignore-case":         "If set to {true}, gocode will perform case-insensitive matching when doing prefix-based filtering.",
+}
+
+var g_default_config = config{
 	ProposeBuiltins:    false,
 	LibPath:            "",
 	CustomPkgPrefix:    "",
@@ -39,7 +56,10 @@ var g_config = config{
 	PackageLookupMode:  "go",
 	CloseTimeout:       1800,
 	UnimportedPackages: false,
+	Partials:           true,
+	IgnoreCase:         false,
 }
+var g_config = g_default_config
 
 var g_string_to_bool = map[string]bool{
 	"t":     true,
@@ -174,4 +194,44 @@ func (this *config) read() error {
 	}
 
 	return nil
+}
+
+func quoted(v interface{}) string {
+	switch v.(type) {
+	case string:
+		return fmt.Sprintf("%q", v)
+	case int:
+		return fmt.Sprint(v)
+	case bool:
+		return fmt.Sprint(v)
+	default:
+		panic("unreachable")
+	}
+}
+
+var descRE = regexp.MustCompile(`{[^}]+}`)
+
+func preprocess_desc(v string) string {
+	return descRE.ReplaceAllStringFunc(v, func(v string) string {
+		return color_cyan + v[1:len(v)-1] + color_none
+	})
+}
+
+func (this *config) options() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "%sConfig file location%s: %s\n", color_white_bold, color_none, config_file())
+	dv := reflect.ValueOf(g_default_config)
+	v, t := this.value_and_type()
+	for i, n := 0, t.NumField(); i < n; i++ {
+		f := t.Field(i)
+		index := f.Index
+		tag := f.Tag.Get("json")
+		fmt.Fprintf(&buf, "\n%s%s%s\n", color_yellow_bold, tag, color_none)
+		fmt.Fprintf(&buf, "%stype%s: %s\n", color_yellow, color_none, f.Type)
+		fmt.Fprintf(&buf, "%svalue%s: %s\n", color_yellow, color_none, quoted(v.FieldByIndex(index).Interface()))
+		fmt.Fprintf(&buf, "%sdefault%s: %s\n", color_yellow, color_none, quoted(dv.FieldByIndex(index).Interface()))
+		fmt.Fprintf(&buf, "%sdescription%s: %s\n", color_yellow, color_none, preprocess_desc(g_config_desc[tag]))
+	}
+
+	return buf.String()
 }

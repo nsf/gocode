@@ -151,7 +151,7 @@ You can change all available options using `gocode set` command. The config file
 
  - *propose-builtins*
 
-   A boolean option. If **true**, gocode will add built-in types, functions and constants to an autocompletion proposals. Default: **false**.
+   A boolean option. If **true**, gocode will add built-in types, functions and constants to autocompletion proposals. Default: **false**.
 
  - *lib-path*
 
@@ -172,6 +172,18 @@ You can change all available options using `gocode set` command. The config file
  - *close-timeout*
 
    An integer option. If there have been no completion requests after this number of seconds, the gocode process will terminate. Defaults to 1800 (30 minutes).
+
+ - *unimported-packages*
+
+   A boolean option. If set to true, gocode will try to import certain known packages automatically for identifiers which cannot be resolved otherwise. Currently only a limited set of standard library packages are supported. Default: **false**.
+
+ - *partials*
+
+   A boolean option. If set to false, gocode will not filter autocompletion results based on entered prefix before the cursor. Instead it will return all available autocompletion results viable for a given context. Whether this option is set to true or false, gocode will return a valid prefix length for output formats which support it. Setting this option to a non-default value may result in editor misbehaviour. Default: **true**.
+
+ - *ignore-case*
+
+   A boolean option. If set to true, gocode will perform case-insensitive matching when doing prefix-based filtering. Default: **false**.
 
 ### Debugging
 

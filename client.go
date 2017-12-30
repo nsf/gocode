@@ -50,6 +50,8 @@ func do_client() int {
 			cmd_drop_cache(client)
 		case "set":
 			cmd_set(client)
+		case "options":
+			cmd_options(client)
 		default:
 			fmt.Printf("unknown argument: %q, try running \"gocode -h\"\n", flag.Arg(0))
 			return 1
@@ -179,4 +181,8 @@ func cmd_set(c *rpc.Client) {
 	case 3:
 		fmt.Print(client_set(c, flag.Arg(1), flag.Arg(2)))
 	}
+}
+
+func cmd_options(c *rpc.Client) {
+	fmt.Print(client_options(c, 0))
 }

@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -361,9 +362,21 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	// And we're ready to Go. ;)
 
 	b := new_out_buffers(c)
+	if g_config.IgnoreCase {
+		if *g_debug {
+			log.Printf("ignoring case sensitivity")
+		}
+		b.ignorecase = true
+	}
 
-	partial := 0
 	cc, ok := c.deduce_cursor_context(file, cursor)
+	partial := len(cc.partial)
+	if !g_config.Partials {
+		if *g_debug {
+			log.Printf("not performing partial prefix matching")
+		}
+		cc.partial = ""
+	}
 	if !ok {
 		var d *decl
 		if ident, ok := cc.expr.(*ast.Ident); ok && g_config.UnimportedPackages {
@@ -415,7 +428,6 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 			c.get_candidates_from_decl(cc, class, b)
 		}
 	}
-	partial = len(cc.partial)
 
 	if len(b.candidates) == 0 {
 		return nil, 0

@@ -40,9 +40,11 @@ func show_usage() {
 		"\nCommands:\n"+
 			"  autocomplete [<path>] <offset>     main autocompletion command\n"+
 			"  close                              close the gocode daemon\n"+
-			"  status                             gocode daemon status report\n"+
 			"  drop-cache                         drop gocode daemon's cache\n"+
-			"  set [<name> [<value>]]             list or set config options\n")
+			"  options                            list config options (extended)\n"+
+			"  set [<name> [<value>]]             list or set config options\n"+
+			"  status                             gocode daemon status report\n"+
+			"")
 }
 
 func main() {

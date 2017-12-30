@@ -136,3 +136,27 @@ func client_set(cli *rpc.Client, Arg0, Arg1 string) string {
 	}
 	return reply.Arg0
 }
+
+// wrapper for: server_options
+
+type Args_options struct {
+	Arg0 int
+}
+type Reply_options struct {
+	Arg0 string
+}
+
+func (r *RPC) RPC_options(args *Args_options, reply *Reply_options) error {
+	reply.Arg0 = server_options(args.Arg0)
+	return nil
+}
+func client_options(cli *rpc.Client, Arg0 int) string {
+	var args Args_options
+	var reply Reply_options
+	args.Arg0 = Arg0
+	err := cli.Call("RPC.RPC_options", &args, &reply)
+	if err != nil {
+		panic(err)
+	}
+	return reply.Arg0
+}

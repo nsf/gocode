@@ -241,3 +241,7 @@ func server_set(key, value string) string {
 	g_daemon.drop_cache()
 	return g_config.set_option(key, value)
 }
+
+func server_options(notused int) string {
+	return g_config.options()
+}
