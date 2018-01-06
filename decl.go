@@ -118,7 +118,6 @@ func ast_decl_type(d ast.Decl) ast.Expr {
 		return t.Type
 	}
 	panic("unreachable")
-	return nil
 }
 
 func ast_decl_flags(d ast.Decl) decl_flags {

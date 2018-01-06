@@ -673,7 +673,6 @@ func check_type_expr(e ast.Expr) bool {
 	default:
 		return true
 	}
-	return true
 }
 
 //-------------------------------------------------------------------------
