@@ -185,6 +185,10 @@ You can change all available options using `gocode set` command. The config file
 
    A boolean option. If set to true, gocode will perform case-insensitive matching when doing prefix-based filtering. Default: **false**.
 
+ - *class-filtering*
+
+   A boolean option. Enables or disables gocode's feature where it performs class-based filtering if partial input matches corresponding class keyword: const, var, type, func, package. Default: **true**.
+
 ### Debugging
 
 If something went wrong, the first thing you may want to do is manually start the gocode daemon with a debug mode enabled and in a separate terminal window. It will show you all the stack traces, panics if any and additional info about autocompletion requests. Shutdown the daemon if it was already started and run a new one explicitly with a debug mode enabled:

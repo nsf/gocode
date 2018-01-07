@@ -31,6 +31,7 @@ type config struct {
 	UnimportedPackages bool   `json:"unimported-packages"`
 	Partials           bool   `json:"partials"`
 	IgnoreCase         bool   `json:"ignore-case"`
+	ClassFiltering     bool   `json:"class-filtering"`
 }
 
 var g_config_desc = map[string]string{
@@ -45,6 +46,7 @@ var g_config_desc = map[string]string{
 	"unimported-packages": "If set to {true}, gocode will try to import certain known packages automatically for identifiers which cannot be resolved otherwise. Currently only a limited set of standard library packages is supported.",
 	"partials":            "If set to {false}, gocode will not filter autocompletion results based on entered prefix before the cursor. Instead it will return all available autocompletion results viable for a given context. Whether this option is set to {true} or {false}, gocode will return a valid prefix length for output formats which support it. Setting this option to a non-default value may result in editor misbehaviour.",
 	"ignore-case":         "If set to {true}, gocode will perform case-insensitive matching when doing prefix-based filtering.",
+	"class-filtering":     "Enables or disables gocode's feature where it performs class-based filtering if partial input matches corresponding class keyword: const, var, type, func, package.",
 }
 
 var g_default_config = config{
@@ -58,6 +60,7 @@ var g_default_config = config{
 	UnimportedPackages: false,
 	Partials:           true,
 	IgnoreCase:         false,
+	ClassFiltering:     true,
 }
 var g_config = g_default_config
 

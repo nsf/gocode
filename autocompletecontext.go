@@ -393,17 +393,19 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	}
 
 	class := decl_invalid
-	switch cc.partial {
-	case "const":
-		class = decl_const
-	case "var":
-		class = decl_var
-	case "type":
-		class = decl_type
-	case "func":
-		class = decl_func
-	case "package":
-		class = decl_package
+	if g_config.ClassFiltering {
+		switch cc.partial {
+		case "const":
+			class = decl_const
+		case "var":
+			class = decl_var
+		case "type":
+			class = decl_type
+		case "func":
+			class = decl_func
+		case "package":
+			class = decl_package
+		}
 	}
 
 	if cc.decl_import {
