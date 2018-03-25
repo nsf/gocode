@@ -1036,6 +1036,12 @@ func (d *decl) find_child_and_in_embedded(name string) *decl {
 		return nil
 	}
 
+	if d.is_visited() {
+		return nil
+	}
+	d.set_visited()
+	defer d.clear_visited()
+
 	c := d.find_child(name)
 	if c == nil {
 		for _, e := range d.embedded {
