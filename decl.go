@@ -734,7 +734,7 @@ func (a *anonymous_typer) Visit(node ast.Node) ast.Visitor {
 		case token.TYPE:
 			for _, s := range t.Specs {
 				ts := s.(*ast.TypeSpec)
-				if ts.Assign != token.NoPos {
+				if isAliasTypeSpec(ts) {
 					ts.Type = check_for_anon_type(ts.Type, a.flags, a.scope)
 				}
 			}
