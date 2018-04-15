@@ -67,6 +67,8 @@ const (
 
 	// for preventing infinite recursions and loops in type inference code
 	decl_visited
+
+	decl_visited_find_child_and_in_embedded
 )
 
 //-------------------------------------------------------------------------
@@ -391,12 +393,24 @@ func (d *decl) is_visited() bool {
 	return d.flags&decl_visited != 0
 }
 
+func (d *decl) is_visited_find_child_and_in_embedded() bool {
+	return d.flags&decl_visited_find_child_and_in_embedded != 0
+}
+
 func (d *decl) set_visited() {
 	d.flags |= decl_visited
 }
 
+func (d *decl) set_visited_find_child_and_in_embedded() {
+	d.flags |= decl_visited_find_child_and_in_embedded
+}
+
 func (d *decl) clear_visited() {
 	d.flags &^= decl_visited
+}
+
+func (d *decl) clear_visited_find_child_and_in_embedded() {
+	d.flags &^= decl_visited_find_child_and_in_embedded
 }
 
 func (d *decl) expand_or_replace(other *decl) {
@@ -1036,11 +1050,11 @@ func (d *decl) find_child_and_in_embedded(name string) *decl {
 		return nil
 	}
 
-	if d.is_visited() {
+	if d.is_visited_find_child_and_in_embedded() {
 		return nil
 	}
-	d.set_visited()
-	defer d.clear_visited()
+	d.set_visited_find_child_and_in_embedded()
+	defer d.clear_visited_find_child_and_in_embedded()
 
 	c := d.find_child(name)
 	if c == nil {
