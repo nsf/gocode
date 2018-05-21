@@ -113,10 +113,10 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 
 	// read version specific flags - extend as necessary
 	switch p.version {
-	// case 6:
+	// case 7:
 	// 	...
 	//	fallthrough
-	case 5, 4, 3, 2, 1:
+	case 6, 5, 4, 3, 2, 1:
 		p.debugFormat = p.rawStringln(p.rawByte()) == "debug"
 		p.trackAllTypes = p.int() != 0
 		p.posInfoFormat = p.int() != 0
@@ -152,6 +152,9 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 	}
 }
 
+// MaxPkgHeight is a height greater than any likely package height.
+const MaxPkgHeight = 1e9
+
 func (p *gc_bin_parser) pkg() string {
 	// if the package was seen before, i is its index (>= 0)
 	i := p.tagOrIndex()
@@ -172,6 +175,10 @@ func (p *gc_bin_parser) pkg() string {
 	} else {
 		path = p.string()
 	}
+	var height int
+	if p.version >= 6 {
+		height = p.int()
+	}
 
 	// we should never see an empty package name
 	if name == "" {
@@ -184,6 +191,18 @@ func (p *gc_bin_parser) pkg() string {
 		panic(fmt.Sprintf("package path %q for pkg index %d", path, len(p.pkgList)))
 	}
 
+	if p.version >= 6 {
+		if height < 0 || height >= MaxPkgHeight {
+			panic(fmt.Sprintf("bad package height %v for package %s", height, name))
+		}
+
+		// reexported packages should always have a lower height than
+		// the main package
+		// if len(p.pkgList) != 0 && height >= p.imp.Height {
+		// 	p.formatErrorf("package %q (height %d) reexports package %q (height %d)", p.imp.Path, p.imp.Height, path, height)
+		// }
+	}
+
 	var fullName string
 	if path != "" {
 		fullName = "!" + path + "!" + name
@@ -193,6 +212,7 @@ func (p *gc_bin_parser) pkg() string {
 	}
 
 	// if the package was imported before, use that one; otherwise create a new one
+	// pkg.Height = height
 	p.pkgList = append(p.pkgList, fullName)
 	return p.pkgList[len(p.pkgList)-1]
 }
