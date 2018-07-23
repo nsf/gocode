@@ -112,6 +112,11 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	if data[0] == 'B' {
 		// binary format, skip 'B\n'
 		data = data[2:]
+		if data[0] == 'i' {
+			var tp types_parser
+			tp.init(m.import_name, m)
+			data = tp.exportData()
+		}
 		var p gc_bin_parser
 		p.init(data, m)
 		pp = &p
