@@ -65,21 +65,25 @@ type Module struct {
 func parseModuleJson(data []byte) ModuleList {
 	var ms ModuleList
 	var index int
+	var last byte = '\n'
 	for i, v := range data {
-		switch v {
-		case '{':
-			index = i
-		case '}':
-			var m Module
-			err := json.Unmarshal(data[index:i+1], &m)
-			if err == nil {
-				if m.Main {
-					ms.Module = m
-				} else {
-					ms.Require = append(ms.Require, &m)
+		if last == '\n' {
+			switch v {
+			case '{':
+				index = i
+			case '}':
+				var m Module
+				err := json.Unmarshal(data[index:i+1], &m)
+				if err == nil {
+					if m.Main {
+						ms.Module = m
+					} else {
+						ms.Require = append(ms.Require, &m)
+					}
 				}
 			}
 		}
+		last = v
 	}
 	return ms
 }

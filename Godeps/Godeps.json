@@ -8,11 +8,11 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/gomod",
-			"Rev": "7ab499df0956c934555c5da7f1469262a0f1032b"
+			"Rev": "931b579bd3fde2bd4c8da63824f3cfe54135c6a2"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/srcimporter",
-			"Rev": "7ab499df0956c934555c5da7f1469262a0f1032b"
+			"Rev": "931b579bd3fde2bd4c8da63824f3cfe54135c6a2"
 		},
 		{
 			"ImportPath": "golang.org/x/tools/go/gcexportdata",
