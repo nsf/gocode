@@ -130,6 +130,9 @@ func (m *package_file_cache) process_package_data(data []byte, source bool) {
 		}
 		tp.init(m.import_name, srcDir, m, true)
 		data = tp.exportData()
+		if data == nil {
+			return
+		}
 		var p gc_bin_parser
 		p.init(data, m)
 		pp = &p
@@ -141,6 +144,9 @@ func (m *package_file_cache) process_package_data(data []byte, source bool) {
 				var tp types_parser
 				tp.init(m.import_name, m.import_name, m, false)
 				data = tp.exportData()
+				if data == nil {
+					return
+				}
 			}
 			var p gc_bin_parser
 			p.init(data, m)
