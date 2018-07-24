@@ -392,12 +392,12 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 	}
 
 	if g_daemon != nil && g_daemon.modList != nil {
-		pkg := g_daemon.modList.LookupModule(imp)
+		pkg, _ := g_daemon.modList.LookupModule(imp)
 		if pkg != nil {
 			if *g_debug {
 				log.Println("lookup module", pkg.Path, pkg.Dir)
 			}
-			return pkg.Path, true
+			return imp, true
 		}
 	}
 

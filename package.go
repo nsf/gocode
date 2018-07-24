@@ -120,9 +120,9 @@ func (m *package_file_cache) process_package_data(data []byte, source bool) {
 		var tp types_parser
 		var srcDir string
 		if g_daemon.modList != nil {
-			pkg := g_daemon.modList.LookupModule(m.import_name)
+			pkg, dir := g_daemon.modList.LookupModule(m.import_name)
 			if pkg != nil {
-				srcDir = pkg.Dir
+				srcDir = dir
 				if *g_debug {
 					log.Println(m.import_name, srcDir)
 				}
