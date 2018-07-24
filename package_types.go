@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
+	"go/build"
 	"go/importer"
 	"go/token"
 	"go/types"
@@ -11,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/visualfc/gotools/pkg/srcimporter"
 	"golang.org/x/tools/go/gcexportdata"
 )
 
@@ -68,8 +70,19 @@ func objToAst(obj types.Object) ast.Decl {
 	return nil
 }
 
-func (p *types_parser) init(path string, pfc *package_file_cache) {
-	p.pkg, _ = importer.Default().Import(path)
+func (p *types_parser) init(path string, dir string, pfc *package_file_cache, source bool) {
+	if source {
+		im := srcimporter.New(&build.Default, token.NewFileSet(), make(map[string]*types.Package))
+		if dir != "" {
+			var err error
+			p.pkg, err = im.ImportFrom(path, dir, 0)
+			log.Println(err, dir)
+		} else {
+			p.pkg, _ = im.Import(path)
+		}
+	} else {
+		p.pkg, _ = importer.Default().Import(path)
+	}
 	p.pfc = pfc
 }
 

@@ -12,6 +12,8 @@ import (
 	"reflect"
 	"runtime"
 	"time"
+
+	"github.com/visualfc/gotools/pkg/gomod"
 )
 
 func do_server() int {
@@ -58,6 +60,7 @@ type daemon struct {
 	pkgcache     package_cache
 	declcache    *decl_cache
 	context      package_lookup_context
+	modList      *gomod.ModuleList
 }
 
 func new_daemon(network, address string) *daemon {
@@ -181,6 +184,7 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		} else if *g_debug {
 			log.Printf("Go project path not found: %s", err)
 		}
+		g_daemon.modList = gomod.LooupModList(filepath.Dir(filename))
 	}
 	if *g_debug {
 		var buf bytes.Buffer

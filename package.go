@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
+	"log"
 	"os"
 	"strings"
 )
@@ -78,6 +79,10 @@ func (m *package_file_cache) update_cache() {
 	fname := m.find_file()
 	stat, err := os.Stat(fname)
 	if err != nil {
+		if *g_debug {
+			log.Println("update cache source", m.import_name)
+		}
+		m.process_package_data(nil, true)
 		return
 	}
 
@@ -89,19 +94,21 @@ func (m *package_file_cache) update_cache() {
 		if err != nil {
 			return
 		}
-		m.process_package_data(data)
+		m.process_package_data(data, false)
 	}
 }
 
-func (m *package_file_cache) process_package_data(data []byte) {
+func (m *package_file_cache) process_package_data(data []byte, source bool) {
 	m.scope = new_named_scope(g_universe_scope, m.name)
 
 	// find import section
-	i := bytes.Index(data, []byte{'\n', '$', '$'})
-	if i == -1 {
-		panic(fmt.Sprintf("Can't find the import section in the package file %s", m.name))
+	if !source {
+		i := bytes.Index(data, []byte{'\n', '$', '$'})
+		if i == -1 {
+			panic(fmt.Sprintf("Can't find the import section in the package file %s", m.name))
+		}
+		data = data[i+len("\n$$"):]
 	}
-	data = data[i+len("\n$$"):]
 
 	// main package
 	m.main = new_decl(m.name, decl_package, nil)
@@ -109,28 +116,47 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	m.others = make(map[string]*decl)
 
 	var pp package_parser
-	if data[0] == 'B' {
-		// binary format, skip 'B\n'
-		data = data[2:]
-		if data[0] == 'i' {
-			var tp types_parser
-			tp.init(m.import_name, m)
-			data = tp.exportData()
+	if source {
+		var tp types_parser
+		var srcDir string
+		if g_daemon.modList != nil {
+			pkg := g_daemon.modList.LookupModule(m.import_name)
+			if pkg != nil {
+				srcDir = pkg.Dir
+				if *g_debug {
+					log.Println(m.import_name, srcDir)
+				}
+			}
 		}
+		tp.init(m.import_name, srcDir, m, true)
+		data = tp.exportData()
 		var p gc_bin_parser
 		p.init(data, m)
 		pp = &p
 	} else {
-		// textual format, find the beginning of the package clause
-		i = bytes.Index(data, []byte{'p', 'a', 'c', 'k', 'a', 'g', 'e'})
-		if i == -1 {
-			panic("Can't find the package clause")
-		}
-		data = data[i:]
+		if data[0] == 'B' {
+			// binary format, skip 'B\n'
+			data = data[2:]
+			if data[0] == 'i' {
+				var tp types_parser
+				tp.init(m.import_name, m.import_name, m, false)
+				data = tp.exportData()
+			}
+			var p gc_bin_parser
+			p.init(data, m)
+			pp = &p
+		} else {
+			// textual format, find the beginning of the package clause
+			i := bytes.Index(data, []byte{'p', 'a', 'c', 'k', 'a', 'g', 'e'})
+			if i == -1 {
+				panic("Can't find the package clause")
+			}
+			data = data[i:]
 
-		var p gc_parser
-		p.init(data, m)
-		pp = &p
+			var p gc_parser
+			p.init(data, m)
+			pp = &p
+		}
 	}
 
 	prefix := "!" + m.name + "!"
@@ -254,6 +280,6 @@ $$
 
 func (c package_cache) add_builtin_unsafe_package() {
 	pkg := new_package_file_cache_forever("unsafe", "unsafe")
-	pkg.process_package_data(g_builtin_unsafe_package)
+	pkg.process_package_data(g_builtin_unsafe_package, false)
 	c["unsafe"] = pkg
 }
