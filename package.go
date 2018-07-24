@@ -142,7 +142,7 @@ func (m *package_file_cache) process_package_data(data []byte, source bool) {
 			data = data[2:]
 			if data[0] == 'i' {
 				var tp types_parser
-				tp.init(m.import_name, m.import_name, m, false)
+				tp.init(m.import_name, "", m, false)
 				data = tp.exportData()
 				if data == nil {
 					return

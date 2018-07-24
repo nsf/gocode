@@ -1,0 +1,26 @@
+{
+	"ImportPath": "github.com/visualfc/gocode",
+	"GoVersion": "go1.11",
+	"GodepVersion": "v80",
+	"Packages": [
+		"."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/visualfc/gotools/pkg/gomod",
+			"Rev": "7ab499df0956c934555c5da7f1469262a0f1032b"
+		},
+		{
+			"ImportPath": "github.com/visualfc/gotools/pkg/srcimporter",
+			"Rev": "7ab499df0956c934555c5da7f1469262a0f1032b"
+		},
+		{
+			"ImportPath": "golang.org/x/tools/go/gcexportdata",
+			"Rev": "99195f4d4ffa6331a9bc856c72697a15d9842950"
+		},
+		{
+			"ImportPath": "golang.org/x/tools/go/internal/gcimporter",
+			"Rev": "99195f4d4ffa6331a9bc856c72697a15d9842950"
+		}
+	]
+}
