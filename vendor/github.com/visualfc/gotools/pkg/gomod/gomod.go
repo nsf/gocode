@@ -60,18 +60,23 @@ type Module struct {
 	Time    string
 	Dir     string
 	Main    bool
+	Replace *Module
 }
 
 func parseModuleJson(data []byte) ModuleList {
 	var ms ModuleList
 	var index int
-	var last byte = '\n'
+	var tag int
 	for i, v := range data {
-		if last == '\n' {
-			switch v {
-			case '{':
+		switch v {
+		case '{':
+			if tag == 0 {
 				index = i
-			case '}':
+			}
+			tag++
+		case '}':
+			tag--
+			if tag == 0 {
 				var m Module
 				err := json.Unmarshal(data[index:i+1], &m)
 				if err == nil {
@@ -83,7 +88,6 @@ func parseModuleJson(data []byte) ModuleList {
 				}
 			}
 		}
-		last = v
 	}
 	return ms
 }
