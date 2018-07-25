@@ -45,13 +45,25 @@ type ModuleList struct {
 	Require []*Module
 }
 
-func (m *ModuleList) LookupModule(pkgname string) (*Module, string) {
+func makePath(path, dir string, addin string) string {
+	dir = filepath.FromSlash(dir)
+	pos := strings.Index(dir, "mod/"+path+"@")
+	return filepath.Join(dir[pos:], addin)
+}
+
+func (m *ModuleList) LookupModule(pkgname string) (require *Module, path string, dir string) {
 	for _, r := range m.Require {
 		if strings.HasPrefix(pkgname, r.Path) {
-			return r, filepath.Join(r.Dir, pkgname[len(r.Path):])
+			addin := pkgname[len(r.Path):]
+			if r.Replace != nil {
+				path = makePath(r.Replace.Path, r.Dir, addin)
+			} else {
+				path = makePath(r.Path, r.Dir, addin)
+			}
+			return r, path, filepath.Join(r.Dir, addin)
 		}
 	}
-	return nil, ""
+	return nil, "", ""
 }
 
 type Module struct {
