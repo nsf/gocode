@@ -46,8 +46,11 @@ type ModuleList struct {
 }
 
 func makePath(path, dir string, addin string) string {
-	dir = filepath.FromSlash(dir)
+	dir = filepath.ToSlash(dir)
 	pos := strings.Index(dir, "mod/"+path+"@")
+	if pos == -1 {
+		return path
+	}
 	return filepath.Join(dir[pos:], addin)
 }
 
