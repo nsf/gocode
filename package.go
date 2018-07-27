@@ -101,15 +101,6 @@ func (m *package_file_cache) update_cache() {
 func (m *package_file_cache) process_package_data(data []byte, source bool) {
 	m.scope = new_named_scope(g_universe_scope, m.name)
 
-	// find import section
-	if !source {
-		i := bytes.Index(data, []byte{'\n', '$', '$'})
-		if i == -1 {
-			panic(fmt.Sprintf("Can't find the import section in the package file %s", m.name))
-		}
-		data = data[i+len("\n$$"):]
-	}
-
 	// main package
 	m.main = new_decl(m.name, decl_package, nil)
 	// create map for other packages
@@ -128,30 +119,40 @@ func (m *package_file_cache) process_package_data(data []byte, source bool) {
 				}
 			}
 		}
-		tp.init(m.import_name, srcDir, m, true)
+		tp.initSource(m.import_name, srcDir, m)
 		data = tp.exportData()
 		if data == nil {
+			log.Println("error parser data source", m.import_name)
 			return
 		}
 		var p gc_bin_parser
 		p.init(data, m)
 		pp = &p
 	} else {
-		if data[0] == 'B' {
+		i := bytes.Index(data, []byte{'\n', '$', '$'})
+		if i == -1 {
+			panic(fmt.Sprintf("Can't find the import section in the package file %s", m.name))
+		}
+		offset := i + len("\n$$")
+		if data[offset] == 'B' {
 			// binary format, skip 'B\n'
-			data = data[2:]
-			if data[0] == 'i' {
+			//data = data[2:]
+			if data[offset+2] == 'i' {
 				var tp types_parser
-				tp.init(m.import_name, "", m, false)
+				tp.initData(m.import_name, data, m)
 				data = tp.exportData()
 				if data == nil {
+					log.Println("error parser data binary", m.import_name)
 					return
 				}
+			} else {
+				data = data[offset+2:]
 			}
 			var p gc_bin_parser
 			p.init(data, m)
 			pp = &p
 		} else {
+			data = data[offset:]
 			// textual format, find the beginning of the package clause
 			i := bytes.Index(data, []byte{'p', 'a', 'c', 'k', 'a', 'g', 'e'})
 			if i == -1 {
