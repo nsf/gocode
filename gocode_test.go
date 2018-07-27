@@ -19,12 +19,12 @@ func TestGocode(t *testing.T) {
 	ctx.CurrentPackagePath = bp.ImportPath
 
 	*g_debug = true
+	g_config.Autobuild = false
 	//resolveKnownPackageIdent("fmt", "gocode.go", &ctx)
 	//resolveKnownPackageIdent("os", "gocode.go", &ctx)
 	//resolveKnownPackageIdent("http", "gocode.go", &ctx)
-	//resolvePackageIdent("go/build", "gocode_test.go", &ctx)
 	//resolvePackageIdent("github.com/visualfc/gotools/pkg/srcimporter", "package_types.go", &ctx)
-
+	//return
 	declcache := new_decl_cache(&ctx)
 	pkgcache := new_package_cache()
 	autocomplete := new_auto_complete_context(pkgcache, declcache)
@@ -37,11 +37,11 @@ func TestGocode(t *testing.T) {
 }
 
 func resolvePackageIdent(importPath string, filename string, context *package_lookup_context) *package_file_cache {
-	path, ok := abs_path_for_package(filename, importPath, context)
+	pkg, vname, ok := abs_path_for_package(filename, importPath, context)
 	if !ok {
 		return nil
 	}
-	p := new_package_file_cache(path, importPath)
+	p := new_package_file_cache(pkg, importPath, vname)
 	p.update_cache()
 	return p
 }

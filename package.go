@@ -23,6 +23,7 @@ type package_parser interface {
 type package_file_cache struct {
 	name        string // file name
 	import_name string
+	vendor_name string
 	mtime       int64
 	defalias    string
 
@@ -31,10 +32,11 @@ type package_file_cache struct {
 	others map[string]*decl
 }
 
-func new_package_file_cache(absname, name string) *package_file_cache {
+func new_package_file_cache(absname, name string, vname string) *package_file_cache {
 	m := new(package_file_cache)
 	m.name = absname
 	m.import_name = name
+	m.vendor_name = vname
 	m.mtime = 0
 	m.defalias = ""
 	return m
@@ -79,9 +81,6 @@ func (m *package_file_cache) update_cache() {
 	fname := m.find_file()
 	stat, err := os.Stat(fname)
 	if err != nil {
-		if *g_debug {
-			log.Println("update cache source", m.import_name)
-		}
 		m.process_package_data(nil, true)
 		return
 	}
@@ -110,7 +109,7 @@ func (m *package_file_cache) process_package_data(data []byte, source bool) {
 	if source {
 		var tp types_parser
 		var srcDir string
-		if g_daemon.modList != nil {
+		if g_daemon != nil && g_daemon.modList != nil {
 			pkg, _, dir := g_daemon.modList.LookupModule(m.import_name)
 			if pkg != nil {
 				srcDir = dir
@@ -119,10 +118,17 @@ func (m *package_file_cache) process_package_data(data []byte, source bool) {
 				}
 			}
 		}
-		tp.initSource(m.import_name, srcDir, m)
+		importPath := m.import_name
+		if m.vendor_name != "" {
+			importPath = m.vendor_name
+		}
+		tp.initSource(importPath, srcDir, m)
 		data = tp.exportData()
+		if *g_debug {
+			log.Printf("parser source %q %q\n", importPath, srcDir)
+		}
 		if data == nil {
-			log.Println("error parser data source", m.import_name)
+			log.Println("error parser data source", importPath)
 			return
 		}
 		var p gc_bin_parser
@@ -266,7 +272,7 @@ func (c package_cache) append_packages(ps map[string]*package_file_cache, pkgs [
 		if mod, ok := c[m.abspath]; ok {
 			ps[m.abspath] = mod
 		} else {
-			mod = new_package_file_cache(m.abspath, m.path)
+			mod = new_package_file_cache(m.abspath, m.path, m.vpath)
 			ps[m.abspath] = mod
 			c[m.abspath] = mod
 		}

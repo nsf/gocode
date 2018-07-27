@@ -426,12 +426,12 @@ func resolveKnownPackageIdent(ident string, filename string, context *package_lo
 		return nil
 	}
 
-	path, ok := abs_path_for_package(filename, importPath, context)
+	path, vname, ok := abs_path_for_package(filename, importPath, context)
 	if !ok {
 		return nil
 	}
 
-	p := new_package_file_cache(path, importPath)
+	p := new_package_file_cache(path, importPath, vname)
 	p.update_cache()
 	return p
 }
