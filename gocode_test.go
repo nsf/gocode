@@ -32,16 +32,16 @@ func TestGocode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ar, n := autocomplete.apropos(data, "./package_types.go", 359)
+	ar, n := autocomplete.apropos(data, "./package_types.go", 714)
 	fmt.Println(ar, n)
 }
 
-func resolvePackageIdent(importPath string, filename string, context *package_lookup_context) *package_file_cache {
+func resolvePackageIdent(importPath string, filename string, c *auto_complete_context, context *package_lookup_context) *package_file_cache {
 	pkg, vname, ok := abs_path_for_package(filename, importPath, context)
 	if !ok {
 		return nil
 	}
 	p := new_package_file_cache(pkg, importPath, vname)
-	p.update_cache()
+	p.update_cache(c)
 	return p
 }

@@ -74,14 +74,14 @@ func (m *package_file_cache) find_file() string {
 	return m.name
 }
 
-func (m *package_file_cache) update_cache() {
+func (m *package_file_cache) update_cache(c *auto_complete_context) {
 	if m.mtime == -1 {
 		return
 	}
 	fname := m.find_file()
 	stat, err := os.Stat(fname)
 	if err != nil {
-		m.process_package_data(nil, true)
+		m.process_package_data(c, nil, true)
 		return
 	}
 
@@ -93,11 +93,11 @@ func (m *package_file_cache) update_cache() {
 		if err != nil {
 			return
 		}
-		m.process_package_data(data, false)
+		m.process_package_data(c, data, false)
 	}
 }
 
-func (m *package_file_cache) process_package_data(data []byte, source bool) {
+func (m *package_file_cache) process_package_data(c *auto_complete_context, data []byte, source bool) {
 	m.scope = new_named_scope(g_universe_scope, m.name)
 
 	// main package
@@ -122,7 +122,7 @@ func (m *package_file_cache) process_package_data(data []byte, source bool) {
 		if m.vendor_name != "" {
 			importPath = m.vendor_name
 		}
-		tp.initSource(importPath, srcDir, m)
+		tp.initSource(importPath, srcDir, m, c)
 		data = tp.exportData()
 		if *g_debug {
 			log.Printf("parser source %q %q\n", importPath, srcDir)
@@ -145,7 +145,7 @@ func (m *package_file_cache) process_package_data(data []byte, source bool) {
 			//data = data[2:]
 			if data[offset+2] == 'i' {
 				var tp types_parser
-				tp.initData(m.import_name, data, m)
+				tp.initData(m.import_name, data, m, c)
 				data = tp.exportData()
 				if data == nil {
 					log.Println("error parser data binary", m.import_name)
@@ -293,6 +293,6 @@ $$
 
 func (c package_cache) add_builtin_unsafe_package() {
 	pkg := new_package_file_cache_forever("unsafe", "unsafe")
-	pkg.process_package_data(g_builtin_unsafe_package, false)
+	pkg.process_package_data(nil, g_builtin_unsafe_package, false)
 	c["unsafe"] = pkg
 }

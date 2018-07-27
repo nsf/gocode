@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
-	"go/build"
 	"go/importer"
 	"go/token"
 	"go/types"
 	"io"
+	"log"
 
-	"github.com/visualfc/gotools/pkg/srcimporter"
+	pkgwalk "github.com/visualfc/gotools/types"
 	"golang.org/x/tools/go/gcexportdata"
 )
 
@@ -17,21 +17,54 @@ type types_parser struct {
 	pkg *types.Package
 }
 
-func (p *types_parser) initSource(path string, dir string, pfc *package_file_cache) {
-	im := srcimporter.New(&build.Default, token.NewFileSet(), make(map[string]*types.Package))
-	if dir != "" {
-		p.pkg, _ = im.ImportFrom(path, dir, 0)
-	} else {
-		p.pkg, _ = im.Import(path)
+func DefaultPkgConfig() *pkgwalk.PkgConfig {
+	conf := &pkgwalk.PkgConfig{IgnoreFuncBodies: true, AllowBinary: true, WithTestFiles: false}
+	//	conf.Info = &types.Info{
+	//		Uses:       make(map[*ast.Ident]types.Object),
+	//		Defs:       make(map[*ast.Ident]types.Object),
+	//		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	//		Types:      make(map[ast.Expr]types.TypeAndValue),
+	//		Scopes:     make(map[ast.Node]*types.Scope),
+	//		Implicits:  make(map[ast.Node]types.Object),
+	//	}
+	//	conf.XInfo = &types.Info{
+	//		Uses:       make(map[*ast.Ident]types.Object),
+	//		Defs:       make(map[*ast.Ident]types.Object),
+	//		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	//		Implicits:  make(map[ast.Node]types.Object),
+	//	}
+	return conf
+}
+
+func (p *types_parser) initSource(path string, dir string, pfc *package_file_cache, c *auto_complete_context) {
+	//conf := &pkgwalk.PkgConfig{IgnoreFuncBodies: true, AllowBinary: false, WithTestFiles: true}
+	//	conf.Info = &types.Info{}
+	//	conf.XInfo = &types.Info{}
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	conf := DefaultPkgConfig()
+	pkg, err := c.walker.Import(".", path, conf)
+	if err != nil {
+		log.Println(err)
 	}
+	p.pkg = pkg
+	//	im := srcimporter.New(&build.Default, c.fset, c.packages)
+	//	if dir != "" {
+	//		p.pkg, _ = im.ImportFrom(path, dir, 0)
+	//	} else {
+	//		p.pkg, _ = im.Import(path)
+	//	}
 	p.pfc = pfc
 }
 
-func (p *types_parser) initData(path string, data []byte, pfc *package_file_cache) {
+func (p *types_parser) initData(path string, data []byte, pfc *package_file_cache, c *auto_complete_context) {
 	p.pkg, _ = importer.For("gc", func(path string) (io.ReadCloser, error) {
 		return NewMemReadClose(data), nil
 	}).Import(path)
 	p.pfc = pfc
+	if p.pkg != nil {
+		c.walker.Imported[p.pkg.Path()] = p.pkg
+	}
 }
 
 type MemReadClose struct {
