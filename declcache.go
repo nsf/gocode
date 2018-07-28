@@ -393,6 +393,12 @@ func find_global_file(imp string, context *package_lookup_context) (string, stri
 		}
 	}
 
+	for _, v := range g_daemon.autocomplete.walker.Imported {
+		if v.Path() == imp {
+			return imp, v.Path(), true
+		}
+	}
+
 	if g_daemon != nil && g_daemon.modList != nil {
 		pkg, path, _ := g_daemon.modList.LookupModule(imp)
 		if pkg != nil {
@@ -408,7 +414,7 @@ func find_global_file(imp string, context *package_lookup_context) (string, stri
 		if file_exists(p.PkgObj) {
 			log_found_package_maybe(imp, p.PkgObj)
 		}
-		return p.PkgObj, "", true
+		return p.PkgObj, p.ImportPath, true
 	}
 
 	if *g_debug {

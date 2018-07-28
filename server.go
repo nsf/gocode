@@ -185,7 +185,7 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		} else if *g_debug {
 			log.Printf("Go project path not found: %s", err)
 		}
-		g_daemon.modList = gomod.LooupModList(filepath.Dir(filename))
+		//g_daemon.modList = gomod.LooupModList(filepath.Dir(filename))
 		dir := filepath.Dir(filename)
 		conf := DefaultPkgConfig()
 		conf.Cursor = pkgwalk.NewFileCursor(filename, cursor)

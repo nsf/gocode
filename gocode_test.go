@@ -38,7 +38,7 @@ func _TestGocode(t *testing.T) {
 }
 
 func TestModule(t *testing.T) {
-	*g_debug = true
+	//*g_debug = true
 
 	d := &daemon{}
 	d.pkgcache = new_package_cache()
