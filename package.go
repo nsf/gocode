@@ -114,7 +114,7 @@ func (m *package_file_cache) process_package_data(c *auto_complete_context, data
 			if pkg != nil {
 				srcDir = dir
 				if *g_debug {
-					log.Println(m.import_name, srcDir)
+					log.Println("->", m.import_name, srcDir)
 				}
 			}
 		}
@@ -122,7 +122,7 @@ func (m *package_file_cache) process_package_data(c *auto_complete_context, data
 		if m.vendor_name != "" {
 			importPath = m.vendor_name
 		}
-		tp.initSource(importPath, srcDir, m, c)
+		tp.initSource(m.import_name, importPath, srcDir, m, c)
 		data = tp.exportData()
 		if *g_debug {
 			log.Printf("parser source %q %q\n", importPath, srcDir)

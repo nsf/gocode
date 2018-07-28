@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/visualfc/gotools/pkg/gomod"
+	pkgwalk "github.com/visualfc/gotools/types"
 )
 
 func do_server() int {
@@ -185,6 +186,13 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 			log.Printf("Go project path not found: %s", err)
 		}
 		g_daemon.modList = gomod.LooupModList(filepath.Dir(filename))
+		dir := filepath.Dir(filename)
+		conf := DefaultPkgConfig()
+		conf.Cursor = pkgwalk.NewFileCursor(filename, cursor)
+		if dir == "." {
+			dir, _ = os.Getwd()
+		}
+		g_daemon.autocomplete.walker.Import("", dir, conf)
 	}
 	if *g_debug {
 		var buf bytes.Buffer

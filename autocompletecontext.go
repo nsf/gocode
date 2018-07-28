@@ -453,6 +453,20 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 func (c *auto_complete_context) update_packages(ps map[string]*package_file_cache) {
 	// initiate package cache update
 	done := make(chan bool)
+	/*
+		if g_daemon.modList != nil {
+			for _, r := range g_daemon.modList.Require {
+				for _, p := range ps {
+					path, _ := r.Check(p.import_name)
+					if path != "" {
+						conf := DefaultPkgConfig()
+						c.walker.ImportHelper(".", path, p.import_name, conf)
+						log.Println("-->", path)
+					}
+				}
+			}
+		}
+	*/
 	for _, p := range ps {
 		go func(p *package_file_cache) {
 			defer func() {

@@ -36,14 +36,14 @@ func DefaultPkgConfig() *pkgwalk.PkgConfig {
 	return conf
 }
 
-func (p *types_parser) initSource(path string, dir string, pfc *package_file_cache, c *auto_complete_context) {
+func (p *types_parser) initSource(import_path string, path string, dir string, pfc *package_file_cache, c *auto_complete_context) {
 	//conf := &pkgwalk.PkgConfig{IgnoreFuncBodies: true, AllowBinary: false, WithTestFiles: true}
 	//	conf.Info = &types.Info{}
 	//	conf.XInfo = &types.Info{}
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	conf := DefaultPkgConfig()
-	pkg, err := c.walker.Import(".", path, conf)
+	pkg, err := c.walker.ImportHelper(".", path, import_path, conf)
 	if err != nil {
 		log.Println(err)
 	}

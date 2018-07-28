@@ -78,6 +78,19 @@ type Module struct {
 	Replace *Module
 }
 
+func (r *Module) Check(pkgname string) (path string, dir string) {
+	if strings.HasPrefix(pkgname, r.Path) {
+		addin := pkgname[len(r.Path):]
+		if r.Replace != nil {
+			path = makePath(r.Replace.Path, r.Dir, addin)
+		} else {
+			path = makePath(r.Path, r.Dir, addin)
+		}
+		return path, filepath.Join(r.Dir, addin)
+	}
+	return
+}
+
 func parseModuleJson(data []byte) ModuleList {
 	var ms ModuleList
 	var index int
