@@ -19,20 +19,6 @@ type types_parser struct {
 
 func DefaultPkgConfig() *pkgwalk.PkgConfig {
 	conf := &pkgwalk.PkgConfig{IgnoreFuncBodies: true, AllowBinary: true, WithTestFiles: false}
-	//	conf.Info = &types.Info{
-	//		Uses:       make(map[*ast.Ident]types.Object),
-	//		Defs:       make(map[*ast.Ident]types.Object),
-	//		Selections: make(map[*ast.SelectorExpr]*types.Selection),
-	//		Types:      make(map[ast.Expr]types.TypeAndValue),
-	//		Scopes:     make(map[ast.Node]*types.Scope),
-	//		Implicits:  make(map[ast.Node]types.Object),
-	//	}
-	//	conf.XInfo = &types.Info{
-	//		Uses:       make(map[*ast.Ident]types.Object),
-	//		Defs:       make(map[*ast.Ident]types.Object),
-	//		Selections: make(map[*ast.SelectorExpr]*types.Selection),
-	//		Implicits:  make(map[ast.Node]types.Object),
-	//	}
 	return conf
 }
 

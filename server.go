@@ -76,14 +76,14 @@ func new_daemon(network, address string) *daemon {
 	d.cmd_in = make(chan int, 1)
 	d.pkgcache = new_package_cache()
 	d.declcache = new_decl_cache(&d.context)
-	d.autocomplete = new_auto_complete_context(d.pkgcache, d.declcache)
+	d.autocomplete = new_auto_complete_context(&d.context, d.pkgcache, d.declcache)
 	return d
 }
 
 func (this *daemon) drop_cache() {
 	this.pkgcache = new_package_cache()
 	this.declcache = new_decl_cache(&this.context)
-	this.autocomplete = new_auto_complete_context(this.pkgcache, this.declcache)
+	this.autocomplete = new_auto_complete_context(&this.context, this.pkgcache, this.declcache)
 }
 
 const (
@@ -176,7 +176,11 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 	case "go":
 		// get current package path for GO15VENDOREXPERIMENT hack
 		g_daemon.context.CurrentPackagePath = ""
-		pkg, err := g_daemon.context.ImportDir(filepath.Dir(filename), build.FindOnly)
+		dir := filepath.Dir(filename)
+		if dir == "." {
+			dir, _ = os.Getwd()
+		}
+		pkg, err := g_daemon.context.ImportDir(dir, build.FindOnly)
 		if err == nil {
 			if *g_debug {
 				log.Printf("Go project path: %s", pkg.ImportPath)
@@ -185,14 +189,14 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		} else if *g_debug {
 			log.Printf("Go project path not found: %s", err)
 		}
-		//g_daemon.modList = gomod.LooupModList(filepath.Dir(filename))
-		dir := filepath.Dir(filename)
+
+		//g_daemon.modList = gomod.LooupModList(dir)
+
 		conf := DefaultPkgConfig()
-		conf.Cursor = pkgwalk.NewFileCursor(filename, cursor)
-		if dir == "." {
-			dir, _ = os.Getwd()
-		}
-		g_daemon.autocomplete.walker.Import("", dir, conf)
+		conf.WithTestFiles = true
+		conf.Cursor = pkgwalk.NewFileCursor(file, filename, cursor)
+		_, g_daemon.autocomplete.updated, _ = g_daemon.autocomplete.walker.Check(dir, conf)
+		log.Println(g_daemon.autocomplete.updated)
 	}
 	if *g_debug {
 		var buf bytes.Buffer

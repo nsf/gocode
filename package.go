@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
+	"go/token"
+	"go/types"
 	"log"
 	"os"
 	"strings"
+
+	"golang.org/x/tools/go/gcexportdata"
 )
 
 type package_parser interface {
@@ -74,10 +78,35 @@ func (m *package_file_cache) find_file() string {
 	return m.name
 }
 
+func checkMustUpdate(c *auto_complete_context, name string) bool {
+	for _, v := range c.updated {
+		if v == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *package_file_cache) update_cache(c *auto_complete_context) {
 	if m.mtime == -1 {
 		return
 	}
+
+	import_path := m.import_name
+	if m.vendor_name != "" {
+		import_path = m.vendor_name
+	}
+	if pkg := c.walker.Imported[import_path]; pkg != nil {
+		//		if !checkMustUpdate(c, import_path) {
+		//		}
+		if pkg.Name() == "" {
+			log.Println("error parser", import_path)
+			return
+		}
+		m.process_package_types(c, pkg)
+		return
+	}
+
 	fname := m.find_file()
 	stat, err := os.Stat(fname)
 	if err != nil {
@@ -94,6 +123,54 @@ func (m *package_file_cache) update_cache(c *auto_complete_context) {
 			return
 		}
 		m.process_package_data(c, data, false)
+	}
+}
+
+func (m *package_file_cache) process_package_types(c *auto_complete_context, pkg *types.Package) {
+	m.scope = new_named_scope(g_universe_scope, m.name)
+
+	// main package
+	m.main = new_decl(m.name, decl_package, nil)
+	// create map for other packages
+	m.others = make(map[string]*decl)
+
+	var pp package_parser
+	fset := token.NewFileSet()
+	var buf bytes.Buffer
+	gcexportdata.Write(&buf, fset, pkg)
+	var p gc_bin_parser
+	p.init(buf.Bytes(), m)
+	pp = &p
+
+	prefix := "!" + m.name + "!"
+	pp.parse_export(func(pkg string, decl ast.Decl) {
+		anonymify_ast(decl, decl_foreign, m.scope)
+		if pkg == "" || strings.HasPrefix(pkg, prefix) {
+			// main package
+			add_ast_decl_to_package(m.main, decl, m.scope)
+		} else {
+			// others
+			if _, ok := m.others[pkg]; !ok {
+				m.others[pkg] = new_decl(pkg, decl_package, nil)
+			}
+			add_ast_decl_to_package(m.others[pkg], decl, m.scope)
+		}
+	})
+
+	// hack, add ourselves to the package scope
+	mainName := "!" + m.name + "!" + m.defalias
+	m.add_package_to_scope(mainName, m.name)
+
+	// replace dummy package decls in package scope to actual packages
+	for key := range m.scope.entities {
+		if !strings.HasPrefix(key, "!") {
+			continue
+		}
+		pkg, ok := m.others[key]
+		if !ok && key == mainName {
+			pkg = m.main
+		}
+		m.scope.replace_decl(key, pkg)
 	}
 }
 

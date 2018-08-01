@@ -17,8 +17,8 @@ func _TestGocode(t *testing.T) {
 	if err != nil {
 		return
 	}
-	ctx.CurrentPackagePath = bp.ImportPath
 
+	ctx.CurrentPackagePath = bp.ImportPath
 	*g_debug = true
 	g_config.Autobuild = false
 	//resolveKnownPackageIdent("fmt", "gocode.go", &ctx)
@@ -28,7 +28,7 @@ func _TestGocode(t *testing.T) {
 	//return
 	declcache := new_decl_cache(&ctx)
 	pkgcache := new_package_cache()
-	autocomplete := new_auto_complete_context(pkgcache, declcache)
+	autocomplete := new_auto_complete_context(&ctx, pkgcache, declcache)
 	data, err := ioutil.ReadFile("package_types.go")
 	if err != nil {
 		t.Fatal(err)
@@ -37,18 +37,41 @@ func _TestGocode(t *testing.T) {
 	fmt.Println(ar, n)
 }
 
+func test1(a string) {
+
+}
+
 func TestModule(t *testing.T) {
 	//*g_debug = true
 
 	d := &daemon{}
 	d.pkgcache = new_package_cache()
 	d.declcache = new_decl_cache(&d.context)
-	d.autocomplete = new_auto_complete_context(d.pkgcache, d.declcache)
+	d.autocomplete = new_auto_complete_context(&d.context, d.pkgcache, d.declcache)
 	g_daemon = d
 
-	ar, n := test_auto_complete(&build.Default, "./package_types.go", 1809)
-	//ar, n := test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 502)
+	//ar, n := test_auto_complete(&build.Default, "./package_types.go", 1809)
+	//ar, n := test_auto_complete(&build.Default, "./server.go", 1443)
+	//test_auto_complete(&build.Default, "./server.go", 1443)
+
+	//ar, n =
+	ar, n := test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 567)
+	for name, v := range d.autocomplete.walker.Imported {
+		log.Println(name, v.Path())
+	}
 	fmt.Println(ar, n)
+	//test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 550)
+	//test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 550)
+	//ar, n := test_auto_complete(&build.Default, "/Users/vfc/dev/liteide/liteidex/src/github.com/visualfc/gotools/main.go", 1449)
+	//fmt.Println(ar, n)
+	//	p, up, _ := d.autocomplete.walker.Check("/Users/vfc/go/vtest", nil)
+	//	log.Println(p, up)
+	//	p, up, _ = d.autocomplete.walker.Check(".", nil)
+	//	log.Println(p, up)
+}
+
+func testv(a string) {
+
 }
 
 func test_auto_complete(ctx *build.Context, filename string, pos int) (c []candidate, d int) {

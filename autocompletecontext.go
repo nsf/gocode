@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"go/build"
 	"go/parser"
 	"go/token"
 	"log"
@@ -159,16 +158,17 @@ type auto_complete_context struct {
 	declcache *decl_cache   // top-level declarations cache
 	fset      *token.FileSet
 	walker    *pkgwalk.PkgWalker
+	updated   []string
 	mutex     sync.Mutex
 }
 
-func new_auto_complete_context(pcache package_cache, declcache *decl_cache) *auto_complete_context {
+func new_auto_complete_context(ctx *package_lookup_context, pcache package_cache, declcache *decl_cache) *auto_complete_context {
 	c := new(auto_complete_context)
 	c.current = new_auto_complete_file("", declcache.context)
 	c.pcache = pcache
 	c.declcache = declcache
 	c.fset = token.NewFileSet()
-	c.walker = pkgwalk.NewPkgWalker(&build.Default)
+	c.walker = pkgwalk.NewPkgWalker(&ctx.Context)
 	return c
 }
 
@@ -453,20 +453,7 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 func (c *auto_complete_context) update_packages(ps map[string]*package_file_cache) {
 	// initiate package cache update
 	done := make(chan bool)
-	/*
-		if g_daemon.modList != nil {
-			for _, r := range g_daemon.modList.Require {
-				for _, p := range ps {
-					path, _ := r.Check(p.import_name)
-					if path != "" {
-						conf := DefaultPkgConfig()
-						c.walker.ImportHelper(".", path, p.import_name, conf)
-						log.Println("-->", path)
-					}
-				}
-			}
-		}
-	*/
+
 	for _, p := range ps {
 		go func(p *package_file_cache) {
 			defer func() {
