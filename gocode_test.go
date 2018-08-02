@@ -51,25 +51,10 @@ func TestModule(t *testing.T) {
 	g_daemon = d
 
 	//ar, n := test_auto_complete(&build.Default, "./package_types.go", 1809)
-	//ar, n := test_auto_complete(&build.Default, "./server.go", 1443)
+	ar, n := test_auto_complete(&build.Default, "./server.go", 1443)
 	//test_auto_complete(&build.Default, "./server.go", 1443)
 
-	//ar, n =
-	ar, n := test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 567)
-	test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 568)
 	fmt.Println(ar, n)
-	//test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 550)
-	//test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 550)
-	//ar, n := test_auto_complete(&build.Default, "/Users/vfc/dev/liteide/liteidex/src/github.com/visualfc/gotools/main.go", 1449)
-	//fmt.Println(ar, n)
-	//	p, up, _ := d.autocomplete.walker.Check("/Users/vfc/go/vtest", nil)
-	//	log.Println(p, up)
-	//	p, up, _ = d.autocomplete.walker.Check(".", nil)
-	//	log.Println(p, up)
-}
-
-func testv(a string) {
-
 }
 
 func test_auto_complete(ctx *build.Context, filename string, pos int) (c []candidate, d int) {
