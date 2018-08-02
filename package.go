@@ -78,15 +78,6 @@ func (m *package_file_cache) find_file() string {
 	return m.name
 }
 
-func checkMustUpdate(c *auto_complete_context, name string) bool {
-	for _, v := range c.updated {
-		if v == name {
-			return true
-		}
-	}
-	return false
-}
-
 func (m *package_file_cache) update_cache(c *auto_complete_context) {
 	if m.mtime == -1 {
 		return
@@ -97,11 +88,15 @@ func (m *package_file_cache) update_cache(c *auto_complete_context) {
 		import_path = m.vendor_name
 	}
 	if pkg := c.walker.Imported[import_path]; pkg != nil {
-		//		if !checkMustUpdate(c, import_path) {
-		//		}
 		if pkg.Name() == "" {
 			log.Println("error parser", import_path)
 			return
+		}
+		if t, ok := c.walker.ImportedMod[import_path]; ok {
+			if m.mtime == t {
+				return
+			}
+			m.mtime = t
 		}
 		m.process_package_types(c, pkg)
 		return

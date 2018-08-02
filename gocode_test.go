@@ -56,9 +56,7 @@ func TestModule(t *testing.T) {
 
 	//ar, n =
 	ar, n := test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 567)
-	for name, v := range d.autocomplete.walker.Imported {
-		log.Println(name, v.Path())
-	}
+	test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 568)
 	fmt.Println(ar, n)
 	//test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 550)
 	//test_auto_complete(&build.Default, "/Users/vfc/go/vtest/main.go", 550)

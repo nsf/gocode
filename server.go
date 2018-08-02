@@ -195,8 +195,7 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		conf := DefaultPkgConfig()
 		conf.WithTestFiles = true
 		conf.Cursor = pkgwalk.NewFileCursor(file, filename, cursor)
-		_, g_daemon.autocomplete.updated, _ = g_daemon.autocomplete.walker.Check(dir, conf)
-		log.Println(g_daemon.autocomplete.updated)
+		g_daemon.autocomplete.walker.Check(dir, conf)
 	}
 	if *g_debug {
 		var buf bytes.Buffer
