@@ -399,16 +399,6 @@ func find_global_file(imp string, context *package_lookup_context) (string, stri
 		}
 	}
 
-	if g_daemon != nil && g_daemon.modList != nil {
-		pkg, path, _ := g_daemon.modList.LookupModule(imp)
-		if pkg != nil {
-			if *g_debug {
-				log.Println("lookup module", pkg.Path, pkg.Dir)
-			}
-			return imp, path, true
-		}
-	}
-
 	if p, err := context.Import(imp, "", build.AllowBinary|build.FindOnly); err == nil {
 		try_autobuild(p)
 		if file_exists(p.PkgObj) {

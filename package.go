@@ -181,15 +181,6 @@ func (m *package_file_cache) process_package_data(c *auto_complete_context, data
 	if source {
 		var tp types_parser
 		var srcDir string
-		if g_daemon != nil && g_daemon.modList != nil {
-			pkg, _, dir := g_daemon.modList.LookupModule(m.import_name)
-			if pkg != nil {
-				srcDir = dir
-				if *g_debug {
-					log.Println("->", m.import_name, srcDir)
-				}
-			}
-		}
 		importPath := m.import_name
 		if m.vendor_name != "" {
 			importPath = m.vendor_name

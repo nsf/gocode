@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/visualfc/gotools/pkg/gomod"
 	pkgwalk "github.com/visualfc/gotools/types"
 )
 
@@ -61,7 +60,6 @@ type daemon struct {
 	pkgcache     package_cache
 	declcache    *decl_cache
 	context      package_lookup_context
-	modList      *gomod.ModuleList
 }
 
 func new_daemon(network, address string) *daemon {
