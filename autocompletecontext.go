@@ -80,7 +80,6 @@ func (b *out_buffers) append_decl(p, name, pkg string, decl *decl, class decl_cl
 	if c1 || c2 || c3 || c4 || c5 {
 		return
 	}
-
 	decl.pretty_print_type(b.tmpbuf, b.canonical_aliases)
 	b.candidates = append(b.candidates, candidate{
 		Name:    name,

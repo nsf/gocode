@@ -8,31 +8,31 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/buildctx",
-			"Rev": "99a976ad49d61f7b9e5779e28d92ba9733e57be3"
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/command",
-			"Rev": "99a976ad49d61f7b9e5779e28d92ba9733e57be3"
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/gomod",
-			"Rev": "99a976ad49d61f7b9e5779e28d92ba9733e57be3"
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/pkgutil",
-			"Rev": "99a976ad49d61f7b9e5779e28d92ba9733e57be3"
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/srcimporter",
-			"Rev": "99a976ad49d61f7b9e5779e28d92ba9733e57be3"
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/stdlib",
-			"Rev": "99a976ad49d61f7b9e5779e28d92ba9733e57be3"
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/types",
-			"Rev": "99a976ad49d61f7b9e5779e28d92ba9733e57be3"
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
 		},
 		{
 			"ImportPath": "golang.org/x/tools/go/buildutil",
@@ -45,6 +45,30 @@
 		{
 			"ImportPath": "golang.org/x/tools/go/internal/gcimporter",
 			"Rev": "99195f4d4ffa6331a9bc856c72697a15d9842950"
+		},
+		{
+			"ImportPath": "github.com/visualfc/gotools/types/vendor/github.com/visualfc/gotools/pkg/buildctx",
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
+		},
+		{
+			"ImportPath": "github.com/visualfc/gotools/types/vendor/github.com/visualfc/gotools/pkg/command",
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
+		},
+		{
+			"ImportPath": "github.com/visualfc/gotools/types/vendor/github.com/visualfc/gotools/pkg/gomod",
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
+		},
+		{
+			"ImportPath": "github.com/visualfc/gotools/types/vendor/github.com/visualfc/gotools/pkg/pkgutil",
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
+		},
+		{
+			"ImportPath": "github.com/visualfc/gotools/types/vendor/github.com/visualfc/gotools/pkg/stdlib",
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
+		},
+		{
+			"ImportPath": "github.com/visualfc/gotools/types/vendor/golang.org/x/tools/go/buildutil",
+			"Rev": "b908c257e4aa1a5d3e067742034c8ea539fb3f4a"
 		}
 	]
 }

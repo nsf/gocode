@@ -6,12 +6,17 @@ package gomod
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
 func LooupModList(dir string) *ModuleList {
+	_, err := os.Stat(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		return nil
+	}
 	data := ListModuleJson(dir)
 	if data == nil {
 		return nil

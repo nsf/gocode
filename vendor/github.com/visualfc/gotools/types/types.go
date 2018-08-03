@@ -285,7 +285,6 @@ type PkgWalker struct {
 	cursor          *FileCursor
 	cmd             *command.Command
 	mod             *gomod.ModuleList
-	//importing       types.Package
 }
 
 func DefaultPkgConfig() *PkgConfig {
