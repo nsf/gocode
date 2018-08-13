@@ -22,6 +22,7 @@ type package_import struct {
 	alias   string
 	abspath string
 	path    string
+	vpath   string
 }
 
 // Parses import declarations until the first non-import declaration and fills
@@ -33,9 +34,9 @@ func collect_package_imports(filename string, decls []ast.Decl, context *package
 			for _, spec := range gd.Specs {
 				imp := spec.(*ast.ImportSpec)
 				path, alias := path_and_alias(imp)
-				abspath, ok := abs_path_for_package(filename, path, context)
+				abspath, vpath, ok := abs_path_for_package(filename, path, context)
 				if ok && alias != "_" {
-					pi = append(pi, package_import{alias, abspath, path})
+					pi = append(pi, package_import{alias, abspath, path, vpath})
 				}
 			}
 		} else {
@@ -149,17 +150,17 @@ func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
 	})
 }
 
-func abs_path_for_package(filename, p string, context *package_lookup_context) (string, bool) {
+func abs_path_for_package(filename, p string, context *package_lookup_context) (string, string, bool) {
 	dir, _ := filepath.Split(filename)
 	if len(p) == 0 {
-		return "", false
+		return "", "", false
 	}
 	if p[0] == '.' {
-		return fmt.Sprintf("%s.a", filepath.Join(dir, p)), true
+		return fmt.Sprintf("%s.a", filepath.Join(dir, p)), "", true
 	}
 	pkg, ok := find_go_dag_package(p, dir)
 	if ok {
-		return pkg, true
+		return pkg, "", true
 	}
 	return find_global_file(p, context)
 }
@@ -282,14 +283,15 @@ func log_build_context(context *package_lookup_context) {
 // find_global_file returns the file path of the compiled package corresponding to the specified
 // import, and a boolean stating whether such path is valid.
 // TODO: Return only one value, possibly empty string if not found.
-func find_global_file(imp string, context *package_lookup_context) (string, bool) {
+// pkgpath, update importpath, bool
+func find_global_file(imp string, context *package_lookup_context) (string, string, bool) {
 	// gocode synthetically generates the builtin package
 	// "unsafe", since the "unsafe.a" package doesn't really exist.
 	// Thus, when the user request for the package "unsafe" we
 	// would return synthetic global file that would be used
 	// just as a key name to find this synthetic package
 	if imp == "unsafe" {
-		return "unsafe", true
+		return "unsafe", "", true
 	}
 
 	pkgfile := fmt.Sprintf("%s.a", imp)
@@ -300,14 +302,14 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 			pkg_path := filepath.Join(p, pkgfile)
 			if file_exists(pkg_path) {
 				log_found_package_maybe(imp, pkg_path)
-				return pkg_path, true
+				return pkg_path, "", true
 			}
 			// Also check the relevant pkg/OS_ARCH dir for the libpath, if provided.
 			pkgdir := fmt.Sprintf("%s_%s", context.GOOS, context.GOARCH)
 			pkg_path = filepath.Join(p, "pkg", pkgdir, pkgfile)
 			if file_exists(pkg_path) {
 				log_found_package_maybe(imp, pkg_path)
-				return pkg_path, true
+				return pkg_path, "", true
 			}
 		}
 	}
@@ -322,7 +324,7 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 		pkg_path := filepath.Join(pkgdir, pkgfile)
 		if file_exists(pkg_path) {
 			log_found_package_maybe(imp, pkg_path)
-			return pkg_path, true
+			return pkg_path, "", true
 		}
 	}
 
@@ -352,7 +354,7 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 						if !fi.IsDir() && filepath.Ext(fi.Name()) == ".a" {
 							pkg_path := filepath.Join(root, impath, fi.Name())
 							log_found_package_maybe(imp, pkg_path)
-							return pkg_path, true
+							return pkg_path, "", true
 						}
 					}
 				}
@@ -376,8 +378,8 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 				try_autobuild(p)
 				if file_exists(p.PkgObj) {
 					log_found_package_maybe(imp, p.PkgObj)
-					return p.PkgObj, true
 				}
+				return p.PkgObj, p.ImportPath, true
 			}
 			if package_path == "" {
 				break
@@ -391,12 +393,18 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 		}
 	}
 
+	for _, v := range g_daemon.autocomplete.walker.Imported {
+		if v.Path() == imp {
+			return imp, v.Path(), true
+		}
+	}
+
 	if p, err := context.Import(imp, "", build.AllowBinary|build.FindOnly); err == nil {
 		try_autobuild(p)
 		if file_exists(p.PkgObj) {
 			log_found_package_maybe(imp, p.PkgObj)
-			return p.PkgObj, true
 		}
+		return p.PkgObj, p.ImportPath, true
 	}
 
 	if *g_debug {
@@ -404,7 +412,7 @@ func find_global_file(imp string, context *package_lookup_context) (string, bool
 		log.Println("Gocode's build context is:")
 		log_build_context(context)
 	}
-	return "", false
+	return "", "", false
 }
 
 func package_name(file *ast.File) string {

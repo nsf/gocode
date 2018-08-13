@@ -12,7 +12,10 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
+
+	pkgwalk "github.com/visualfc/gotools/types"
 )
 
 //-------------------------------------------------------------------------
@@ -77,7 +80,6 @@ func (b *out_buffers) append_decl(p, name, pkg string, decl *decl, class decl_cl
 	if c1 || c2 || c3 || c4 || c5 {
 		return
 	}
-
 	decl.pretty_print_type(b.tmpbuf, b.canonical_aliases)
 	b.candidates = append(b.candidates, candidate{
 		Name:    name,
@@ -153,13 +155,18 @@ type auto_complete_context struct {
 
 	pcache    package_cache // packages cache
 	declcache *decl_cache   // top-level declarations cache
+	fset      *token.FileSet
+	walker    *pkgwalk.PkgWalker
+	mutex     sync.Mutex
 }
 
-func new_auto_complete_context(pcache package_cache, declcache *decl_cache) *auto_complete_context {
+func new_auto_complete_context(ctx *package_lookup_context, pcache package_cache, declcache *decl_cache) *auto_complete_context {
 	c := new(auto_complete_context)
 	c.current = new_auto_complete_file("", declcache.context)
 	c.pcache = pcache
 	c.declcache = declcache
+	c.fset = token.NewFileSet()
+	c.walker = pkgwalk.NewPkgWalker(&ctx.Context)
 	return c
 }
 
@@ -175,7 +182,7 @@ func (c *auto_complete_context) update_caches() {
 		c.pcache.append_packages(ps, other.packages)
 	}
 
-	update_packages(ps)
+	c.update_packages(ps)
 
 	// fix imports for all files
 	fixup_packages(c.current.filescope, c.current.packages, c.pcache)
@@ -380,7 +387,7 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	if !ok {
 		var d *decl
 		if ident, ok := cc.expr.(*ast.Ident); ok && g_config.UnimportedPackages {
-			p := resolveKnownPackageIdent(ident.Name, c.current.name, c.current.context)
+			p := c.resolveKnownPackageIdent(ident.Name, c.current.name, c.current.context)
 			if p != nil {
 				c.pcache[p.name] = p
 				d = p.main
@@ -441,9 +448,10 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	return b.candidates, partial
 }
 
-func update_packages(ps map[string]*package_file_cache) {
+func (c *auto_complete_context) update_packages(ps map[string]*package_file_cache) {
 	// initiate package cache update
 	done := make(chan bool)
+
 	for _, p := range ps {
 		go func(p *package_file_cache) {
 			defer func() {
@@ -452,7 +460,7 @@ func update_packages(ps map[string]*package_file_cache) {
 					done <- false
 				}
 			}()
-			p.update_cache()
+			p.update_cache(c)
 			done <- true
 		}(p)
 	}

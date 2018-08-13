@@ -1,6 +1,6 @@
 ## An autocompletion daemon for the Go programming language
 
-**IMPORTANT: consider switching to https://github.com/mdempsky/gocode if you have problems starting with Go version 1.10, due to changes in binary packages architecture (introduction of package cache) I'm not going to adjust gocode for it for quite some time. There is a higher chance that fork under the given link will have some solution to the problem sooner or later.**
+Now support Go1.11 Go modules.
 
 Gocode is a helper tool which is intended to be integrated with your source code editor, like vim, neovim and emacs. It provides several advanced capabilities, which currently includes:
 

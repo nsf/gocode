@@ -761,6 +761,14 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 			if d.class == decl_package {
 				return ast.NewIdent(t.Name), scope, false
 			}
+			//check type, fix bug test.0055
+			if i, ok := d.typ.(*ast.Ident); ok {
+				if i.Obj != nil && i.Obj.Decl != nil {
+					if typ, ok := i.Obj.Decl.(*ast.TypeSpec); ok {
+						return infer_type(typ.Type, scope, -1)
+					}
+				}
+			}
 			typ, scope := d.infer_type()
 			return typ, scope, d.class == decl_type
 		}
@@ -910,7 +918,6 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		if it == nil {
 			break
 		}
-
 		if d := type_to_decl(it, s); d != nil {
 			c := d.find_child_and_in_embedded(t.Sel.Name)
 			if c != nil {

@@ -420,19 +420,19 @@ func (c *auto_complete_context) deduce_cursor_context(file []byte, cursor int) (
 // package name has nothing to do with package file name, that's why we need to
 // scan the packages. And many of them will have conflicts. Can we make a smart
 // prediction algorithm which will prefer certain packages over another ones?
-func resolveKnownPackageIdent(ident string, filename string, context *package_lookup_context) *package_file_cache {
+func (c *auto_complete_context) resolveKnownPackageIdent(ident string, filename string, context *package_lookup_context) *package_file_cache {
 	importPath, ok := knownPackageIdents[ident]
 	if !ok {
 		return nil
 	}
 
-	path, ok := abs_path_for_package(filename, importPath, context)
+	path, vname, ok := abs_path_for_package(filename, importPath, context)
 	if !ok {
 		return nil
 	}
 
-	p := new_package_file_cache(path, importPath)
-	p.update_cache()
+	p := new_package_file_cache(path, importPath, vname)
+	p.update_cache(c)
 	return p
 }
 
