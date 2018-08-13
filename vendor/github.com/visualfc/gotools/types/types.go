@@ -188,6 +188,7 @@ func runTypes(cmd *command.Command, args []string) error {
 			src, err := ioutil.ReadAll(cmd.Stdin)
 			if err == nil {
 				cursorInfo.src = src
+				cursorInfo.mtime = time.Now().UnixNano()
 			}
 		}
 		cursor = &cursorInfo
@@ -239,11 +240,16 @@ type FileCursor struct {
 	cursorPos int
 	pos       token.Pos
 	src       interface{}
+	mtime     int64
 	xtest     bool
 }
 
 func NewFileCursor(src interface{}, filename string, pos int) *FileCursor {
-	return &FileCursor{fileName: filename, cursorPos: pos, src: src}
+	cur := &FileCursor{fileName: filename, cursorPos: pos, src: src}
+	if src != nil {
+		cur.mtime = time.Now().UnixNano()
+	}
+	return cur
 }
 
 type PkgConfig struct {
@@ -458,7 +464,7 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 
 	if conf.Cursor != nil && conf.Cursor.fileName != "" {
 		cursor := conf.Cursor
-		f, _ := w.parseFileEx(bp.Dir, cursor.fileName, cursor.src, true)
+		f, _ := w.parseFileEx(bp.Dir, cursor.fileName, cursor.src, cursor.mtime, true)
 		if f != nil {
 			cursor.pos = token.Pos(w.fset.File(f.Pos()).Base()) + token.Pos(cursor.cursorPos)
 			cursor.fileDir = bp.Dir
@@ -489,12 +495,12 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 		for _, file := range filenames {
 			var f *ast.File
 			if cursor != nil && cursor.fileName == file {
-				f, err = w.parseFile(bp.Dir, file, cursor.src)
+				f, err = w.parseFileEx(bp.Dir, file, cursor.src, cursor.mtime, true)
 				cursor.pos = token.Pos(w.fset.File(f.Pos()).Base()) + token.Pos(cursor.cursorPos)
 				cursor.fileDir = bp.Dir
 				cursor.xtest = xtest
 			} else {
-				f, err = w.parseFile(bp.Dir, file, nil)
+				f, err = w.parseFile(bp.Dir, file)
 			}
 			if err != nil && typesVerbose {
 				fmt.Fprintln(w.cmd.Stderr, err)
@@ -564,19 +570,20 @@ func (im *Importer) Import(name string) (pkg *types.Package, err error) {
 	return im.w.Import(im.dir, name, &PkgConfig{IgnoreFuncBodies: true, AllowBinary: true, WithTestFiles: false})
 }
 
-func (w *PkgWalker) parseFile(dir, file string, src interface{}) (*ast.File, error) {
-	return w.parseFileEx(dir, file, src, typesFindDoc)
+func (w *PkgWalker) parseFile(dir, file string) (*ast.File, error) {
+	return w.parseFileEx(dir, file, nil, -1, typesFindDoc)
 }
 
-func (w *PkgWalker) parseFileEx(dir, file string, src interface{}, findDoc bool) (*ast.File, error) {
+func (w *PkgWalker) parseFileEx(dir, file string, src interface{}, mtime int64, findDoc bool) (*ast.File, error) {
 	filename := filepath.Join(dir, file)
-	if src == nil {
-		if f, ok := w.parsedFileCache[filename]; ok {
-			if i, ok := w.parsedFileMod[filename]; ok {
-				info, err := os.Stat(filename)
-				if err == nil && info.ModTime().UnixNano() == i {
-					return f, nil
-				}
+	if f, ok := w.parsedFileCache[filename]; ok {
+		if i, ok := w.parsedFileMod[filename]; ok {
+			if mtime != -1 && mtime == i {
+				return f, nil
+			}
+			info, err := os.Stat(filename)
+			if err == nil && info.ModTime().UnixNano() == i {
+				return f, nil
 			}
 		}
 	}
@@ -610,9 +617,13 @@ func (w *PkgWalker) parseFileEx(dir, file string, src interface{}, findDoc bool)
 			return f, err
 		}
 	}
-	info, err := os.Stat(filename)
-	if err == nil {
-		w.parsedFileMod[filename] = info.ModTime().UnixNano()
+	if mtime != -1 {
+		w.parsedFileMod[filename] = mtime
+	} else {
+		info, err := os.Stat(filename)
+		if err == nil {
+			w.parsedFileMod[filename] = info.ModTime().UnixNano()
+		}
 	}
 	w.parsedFileCache[filename] = f
 	return f, nil
@@ -1359,7 +1370,7 @@ func (w *PkgWalker) CheckIsName(cursor *FileCursor) *ast.Ident {
 	if cursor.fileDir == "" {
 		return nil
 	}
-	file, _ := w.parseFile(cursor.fileDir, cursor.fileName, cursor.src)
+	file, _ := w.parseFileEx(cursor.fileDir, cursor.fileName, cursor.src, cursor.mtime, true)
 	if file == nil {
 		return nil
 	}
@@ -1373,7 +1384,7 @@ func (w *PkgWalker) CheckIsImport(cursor *FileCursor) *ast.ImportSpec {
 	if cursor.fileDir == "" {
 		return nil
 	}
-	file, _ := w.parseFile(cursor.fileDir, cursor.fileName, cursor.src)
+	file, _ := w.parseFileEx(cursor.fileDir, cursor.fileName, cursor.src, cursor.mtime, true)
 	if file == nil {
 		return nil
 	}
