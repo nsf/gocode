@@ -11,13 +11,14 @@ import (
 )
 
 var (
-	g_is_server = flag.Bool("s", false, "run a server instead of a client")
-	g_format    = flag.String("f", "nice", "output format (vim | emacs | nice | csv | csv-with-package | json)")
-	g_input     = flag.String("in", "", "use this file instead of stdin input")
-	g_sock      = create_sock_flag("sock", "socket type (unix | tcp)")
-	g_addr      = flag.String("addr", "127.0.0.1:37373", "address for tcp socket")
-	g_debug     = flag.Bool("debug", false, "enable server-side debug mode")
-	g_profile   = flag.Int("profile", 0, "port on which to expose profiling information for pprof; 0 to disable profiling")
+	g_is_server   = flag.Bool("s", false, "run a server instead of a client")
+	g_format      = flag.String("f", "nice", "output format (vim | emacs | nice | csv | csv-with-package | json)")
+	g_input       = flag.String("in", "", "use this file instead of stdin input")
+	g_sock        = create_sock_flag("sock", "socket type (unix | tcp)")
+	g_addr        = flag.String("addr", "127.0.0.1:37373", "address for tcp socket")
+	g_debug       = flag.Bool("debug", false, "enable server-side debug mode")
+	g_profile     = flag.Int("profile", 0, "port on which to expose profiling information for pprof; 0 to disable profiling")
+	g_daemon_name = flag.String("daemon", "gocode-daemon", "unix socket daemon prefix name")
 )
 
 func get_socket_filename() string {
@@ -25,7 +26,7 @@ func get_socket_filename() string {
 	if user == "" {
 		user = "all"
 	}
-	return filepath.Join(os.TempDir(), fmt.Sprintf("gocode-daemon.%s", user))
+	return filepath.Join(os.TempDir(), fmt.Sprintf("%s.%s", *g_daemon_name, user))
 }
 
 func show_usage() {
