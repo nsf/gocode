@@ -39,7 +39,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"go/ast"
 	"go/constant"
 	"go/token"
@@ -47,12 +46,6 @@ import (
 	"sort"
 	"strings"
 )
-
-func pptype(t ast.Expr) string {
-	// var buf bytes.Buffer
-	// pretty_print_type_expr(&buf, t, map[string]string{})
-	return spew.Sdump(t)
-}
 
 type intReader struct {
 	*bytes.Reader
