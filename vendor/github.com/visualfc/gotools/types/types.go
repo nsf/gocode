@@ -346,6 +346,12 @@ func (w *PkgWalker) importPath(path string, mode build.ImportMode) (*build.Packa
 			return pkg, err
 		}
 	}
+	if path == "syscall/js" {
+		ctx := *w.Context
+		ctx.BuildTags = append(ctx.BuildTags, "js")
+		ctx.BuildTags = append(ctx.BuildTags, "wasm")
+		return ctx.Import(path, "", mode)
+	}
 	return w.Context.Import(path, "", mode)
 }
 
