@@ -1036,6 +1036,13 @@ func (d *decl) find_child_and_in_embedded(name string) *decl {
 		return nil
 	}
 
+	if d.is_alias() {
+		dd := d.type_dealias()
+		if dd != nil {
+			return dd.find_child_and_in_embedded(name)
+		}
+	}
+
 	if d.is_visited() {
 		return nil
 	}

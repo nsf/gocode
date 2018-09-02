@@ -112,9 +112,15 @@ func (m *package_file_cache) process_package_data(data []byte) {
 	if data[0] == 'B' {
 		// binary format, skip 'B\n'
 		data = data[2:]
-		var p gc_bin_parser
-		p.init(data, m)
-		pp = &p
+		if len(data) > 0 && data[0] == 'i' {
+			var p gc_ibin_parser
+			p.init(data[1:], m)
+			pp = &p
+		} else {
+			var p gc_bin_parser
+			p.init(data, m)
+			pp = &p
+		}
 	} else {
 		// textual format, find the beginning of the package clause
 		i = bytes.Index(data, []byte{'p', 'a', 'c', 'k', 'a', 'g', 'e'})

@@ -113,10 +113,7 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 
 	// read version specific flags - extend as necessary
 	switch p.version {
-	// case 6:
-	// 	...
-	//	fallthrough
-	case 5, 4, 3, 2, 1:
+	case 6, 5, 4, 3, 2, 1:
 		p.debugFormat = p.rawStringln(p.rawByte()) == "debug"
 		p.trackAllTypes = p.int() != 0
 		p.posInfoFormat = p.int() != 0
@@ -171,6 +168,9 @@ func (p *gc_bin_parser) pkg() string {
 		path = p.path()
 	} else {
 		path = p.string()
+	}
+	if p.version >= 6 {
+		p.int() // package height; unused by go/types
 	}
 
 	// we should never see an empty package name
@@ -810,13 +810,13 @@ var predeclared = []ast.Expr{
 	// TODO(nsf): don't think those are used in just package type info,
 	// maybe for consts, but we are not interested in that
 	// untyped types
-	ast.NewIdent(">_<"), // TODO: types.Typ[types.UntypedBool],
-	ast.NewIdent(">_<"), // TODO: types.Typ[types.UntypedInt],
-	ast.NewIdent(">_<"), // TODO: types.Typ[types.UntypedRune],
-	ast.NewIdent(">_<"), // TODO: types.Typ[types.UntypedFloat],
-	ast.NewIdent(">_<"), // TODO: types.Typ[types.UntypedComplex],
-	ast.NewIdent(">_<"), // TODO: types.Typ[types.UntypedString],
-	ast.NewIdent(">_<"), // TODO: types.Typ[types.UntypedNil],
+	ast.NewIdent("&untypedBool&"),    // TODO: types.Typ[types.UntypedBool],
+	ast.NewIdent("&untypedInt&"),     // TODO: types.Typ[types.UntypedInt],
+	ast.NewIdent("&untypedRune&"),    // TODO: types.Typ[types.UntypedRune],
+	ast.NewIdent("&untypedFloat&"),   // TODO: types.Typ[types.UntypedFloat],
+	ast.NewIdent("&untypedComplex&"), // TODO: types.Typ[types.UntypedComplex],
+	ast.NewIdent("&untypedString&"),  // TODO: types.Typ[types.UntypedString],
+	ast.NewIdent("&untypedNil&"),     // TODO: types.Typ[types.UntypedNil],
 
 	// package unsafe
 	&ast.SelectorExpr{X: ast.NewIdent("unsafe"), Sel: ast.NewIdent("Pointer")},

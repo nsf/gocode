@@ -600,23 +600,30 @@ func strip_method_receiver(recv *ast.FieldList) string {
 	typ := recv.List[0].Type
 	switch t := typ.(type) {
 	case *ast.StarExpr:
-		sel = t.X.(*ast.SelectorExpr)
+		sel, _ = t.X.(*ast.SelectorExpr)
 	case *ast.SelectorExpr:
 		sel = t
 	}
 
 	// extract package path
-	pkg := sel.X.(*ast.Ident).Name
+	if sel != nil {
+		pkg := sel.X.(*ast.Ident).Name
 
-	// write back stripped type
-	switch t := typ.(type) {
-	case *ast.StarExpr:
-		t.X = sel.Sel
-	case *ast.SelectorExpr:
-		recv.List[0].Type = sel.Sel
+		// write back stripped type
+		switch typ.(type) {
+		case *ast.StarExpr:
+			*recv = ast.FieldList{
+				List: []*ast.Field{{Names: recv.List[0].Names, Type: &ast.StarExpr{X: sel.Sel}}},
+			}
+		case *ast.SelectorExpr:
+			*recv = ast.FieldList{
+				List: []*ast.Field{{Names: recv.List[0].Names, Type: sel.Sel}},
+			}
+		}
+		return pkg
+	} else {
+		return ""
 	}
-
-	return pkg
 }
 
 // MethodDecl = "func" Receiver Name Signature .
