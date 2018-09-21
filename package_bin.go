@@ -615,6 +615,8 @@ func (p *gc_bin_parser) skipValue() {
 		p.float()
 	case stringTag:
 		p.string()
+	case unknownTag:
+		break
 	default:
 		panic(fmt.Sprintf("unexpected value tag %d", tag))
 	}
