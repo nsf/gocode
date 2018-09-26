@@ -17,6 +17,7 @@ func LooupModList(dir string) *ModuleList {
 		return nil
 	}
 	ms := parseModuleJson(data)
+	ms.Dir = dir
 	return &ms
 }
 
@@ -41,6 +42,7 @@ func ListModuleJson(dir string) []byte {
 }
 
 type ModuleList struct {
+	Dir     string
 	Module  Module
 	Require []*Module
 }
@@ -52,6 +54,13 @@ func makePath(path, dir string, addin string) string {
 		return path
 	}
 	return filepath.Join(dir[pos:], addin)
+}
+
+type Package struct {
+	Dir        string
+	ImportPath string
+	Name       string
+	Module     *Module
 }
 
 func (m *ModuleList) LookupModule(pkgname string) (require *Module, path string, dir string) {
@@ -66,6 +75,17 @@ func (m *ModuleList) LookupModule(pkgname string) (require *Module, path string,
 			return r, path, filepath.Join(r.Dir, addin)
 		}
 	}
+	c := exec.Command("go", "list", "-json", "-e", pkgname)
+	c.Dir = m.Dir
+	data, err := c.Output()
+	if err == nil {
+		var p Package
+		err = json.Unmarshal(data, &p)
+		if err == nil {
+			return p.Module, p.ImportPath, p.Dir
+		}
+	}
+
 	return nil, "", ""
 }
 

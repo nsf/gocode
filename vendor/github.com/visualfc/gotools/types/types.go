@@ -40,17 +40,18 @@ var Command = &command.Command{
 }
 
 var (
-	typesVerbose     bool
-	typesAllowBinary bool
-	typesFilePos     string
-	typesFileStdin   bool
-	typesFindUse     bool
-	typesFindDef     bool
-	typesFindUseAll  bool
-	typesFindInfo    bool
-	typesFindDoc     bool
-	typesTags        string
-	typesTagList     = []string{} // exploded version of tags flag; set in main
+	typesVerbose        bool
+	typesAllowBinary    bool
+	typesFilePos        string
+	typesFileStdin      bool
+	typesFindUse        bool
+	typesFindDef        bool
+	typesFindUseAll     bool
+	typesFindSkipGoroot bool
+	typesFindInfo       bool
+	typesFindDoc        bool
+	typesTags           string
+	typesTagList        = []string{} // exploded version of tags flag; set in main
 )
 
 //func init
@@ -63,6 +64,7 @@ func init() {
 	Command.Flag.BoolVar(&typesFindDef, "def", false, "find cursor define")
 	Command.Flag.BoolVar(&typesFindUse, "use", false, "find cursor usages")
 	Command.Flag.BoolVar(&typesFindUseAll, "all", false, "find cursor all usages in GOPATH")
+	Command.Flag.BoolVar(&typesFindSkipGoroot, "skip_goroot", false, "find cursor all usages skip GOROOT")
 	Command.Flag.BoolVar(&typesFindDoc, "doc", false, "find cursor def doc")
 	Command.Flag.StringVar(&typesTags, "tags", "", "space-separated list of build tags to apply when parsing")
 }
@@ -1289,7 +1291,14 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 	var uses_paths []string
 	if cursorPkg.Path() != pkg_path && cursorPkg.Path() != xpkg_path {
 		find_def_pkg = cursorPkg.Path()
-		uses_paths = append(uses_paths, cursorPkg.Path())
+		if typesFindSkipGoroot {
+			bp, err := w.importPath(find_def_pkg, 0)
+			if err == nil && !bp.Goroot {
+				uses_paths = append(uses_paths, find_def_pkg)
+			}
+		} else {
+			uses_paths = append(uses_paths, find_def_pkg)
+		}
 	}
 
 	cursorPkgPath := cursorObj.Pkg().Path()
@@ -1325,11 +1334,14 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 					return
 				}
 			}
+			if typesFindSkipGoroot && bp.Goroot {
+				return
+			}
 			uses_paths = append(uses_paths, bp.ImportPath)
 		}
 	})
 
-	w.Imported = make(map[string]*types.Package)
+	//w.Imported = make(map[string]*types.Package)
 	for _, v := range uses_paths {
 		conf := &PkgConfig{
 			IgnoreFuncBodies: false,
