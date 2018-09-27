@@ -296,7 +296,20 @@ type PkgWalker struct {
 }
 
 func DefaultPkgConfig() *PkgConfig {
-	conf := &PkgConfig{IgnoreFuncBodies: true, AllowBinary: true, WithTestFiles: false}
+	conf := &PkgConfig{IgnoreFuncBodies: false, AllowBinary: true, WithTestFiles: true}
+	conf.Info = &types.Info{
+		Uses:       make(map[*ast.Ident]types.Object),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+		//Types:      make(map[ast.Expr]types.TypeAndValue),
+		//Scopes : make(map[ast.Node]*types.Scope)
+		//Implicits : make(map[ast.Node]types.Object)
+	}
+	conf.XInfo = &types.Info{
+		Uses:       make(map[*ast.Ident]types.Object),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+	}
 	return conf
 }
 
@@ -998,7 +1011,6 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 			}
 		}
 	}
-
 	var kind ObjKind
 	if cursorObj != nil {
 		var err error

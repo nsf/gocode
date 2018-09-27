@@ -82,7 +82,9 @@ func (m *ModuleList) LookupModule(pkgname string) (require *Module, path string,
 		var p Package
 		err = json.Unmarshal(data, &p)
 		if err == nil {
-			return p.Module, p.ImportPath, p.Dir
+			add := &Module{Path: p.ImportPath, Dir: p.Dir}
+			m.Require = append(m.Require, add)
+			return add, p.ImportPath, p.Dir
 		}
 	}
 
