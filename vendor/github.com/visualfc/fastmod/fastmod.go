@@ -111,6 +111,9 @@ func (m *Module) Lookup(pkg string) (path string, dir string) {
 			}
 		}
 	}
+	if path == "" {
+		return "", ""
+	}
 	return path, filepath.Join(PkgMod, path)
 }
 
