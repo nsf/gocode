@@ -9,20 +9,22 @@ package fastmod
 import (
 	"go/build"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/visualfc/fastmod/internal/modfile"
+	"github.com/visualfc/fastmod/internal/module"
 )
 
 var (
-	PkgMod string
+	PkgModPath string
 )
 
 func UpdatePkgMod(ctx *build.Context) {
 	if list := filepath.SplitList(ctx.GOPATH); len(list) > 0 && list[0] != "" {
-		PkgMod = filepath.Join(list[0], "pkg/mod")
+		PkgModPath = filepath.Join(list[0], "pkg/mod")
 	}
 }
 
@@ -59,22 +61,56 @@ type Mod struct {
 	Replace *Version
 }
 
+func (m *Mod) VersionPath() string {
+	v := m.Require
+	if m.Replace != nil {
+		v = m.Replace
+	}
+	if v.Version != "" {
+		return v.Path + "@" + v.Version
+	}
+	return v.Path
+}
+
+func (m *Mod) EncodeVersionPath() string {
+	v := m.Require
+	if m.Replace != nil {
+		v = m.Replace
+	}
+	path, _ := module.EncodePath(v.Path)
+	if v.Version != "" {
+		return path + "@" + v.Version
+	}
+	return path
+}
+
 type Module struct {
-	f    *modfile.File
-	path string
-	fmod string
-	fdir string
-	mods []*Mod
+	f     *modfile.File
+	ftime int64
+	path  string
+	fmod  string
+	fdir  string
+	mods  []*Mod
 }
 
 func (m *Module) init() {
+	rused := make(map[int]bool)
 	for _, r := range m.f.Require {
 		mod := &Mod{Require: &Version{r.Mod.Path, r.Mod.Version}}
-		for _, v := range m.f.Replace {
-			if r.Mod.Path == v.Old.Path && r.Mod.Version == r.Mod.Version {
+		for i, v := range m.f.Replace {
+			if r.Mod.Path == v.Old.Path && (v.Old.Version == "" || v.Old.Version == r.Mod.Version) {
 				mod.Replace = &Version{v.New.Path, v.New.Version}
+				rused[i] = true
+				break
 			}
 		}
+		m.mods = append(m.mods, mod)
+	}
+	for i, v := range m.f.Replace {
+		if rused[i] {
+			continue
+		}
+		mod := &Mod{Require: &Version{v.Old.Path, v.Old.Version}, Replace: &Version{v.New.Path, v.New.Version}}
 		m.mods = append(m.mods, mod)
 	}
 }
@@ -91,30 +127,41 @@ func (m *Module) ModDir() string {
 	return m.fdir
 }
 
-func (m *Module) Lookup(pkg string) (path string, dir string) {
-	if strings.HasPrefix(pkg, m.path+"/") {
-		return pkg, filepath.Join(m.fdir, pkg[len(m.path+"/"):])
-	}
+type PkgType int
 
+const (
+	PkgTypeNil      PkgType = iota
+	PkgTypeGoroot           // goroot pkg
+	PkgTypeGopath           // gopath pkg
+	PkgTypeMod              // mod pkg
+	PkgTypeLocal            // mod pkg sub local
+	PkgTypeLocalMod         // mod pkg sub local mod
+	PkgTypeDepMod           // mod pkg dep gopath/pkg/mod
+)
+
+func (m *Module) Lookup(pkg string) (path string, dir string, typ PkgType) {
+	if strings.HasPrefix(pkg, m.path+"/") {
+		return pkg, filepath.Join(m.fdir, pkg[len(m.path+"/"):]), PkgTypeLocal
+	}
+	var encpath string
 	for _, r := range m.mods {
 		if r.Require.Path == pkg {
-			if r.Replace != nil {
-				path = r.Replace.Path + "@" + r.Replace.Version
-			} else {
-				path = r.Require.Path + "@" + r.Require.Version
-			}
+			path = r.VersionPath()
+			encpath = r.EncodeVersionPath()
+			break
 		} else if strings.HasPrefix(pkg, r.Require.Path+"/") {
-			if r.Replace != nil {
-				path = r.Replace.Path + "@" + r.Replace.Version + pkg[len(r.Require.Path):]
-			} else {
-				path = r.Require.Path + "@" + r.Require.Version + pkg[len(r.Require.Path):]
-			}
+			path = r.VersionPath() + pkg[len(r.Require.Path):]
+			encpath = r.VersionPath() + pkg[len(r.Require.Path):]
+			break
 		}
 	}
 	if path == "" {
-		return "", ""
+		return "", "", PkgTypeNil
 	}
-	return path, filepath.Join(PkgMod, path)
+	if strings.HasPrefix(path, "./") {
+		return pkg, filepath.Join(m.fdir, path), PkgTypeLocalMod
+	}
+	return pkg, filepath.Join(PkgModPath, encpath), PkgTypeDepMod
 }
 
 func (mc *ModuleList) LoadModule(dir string) (*Module, error) {
@@ -122,8 +169,18 @@ func (mc *ModuleList) LoadModule(dir string) (*Module, error) {
 	if fmod == "" {
 		return nil, err
 	}
+	return mc.LoadModuleFile(fmod)
+}
+
+func (mc *ModuleList) LoadModuleFile(fmod string) (*Module, error) {
+	info, err := os.Stat(fmod)
+	if err != nil {
+		return nil, err
+	}
 	if m, ok := mc.mods[fmod]; ok {
-		return m, nil
+		if m.ftime == info.ModTime().UnixNano() {
+			return m, nil
+		}
 	}
 	data, err := ioutil.ReadFile(fmod)
 	if err != nil {
@@ -133,8 +190,77 @@ func (mc *ModuleList) LoadModule(dir string) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := &Module{f, f.Module.Mod.Path, fmod, filepath.Dir(fmod), nil}
+	m := &Module{f, info.ModTime().UnixNano(), f.Module.Mod.Path, fmod, filepath.Dir(fmod), nil}
 	m.init()
 	mc.mods[fmod] = m
 	return m, nil
+}
+
+type Node struct {
+	*Module
+	Parent   *Node
+	Children []*Node
+}
+
+type Package struct {
+	mlist   *ModuleList
+	root    *Node
+	nodeMap map[string]*Node
+}
+
+func (p *Package) ModuleList() *ModuleList {
+	return p.mlist
+}
+
+func (p *Package) Node() *Node {
+	return p.root
+}
+
+func (p *Package) load(node *Node) {
+	for _, v := range node.mods {
+		var fmod string
+		if strings.HasPrefix(v.VersionPath(), "./") {
+			fmod = filepath.Join(node.ModDir(), v.VersionPath(), "go.mod")
+		} else {
+			fmod = filepath.Join(filepath.Join(PkgModPath, v.EncodeVersionPath()), "go.mod")
+		}
+		m, _ := p.mlist.LoadModuleFile(fmod)
+		if m != nil {
+			child := &Node{m, node, nil}
+			node.Children = append(node.Children, child)
+			p.nodeMap[m.fdir] = child
+			p.load(child)
+		}
+	}
+}
+
+func (p *Package) lookup(node *Node, pkg string) (path string, dir string, typ PkgType) {
+	path, dir, typ = node.Lookup(pkg)
+	if dir != "" {
+		return
+	}
+	for _, child := range node.Children {
+		path, dir, typ = p.lookup(child, pkg)
+		if dir != "" {
+			break
+		}
+	}
+	return
+}
+
+func (p *Package) Lookup(pkg string) (path string, dir string, typ PkgType) {
+	return p.lookup(p.root, pkg)
+}
+
+func LoadPackage(dir string, ctx *build.Context) (*Package, error) {
+	ml := NewModuleList(ctx)
+	m, err := ml.LoadModule(dir)
+	if m == nil {
+		return nil, err
+	}
+	node := &Node{m, nil, nil}
+	p := &Package{ml, node, make(map[string]*Node)}
+	p.nodeMap[m.fdir] = node
+	p.load(p.root)
+	return p, nil
 }

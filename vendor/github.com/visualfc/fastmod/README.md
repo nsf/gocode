@@ -9,4 +9,4 @@ Usages:
 	if err != nil {
 		return
 	}
-	path, dir := mod.Lookup(pkg)
+	path, dir, typ := mod.Lookup(pkg)
