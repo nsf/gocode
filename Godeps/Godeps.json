@@ -2,9 +2,6 @@
 	"ImportPath": "github.com/visualfc/gocode",
 	"GoVersion": "go1.11",
 	"GodepVersion": "v80",
-	"Packages": [
-		"./..."
-	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/visualfc/fastmod",
@@ -53,26 +50,6 @@
 		{
 			"ImportPath": "golang.org/x/tools/go/internal/gcimporter",
 			"Rev": "59602fdee893255faef9b2cd3aa8f880ea85265c"
-		},
-		{
-			"ImportPath": "github.com/visualfc/gotools/vendor/github.com/visualfc/fastmod",
-			"Rev": "355b74272f2c73c17dd1ff5d02dc5ffea8675d32"
-		},
-		{
-			"ImportPath": "github.com/visualfc/gotools/vendor/golang.org/x/tools/go/buildutil",
-			"Rev": "355b74272f2c73c17dd1ff5d02dc5ffea8675d32"
-		},
-		{
-			"ImportPath": "github.com/visualfc/gotools/vendor/github.com/visualfc/fastmod/internal/modfile",
-			"Rev": "355b74272f2c73c17dd1ff5d02dc5ffea8675d32"
-		},
-		{
-			"ImportPath": "github.com/visualfc/gotools/vendor/github.com/visualfc/fastmod/internal/module",
-			"Rev": "355b74272f2c73c17dd1ff5d02dc5ffea8675d32"
-		},
-		{
-			"ImportPath": "github.com/visualfc/gotools/vendor/github.com/visualfc/fastmod/internal/semver",
-			"Rev": "355b74272f2c73c17dd1ff5d02dc5ffea8675d32"
 		}
 	]
 }
