@@ -18,7 +18,7 @@ var (
 	g_addr        = flag.String("addr", "127.0.0.1:37372", "address for tcp socket")
 	g_debug       = flag.Bool("debug", false, "enable server-side debug mode")
 	g_profile     = flag.Int("profile", 0, "port on which to expose profiling information for pprof; 0 to disable profiling")
-	g_daemon_name = flag.String("daemon", "gocode-daemon-x", "unix socket daemon prefix name")
+	g_daemon_name = flag.String("daemon", "gocode-daemon-liteide", "unix socket daemon prefix name")
 )
 
 func get_socket_filename() string {
