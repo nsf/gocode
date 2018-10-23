@@ -198,7 +198,7 @@ func server_types_info(file []byte, filename string, cursor int, context_packed 
 		conf := pkgwalk.DefaultPkgConfig()
 		conf.Cursor = pkgwalk.NewFileCursor(file, fname, cursor)
 		if file != nil {
-			g_daemon.autocomplete.walker.UpdateSourceData(filename, file)
+			g_daemon.autocomplete.walker.UpdateSourceData(filename, file, true)
 		}
 		var stdout, stderr TypesInfo
 		g_daemon.autocomplete.walker.SetOutput(&stdout, &stderr)
@@ -272,7 +272,7 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		conf := pkgwalk.DefaultPkgConfig()
 		conf.Cursor = pkgwalk.NewFileCursor(file, fname, cursor)
 		if file != nil {
-			g_daemon.autocomplete.walker.UpdateSourceData(filename, file)
+			g_daemon.autocomplete.walker.UpdateSourceData(filename, file, true)
 		}
 		g_daemon.autocomplete.walker.Check(dir, conf)
 	}
