@@ -4,9 +4,8 @@
 	
 Usages:
 
-	modList := fastmod.NewModuleList(&build.Default)
-	mod, err := modList.LoadModule(dir)
+	pkg, err := fastmod.LoadPackage(dir, &build.Default)
 	if err != nil {
 		return
 	}
-	path, dir, typ := mod.Lookup(pkg)
+	path, dir, typ := pkg.Lookup(pkg)

@@ -493,27 +493,6 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 
 	w.importingName[checkName] = true
 
-	//	if err != nil {
-	//		return nil, err
-	//		//if _, nogo := err.(*build.NoGoError); nogo {
-	//		//	return
-	//		//}
-	//		//return
-	//		//log.Fatalf("pkg %q, dir %q: ScanDir: %v", name, info.Dir, err)
-	//	}
-
-	if name == "runtime" {
-		n := fmt.Sprintf("zgoos_%s.go", w.context.GOOS)
-		if !contains(GoFiles, n) {
-			GoFiles = append(GoFiles, n)
-		}
-
-		n = fmt.Sprintf("zgoarch_%s.go", w.context.GOARCH)
-		if !contains(GoFiles, n) {
-			GoFiles = append(GoFiles, n)
-		}
-	}
-
 	if conf.Cursor != nil && conf.Cursor.fileName != "" {
 		cursor := conf.Cursor
 		f, _ := w.parseFile(bp.Dir, cursor.fileName)
@@ -641,34 +620,14 @@ func (w *PkgWalker) parseFileEx(dir, file string, src interface{}, mtime int64, 
 			}
 		}
 	}
-	var f *ast.File
-	var err error
-	// generate missing context-dependent files.
-	if w.context != nil && file == fmt.Sprintf("zgoos_%s.go", w.context.GOOS) {
-		src := fmt.Sprintf("package runtime; const theGoos = `%s`", w.context.GOOS)
-		f, err = parser.ParseFile(w.fset, filename, src, 0)
-		if err != nil {
-			fmt.Fprintf(w.cmd.Stderr, "incorrect generated file: %s", err)
-		}
-	}
 
-	if w.context != nil && file == fmt.Sprintf("zgoarch_%s.go", w.context.GOARCH) {
-		src := fmt.Sprintf("package runtime; const theGoarch = `%s`", w.context.GOARCH)
-		f, err = parser.ParseFile(w.fset, filename, src, 0)
-		if err != nil {
-			fmt.Fprintf(w.cmd.Stderr, "incorrect generated file: %s", err)
-		}
+	flag := parser.AllErrors
+	if findDoc {
+		flag |= parser.ParseComments
 	}
-
-	if f == nil {
-		flag := parser.AllErrors
-		if findDoc {
-			flag |= parser.ParseComments
-		}
-		f, err = parser.ParseFile(w.fset, filename, src, flag)
-		if err != nil {
-			return f, err
-		}
+	f, err := parser.ParseFile(w.fset, filename, src, flag)
+	if err != nil {
+		return f, err
 	}
 	if mtime != 0 {
 		w.parsedFileModTime[filename] = mtime
