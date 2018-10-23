@@ -13,6 +13,10 @@ type formatter interface {
 	write_candidates(candidates []candidate, num int)
 }
 
+type formatter_ex interface {
+	formatter
+}
+
 //-------------------------------------------------------------------------
 // nice_formatter (just for testing, simple textual output)
 //-------------------------------------------------------------------------

@@ -26,6 +26,7 @@ func (r *RPC) RPC_auto_complete(args *Args_auto_complete, reply *Reply_auto_comp
 	reply.Arg0, reply.Arg1 = server_auto_complete(args.Arg0, args.Arg1, args.Arg2, args.Arg3)
 	return nil
 }
+
 func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, Arg3 go_build_context) (c []candidate, d int) {
 	var args Args_auto_complete
 	var reply Reply_auto_complete
@@ -34,6 +35,36 @@ func client_auto_complete(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, A
 	args.Arg2 = Arg2
 	args.Arg3 = Arg3
 	err := cli.Call("RPC.RPC_auto_complete", &args, &reply)
+	if err != nil {
+		panic(err)
+	}
+	return reply.Arg0, reply.Arg1
+}
+
+type Args_types_info struct {
+	Arg0 []byte
+	Arg1 string
+	Arg2 int
+	Arg3 go_build_context
+}
+type Reply_types_info struct {
+	Arg0 []string
+	Arg1 int
+}
+
+func (r *RPC) RPC_types_info(args *Args_types_info, reply *Reply_types_info) error {
+	reply.Arg0, reply.Arg1 = server_types_info(args.Arg0, args.Arg1, args.Arg2, args.Arg3)
+	return nil
+}
+
+func client_types_info(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, Arg3 go_build_context) (c []string, d int) {
+	var args Args_types_info
+	var reply Reply_types_info
+	args.Arg0 = Arg0
+	args.Arg1 = Arg1
+	args.Arg2 = Arg2
+	args.Arg3 = Arg3
+	err := cli.Call("RPC.RPC_types_info", &args, &reply)
 	if err != nil {
 		panic(err)
 	}

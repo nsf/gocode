@@ -42,6 +42,8 @@ func do_client() int {
 		switch flag.Arg(0) {
 		case "autocomplete":
 			cmd_auto_complete(client)
+		case "liteide_typesinfo":
+			cmd_types_info(client)
 		case "close":
 			cmd_close(client)
 		case "status":
@@ -103,7 +105,7 @@ func try_to_connect(network, address string) (client *rpc.Client, err error) {
 	return
 }
 
-func prepare_file_filename_cursor() ([]byte, string, int) {
+func prepare_file_filename_cursor(filter bool) ([]byte, string, int) {
 	var file []byte
 	var err error
 
@@ -117,9 +119,6 @@ func prepare_file_filename_cursor() ([]byte, string, int) {
 		panic(err.Error())
 	}
 
-	var skipped int
-	file, skipped = filter_out_shebang(file)
-
 	filename := *g_input
 	cursor := -1
 
@@ -132,6 +131,11 @@ func prepare_file_filename_cursor() ([]byte, string, int) {
 		offset = flag.Arg(2)
 	}
 
+	var skipped int
+	if filter {
+		file, skipped = filter_out_shebang(file)
+	}
+
 	if offset != "" {
 		if offset[0] == 'c' || offset[0] == 'C' {
 			cursor, _ = strconv.Atoi(offset[1:])
@@ -142,6 +146,7 @@ func prepare_file_filename_cursor() ([]byte, string, int) {
 	}
 
 	cursor -= skipped
+
 	if filename != "" && !filepath.IsAbs(filename) {
 		cwd, _ := os.Getwd()
 		filename = filepath.Join(cwd, filename)
@@ -159,9 +164,24 @@ func cmd_status(c *rpc.Client) {
 
 func cmd_auto_complete(c *rpc.Client) {
 	context := pack_build_context(&build.Default)
-	file, filename, cursor := prepare_file_filename_cursor()
+	file, filename, cursor := prepare_file_filename_cursor(true)
 	f := get_formatter(*g_format)
 	f.write_candidates(client_auto_complete(c, file, filename, cursor, context))
+}
+
+func write_tyepsinfo(infos []string, num int) {
+	if infos == nil {
+		return
+	}
+	for _, c := range infos {
+		fmt.Printf("%s\n", c)
+	}
+}
+
+func cmd_types_info(c *rpc.Client) {
+	context := pack_build_context(&build.Default)
+	file, filename, cursor := prepare_file_filename_cursor(true)
+	write_tyepsinfo(client_types_info(c, file, filename, cursor, context))
 }
 
 func cmd_close(c *rpc.Client) {
