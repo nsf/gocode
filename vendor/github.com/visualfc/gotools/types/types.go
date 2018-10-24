@@ -336,6 +336,7 @@ func (w *PkgWalker) SetFindMode(mode *FindMode) {
 func (w *PkgWalker) UpdateSourceData(filename string, data interface{}, cleanAllSourceCache bool) {
 	if cleanAllSourceCache {
 		w.fileSourceData = make(map[string]*SourceData)
+		delete(w.parsedFileModTime, filename)
 	}
 	w.fileSourceData[filename] = &SourceData{data, time.Now().UnixNano()}
 }
