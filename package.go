@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/visualfc/gotools/pkg/stdlib"
 	"golang.org/x/tools/go/gcexportdata"
 )
 
@@ -113,15 +112,11 @@ func (m *package_file_cache) update_cache(c *auto_complete_context) {
 	statmtime := stat.ModTime().UnixNano()
 	if m.mtime != statmtime {
 		m.mtime = statmtime
-		if stdlib.IsStdPkg(import_path) {
-			data, err := file_reader.read_file(fname)
-			if err != nil {
-				return
-			}
-			m.process_package_data(c, data, false)
-		} else {
-			m.process_package_data(c, nil, true)
+		data, err := file_reader.read_file(fname)
+		if err != nil {
+			return
 		}
+		m.process_package_data(c, data, false)
 	}
 }
 

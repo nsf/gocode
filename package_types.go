@@ -43,7 +43,7 @@ func (p *types_parser) initSource(import_path string, path string, dir string, p
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	conf := DefaultPkgConfig()
-	pkg, err := c.walker.ImportHelper(".", path, import_path, conf)
+	pkg, err := c.walker.ImportHelper(".", path, import_path, conf, false)
 	if err != nil {
 		log.Println(err)
 	}

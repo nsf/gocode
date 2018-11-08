@@ -365,7 +365,7 @@ func (p *PkgWalker) Check(name string, conf *PkgConfig) (pkg *types.Package, err
 			}
 		}
 	}
-	pkg, err = p.ImportHelper("", name, import_path, conf)
+	pkg, err = p.ImportHelper("", name, import_path, conf, true)
 	return
 }
 
@@ -408,8 +408,8 @@ func (w *PkgWalker) importPath(parentDir string, path string, mode build.ImportM
 	return w.Context.Import(path, "", mode)
 }
 
-func (w *PkgWalker) Import(parentDir string, name string, conf *PkgConfig) (pkg *types.Package, err error) {
-	return w.ImportHelper(parentDir, name, "", conf)
+func (w *PkgWalker) Import(parentDir string, name string, conf *PkgConfig, must bool) (pkg *types.Package, err error) {
+	return w.ImportHelper(parentDir, name, "", conf, must)
 }
 
 func lastModTime(dir string, files []string) int64 {
@@ -428,7 +428,7 @@ func lastModTime(dir string, files []string) int64 {
 	return lastTime
 }
 
-func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path string, conf *PkgConfig) (pkg *types.Package, err error) {
+func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path string, conf *PkgConfig, must bool) (pkg *types.Package, err error) {
 	defer func() {
 		err := recover()
 		if err != nil && typesVerbose {
@@ -468,14 +468,13 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 
 	pkg = w.Imported[name]
 	lastMod := lastModTime(bp.Dir, GoFiles)
-	if pkg != nil {
+	if pkg != nil && !must {
 		if t, ok := w.ImportedModTime[name]; ok {
 			if t == lastMod {
 				return pkg, nil
 			}
 		}
 	}
-
 	if typesVerbose {
 		w.cmd.Println("parser pkg", parentDir, name)
 	}
@@ -600,7 +599,8 @@ func (im *Importer) Import(name string) (pkg *types.Package, err error) {
 		//			return
 		//		}
 	}
-	return im.w.Import(im.dir, name, &PkgConfig{IgnoreFuncBodies: true, AllowBinary: true, WithTestFiles: false})
+
+	return im.w.Import(im.dir, name, &PkgConfig{IgnoreFuncBodies: true, AllowBinary: true, WithTestFiles: false}, false)
 }
 
 func (w *PkgWalker) parseFile(dir, file string) (*ast.File, error) {
@@ -831,7 +831,7 @@ func (w *PkgWalker) LookupStructFromField(info *types.Info, cursorPkg *types.Pac
 			},
 		}
 		w.Imported[cursorPkg.Path()] = nil
-		pkg, _ := w.Import("", cursorPkg.Path(), conf)
+		pkg, _ := w.Import("", cursorPkg.Path(), conf, true)
 		if pkg != nil {
 			info = conf.Info
 		}
@@ -1103,7 +1103,7 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 				Defs: make(map[*ast.Ident]types.Object),
 			},
 		}
-		pkg, _ := w.Import("", cursorPkg.Path(), conf)
+		pkg, _ := w.Import("", cursorPkg.Path(), conf, true)
 		if pkg != nil {
 			if cursorIsInterfaceMethod {
 				for k, v := range conf.Info.Defs {
@@ -1426,7 +1426,7 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 		}
 		w.Imported[v] = nil
 		var usages []int
-		vpkg, _ := w.Import("", v, conf)
+		vpkg, _ := w.Import("", v, conf, true)
 		if vpkg != nil && vpkg != pkg {
 			if conf.Info != nil {
 				for k, v := range conf.Info.Uses {
