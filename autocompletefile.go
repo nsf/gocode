@@ -64,8 +64,22 @@ func (f *auto_complete_file) offset(p token.Pos) int {
 }
 
 // this one is used for current file buffer exclusively
-func (f *auto_complete_file) process_data(data []byte) {
-	cur, filedata, block := rip_off_decl(data, f.cursor)
+func (f *auto_complete_file) process_data(data []byte, ctx *auto_complete_context) {
+	// topLevelTok fix rip_off_decl on multi var decl
+	// var (\n jsData  = `{	}`\n 	file2  *File = func() *File {
+	var topLevelTok token.Token
+	if cf, ok := ctx.walker.ParsedFileCache[f.name]; ok {
+		pos := token.Pos(ctx.walker.FileSet.File(cf.Pos()).Base()) + token.Pos(f.cursor)
+		for _, decl := range cf.Decls {
+			if pos >= decl.Pos() && pos <= decl.End() {
+				if decl, ok := decl.(*ast.GenDecl); ok {
+					topLevelTok = decl.Tok
+				}
+				break
+			}
+		}
+	}
+	cur, filedata, block := rip_off_decl(data, f.cursor, topLevelTok)
 	file, err := parser.ParseFile(f.fset, "", filedata, parser.AllErrors)
 	if err != nil && *g_debug {
 		log_parse_error("Error parsing input file (outer block)", err)
@@ -85,6 +99,7 @@ func (f *auto_complete_file) process_data(data []byte) {
 	for _, decl := range file.Decls {
 		append_to_top_decls(f.decls, decl, f.scope)
 	}
+
 	if block != nil {
 		// process local function as top-level declaration
 		decls, err := parse_decl_list(f.fset, block)

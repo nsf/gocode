@@ -292,12 +292,12 @@ func DefaultPkgConfig() *PkgConfig {
 }
 
 type PkgWalker struct {
-	fset              *token.FileSet
-	context           *build.Context
+	FileSet           *token.FileSet
+	Context           *build.Context
 	current           *types.Package
 	importingName     map[string]bool
-	parsedFileCache   map[string]*ast.File
-	parsedFileModTime map[string]int64
+	ParsedFileCache   map[string]*ast.File
+	ParsedFileModTime map[string]int64
 	fileSourceData    map[string]*SourceData
 	Imported          map[string]*types.Package // packages already imported
 	ImportedModTime   map[string]int64
@@ -309,10 +309,10 @@ type PkgWalker struct {
 
 func NewPkgWalker(context *build.Context) *PkgWalker {
 	return &PkgWalker{
-		context:           context,
-		fset:              token.NewFileSet(),
-		parsedFileCache:   map[string]*ast.File{},
-		parsedFileModTime: map[string]int64{},
+		Context:           context,
+		FileSet:           token.NewFileSet(),
+		ParsedFileCache:   map[string]*ast.File{},
+		ParsedFileModTime: map[string]int64{},
 		fileSourceData:    map[string]*SourceData{},
 		importingName:     map[string]bool{},
 		Imported:          map[string]*types.Package{"unsafe": types.Unsafe},
@@ -336,7 +336,7 @@ func (w *PkgWalker) SetFindMode(mode *FindMode) {
 func (w *PkgWalker) UpdateSourceData(filename string, data interface{}, cleanAllSourceCache bool) {
 	if cleanAllSourceCache {
 		w.fileSourceData = make(map[string]*SourceData)
-		delete(w.parsedFileModTime, filename)
+		delete(w.ParsedFileModTime, filename)
 	}
 	w.fileSourceData[filename] = &SourceData{data, time.Now().UnixNano()}
 }
@@ -354,7 +354,7 @@ func (p *PkgWalker) Check(name string, conf *PkgConfig) (pkg *types.Package, err
 	// check mod
 	var import_path string
 	if filepath.IsAbs(name) {
-		p.modPkg, _ = fastmod.LoadPackage(name, p.context)
+		p.modPkg, _ = fastmod.LoadPackage(name, p.Context)
 		if p.modPkg != nil {
 			dir := filepath.ToSlash(p.modPkg.Node().ModDir())
 			fname := filepath.ToSlash(name)
@@ -384,15 +384,15 @@ func (w *PkgWalker) isBinaryPkg(pkg string) bool {
 
 func (w *PkgWalker) importPath(parentDir string, path string, mode build.ImportMode) (*build.Package, error) {
 	if filepath.IsAbs(path) {
-		return w.context.ImportDir(path, 0)
+		return w.Context.ImportDir(path, 0)
 	}
 	if stdlib.IsStdPkg(path) {
-		return stdlib.ImportStdPkg(w.context, path, build.AllowBinary)
+		return stdlib.ImportStdPkg(w.Context, path, build.AllowBinary)
 	}
 	if w.modPkg != nil {
 		_path, dir, _ := w.modPkg.Lookup(path)
 		if dir != "" {
-			pkg, err := w.context.ImportDir(dir, mode)
+			pkg, err := w.Context.ImportDir(dir, mode)
 			if pkg != nil {
 				pkg.ImportPath = _path
 			}
@@ -400,12 +400,12 @@ func (w *PkgWalker) importPath(parentDir string, path string, mode build.ImportM
 		}
 	}
 	if path == "syscall/js" {
-		ctx := *w.context
+		ctx := *w.Context
 		ctx.BuildTags = append(ctx.BuildTags, "js")
 		ctx.BuildTags = append(ctx.BuildTags, "wasm")
 		return ctx.Import(path, "", mode)
 	}
-	return w.context.Import(path, "", mode)
+	return w.Context.Import(path, "", mode)
 }
 
 func (w *PkgWalker) Import(parentDir string, name string, conf *PkgConfig) (pkg *types.Package, err error) {
@@ -441,7 +441,7 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 			name = filepath.Join(parentDir, name)
 		} else {
 			if pkgutil.IsVendorExperiment() {
-				parentPkg := pkgutil.ImportDirEx(w.context, parentDir)
+				parentPkg := pkgutil.ImportDirEx(w.Context, parentDir)
 				var err error
 				name, err = pkgutil.VendoredImportPath(parentPkg, name)
 				if err != nil {
@@ -501,7 +501,7 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 		cursor := conf.Cursor
 		f, _ := w.parseFile(bp.Dir, cursor.fileName)
 		if f != nil {
-			cursor.pos = token.Pos(w.fset.File(f.Pos()).Base()) + token.Pos(cursor.cursorPos)
+			cursor.pos = token.Pos(w.FileSet.File(f.Pos()).Base()) + token.Pos(cursor.cursorPos)
 			cursor.fileDir = bp.Dir
 			isTest := strings.HasSuffix(cursor.fileName, "_test.go")
 			isXTest := false
@@ -531,7 +531,7 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 			var f *ast.File
 			f, err = w.parseFile(bp.Dir, file)
 			if cursor != nil && cursor.fileName == file {
-				cursor.pos = token.Pos(w.fset.File(f.Pos()).Base()) + token.Pos(cursor.cursorPos)
+				cursor.pos = token.Pos(w.FileSet.File(f.Pos()).Base()) + token.Pos(cursor.cursorPos)
 				cursor.fileDir = bp.Dir
 				cursor.xtest = xtest
 			}
@@ -559,7 +559,7 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 		},
 	}
 
-	pkg, err = typesConf.Check(checkName, w.fset, files, conf.Info)
+	pkg, err = typesConf.Check(checkName, w.FileSet, files, conf.Info)
 	conf.Pkg = pkg
 
 	w.importingName[checkName] = false
@@ -567,7 +567,7 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 	w.ImportedModTime[name] = lastMod
 
 	if len(xfiles) > 0 {
-		xpkg, _ := typesConf.Check(checkName+"_test", w.fset, xfiles, conf.XInfo)
+		xpkg, _ := typesConf.Check(checkName+"_test", w.FileSet, xfiles, conf.XInfo)
 		w.Imported[checkName+"_test"] = xpkg
 		conf.XPkg = xpkg
 	}
@@ -613,8 +613,8 @@ func (w *PkgWalker) parseFileEx(dir, file string, src interface{}, mtime int64, 
 		src = sd.data
 		mtime = sd.mtime
 	}
-	if f, ok := w.parsedFileCache[filename]; ok {
-		if i, ok := w.parsedFileModTime[filename]; ok {
+	if f, ok := w.ParsedFileCache[filename]; ok {
+		if i, ok := w.ParsedFileModTime[filename]; ok {
 			if mtime != 0 && mtime == i {
 				return f, nil
 			}
@@ -629,19 +629,19 @@ func (w *PkgWalker) parseFileEx(dir, file string, src interface{}, mtime int64, 
 	if findDoc {
 		flag |= parser.ParseComments
 	}
-	f, err := parser.ParseFile(w.fset, filename, src, flag)
+	f, err := parser.ParseFile(w.FileSet, filename, src, flag)
 	if err != nil {
 		return f, err
 	}
 	if mtime != 0 {
-		w.parsedFileModTime[filename] = mtime
+		w.ParsedFileModTime[filename] = mtime
 	} else {
 		info, err := os.Stat(filename)
 		if err == nil {
-			w.parsedFileModTime[filename] = info.ModTime().UnixNano()
+			w.ParsedFileModTime[filename] = info.ModTime().UnixNano()
 		}
 	}
-	w.parsedFileCache[filename] = f
+	w.ParsedFileCache[filename] = f
 	return f, nil
 }
 
@@ -661,7 +661,7 @@ func (w *PkgWalker) LookupCursor(pkg *types.Package, conf *PkgConfig, cursor *Fi
 
 func (w *PkgWalker) LookupName(pkg *types.Package, conf *PkgConfig, cursor *FileCursor, nm *ast.Ident) error {
 	if w.findMode.Define {
-		w.cmd.Println(w.fset.Position(nm.Pos()))
+		w.cmd.Println(w.FileSet.Position(nm.Pos()))
 	}
 	if w.findMode.Info {
 		if cursor.xtest {
@@ -693,7 +693,7 @@ func (w *PkgWalker) LookupName(pkg *types.Package, conf *PkgConfig, cursor *File
 	}
 	(sort.IntSlice(usages)).Sort()
 	for _, pos := range usages {
-		w.cmd.Println(w.fset.Position(token.Pos(pos)))
+		w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
 	}
 	return nil
 }
@@ -734,9 +734,9 @@ func (w *PkgWalker) LookupImport(pkg *types.Package, pkgInfo *types.Info, cursor
 		}
 		bp, err = w.importPath("", findpath, build.FindOnly)
 		if err == nil {
-			w.cmd.Println(w.fset.Position(is.Pos()).String() + "::" + fname + "::" + fpath + "::" + bp.Dir)
+			w.cmd.Println(w.FileSet.Position(is.Pos()).String() + "::" + fname + "::" + fpath + "::" + bp.Dir)
 		} else {
-			w.cmd.Println(w.fset.Position(is.Pos()))
+			w.cmd.Println(w.FileSet.Position(is.Pos()))
 		}
 	}
 
@@ -768,7 +768,7 @@ func (w *PkgWalker) LookupImport(pkg *types.Package, pkgInfo *types.Info, cursor
 	}
 	(sort.IntSlice(usages)).Sort()
 	for _, pos := range usages {
-		w.cmd.Println(w.fset.Position(token.Pos(pos)))
+		w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
 	}
 	return nil
 }
@@ -1177,7 +1177,7 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 	//		fieldTypeObj = w.LookupStructFromField(fieldTypeInfo, cursorPkg, cursorObj, cursorPos)
 	//	}
 	if w.findMode.Define {
-		w.cmd.Println(w.fset.Position(cursorPos))
+		w.cmd.Println(w.FileSet.Position(cursorPos))
 	}
 	if w.findMode.Info {
 		/*if kind == ObjField && fieldTypeObj != nil {
@@ -1201,13 +1201,13 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 	}
 
 	if w.findMode.Doc && w.findMode.Define {
-		pos := w.fset.Position(cursorPos)
-		file := w.parsedFileCache[pos.Filename]
+		pos := w.FileSet.Position(cursorPos)
+		file := w.ParsedFileCache[pos.Filename]
 		if file != nil {
 			line := pos.Line
 			var group *ast.CommentGroup
 			for _, v := range file.Comments {
-				lastLine := w.fset.Position(v.End()).Line
+				lastLine := w.FileSet.Position(v.End()).Line
 				if lastLine == line || lastLine == line-1 {
 					group = v
 				} else if lastLine > line {
@@ -1269,7 +1269,7 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 
 	(sort.IntSlice(usages)).Sort()
 	for _, pos := range usages {
-		w.cmd.Println(w.fset.Position(token.Pos(pos)))
+		w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
 	}
 	//check look for current pkg.object on pkg_test
 	if w.findMode.UsageAll || IsSamePkg(cursorPkg, conf.Pkg) {
@@ -1293,7 +1293,7 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 			}
 			(sort.IntSlice(usages)).Sort()
 			for _, pos := range usages {
-				w.cmd.Println(w.fset.Position(token.Pos(pos)))
+				w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
 			}
 		}
 	}
@@ -1366,7 +1366,7 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 			return nil
 		})
 	}
-	ctx := *w.context
+	ctx := *w.Context
 	searchAll := true
 	if w.modPkg != nil {
 		ctx.GOPATH = ""
@@ -1448,7 +1448,7 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 		}
 		(sort.IntSlice(usages)).Sort()
 		for _, pos := range usages {
-			w.cmd.Println(w.fset.Position(token.Pos(pos)))
+			w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
 		}
 	}
 	return nil
@@ -1496,6 +1496,6 @@ func (w *PkgWalker) nodeString(node interface{}) string {
 		return ""
 	}
 	var b bytes.Buffer
-	printer.Fprint(&b, w.fset, node)
+	printer.Fprint(&b, w.FileSet, node)
 	return b.String()
 }

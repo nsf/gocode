@@ -950,7 +950,6 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		return t, scope, true
 	default:
 		_ = reflect.TypeOf(v)
-		//fmt.Println(ty)
 	}
 	return nil, nil, false
 }

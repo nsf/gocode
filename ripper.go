@@ -16,8 +16,9 @@ type tok_pos_pair struct {
 }
 
 type tok_collection struct {
-	tokens []tok_pos_pair
-	fset   *token.FileSet
+	tokens   []tok_pos_pair
+	fset     *token.FileSet
+	toplevel token.Token
 }
 
 func (this *tok_collection) next(s *scanner.Scanner) bool {
@@ -50,8 +51,8 @@ func (this *tok_collection) find_decl_beg(pos int) int {
 			lowi = i
 		}
 	}
-
 	cur = lowest
+	var findvar bool
 	for i := lowi - 1; i >= 0; i-- {
 		t := this.tokens[i]
 		switch t.tok {
@@ -59,13 +60,33 @@ func (this *tok_collection) find_decl_beg(pos int) int {
 			cur++
 		case token.LBRACE:
 			cur--
+		case token.VAR:
+			findvar = true
 		}
 		if t.tok == token.SEMICOLON && cur == lowest {
 			lowpos = this.fset.Position(t.pos).Offset
+			//var (\n jsData  = `{	}`\n 	file2  *File = func() *File {
+			if this.toplevel == token.VAR && !findvar {
+				next := lowest
+				for j := i - 1; j >= 0; j-- {
+					jt := this.tokens[j]
+					switch jt.tok {
+					case token.RBRACE:
+						next++
+					case token.LBRACE:
+						next--
+					case token.VAR:
+						findvar = true
+					}
+					if jt.tok == token.SEMICOLON && next == lowest && findvar {
+						lowpos = this.fset.Position(jt.pos).Offset
+						break
+					}
+				}
+			}
 			break
 		}
 	}
-
 	return lowpos
 }
 
@@ -119,7 +140,6 @@ func (this *tok_collection) rip_off_decl(file []byte, cursor int) (int, []byte, 
 	s.Init(this.fset.AddFile("", this.fset.Base(), len(file)), file, nil, scanner.ScanComments)
 	for this.next(&s) {
 	}
-
 	beg, end := this.find_outermost_scope(cursor)
 	if beg == -1 || end == -1 {
 		return cursor, file, nil
@@ -135,7 +155,8 @@ func (this *tok_collection) rip_off_decl(file []byte, cursor int) (int, []byte, 
 	return cursor - beg, newfile, ripped
 }
 
-func rip_off_decl(file []byte, cursor int) (int, []byte, []byte) {
+func rip_off_decl(file []byte, cursor int, topLevelTok token.Token) (int, []byte, []byte) {
 	var tc tok_collection
+	tc.toplevel = topLevelTok
 	return tc.rip_off_decl(file, cursor)
 }

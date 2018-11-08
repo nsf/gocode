@@ -359,7 +359,7 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 
 	// Does full processing of the currently edited file (top-level declarations plus
 	// active function).
-	c.current.process_data(filesemi)
+	c.current.process_data(filesemi, c)
 
 	// Updates cache of other files and packages. See the function for details of
 	// the process. At the end merges all the top-level declarations into the package
