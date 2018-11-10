@@ -196,16 +196,16 @@ func server_types_info(file []byte, filename string, cursor int, context_packed 
 		}
 
 		conf := pkgwalk.DefaultPkgConfig()
-		conf.Cursor = pkgwalk.NewFileCursor(file, fname, cursor)
+		cursor := pkgwalk.NewFileCursor(file, dir, fname, cursor)
 		if file != nil {
-			g_daemon.autocomplete.walker.UpdateSourceData(filename, file, true)
+			g_daemon.autocomplete.walker.UpdateSourceData(filename, file)
 		}
 		var stdout, stderr TypesInfo
 		g_daemon.autocomplete.walker.SetOutput(&stdout, &stderr)
 		g_daemon.autocomplete.walker.SetFindMode(&pkgwalk.FindMode{Info: true, Doc: true, Define: true})
-		wpkg, _ := g_daemon.autocomplete.walker.Check(dir, conf)
+		wpkg, conf, _ := g_daemon.autocomplete.walker.Check(dir, conf, cursor)
 		if wpkg != nil {
-			g_daemon.autocomplete.walker.LookupCursor(wpkg, conf, conf.Cursor)
+			g_daemon.autocomplete.walker.LookupCursor(wpkg, conf, cursor)
 			return stdout.ar, len(stdout.ar)
 		}
 	}
@@ -270,11 +270,11 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 		//g_daemon.modList = gomod.LooupModList(dir)
 
 		conf := pkgwalk.DefaultPkgConfig()
-		conf.Cursor = pkgwalk.NewFileCursor(file, fname, cursor)
+		cursor := pkgwalk.NewFileCursor(file, dir, fname, cursor)
 		if file != nil {
-			g_daemon.autocomplete.walker.UpdateSourceData(filename, file, true)
+			g_daemon.autocomplete.walker.UpdateSourceData(filename, file)
 		}
-		g_daemon.autocomplete.walker.Check(dir, conf)
+		g_daemon.autocomplete.walker.Check(dir, conf, cursor)
 	}
 	if *g_debug {
 		var buf bytes.Buffer

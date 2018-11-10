@@ -92,11 +92,11 @@ func (m *package_file_cache) update_cache(c *auto_complete_context) {
 			log.Println("error parser", import_path)
 			return
 		}
-		if t, ok := c.walker.ImportedModTime[import_path]; ok {
-			if m.mtime == t {
+		if chk, ok := c.walker.ImportedFilesCheck[import_path]; ok {
+			if m.mtime == chk.ModTime {
 				return
 			}
-			m.mtime = t
+			m.mtime = chk.ModTime
 		}
 		m.process_package_types(c, pkg)
 		return

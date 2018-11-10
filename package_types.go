@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"go/ast"
 	"go/importer"
 	"go/token"
 	"go/types"
@@ -18,23 +17,23 @@ type types_parser struct {
 	pkg *types.Package
 }
 
-func DefaultPkgConfig() *pkgwalk.PkgConfig {
-	conf := &pkgwalk.PkgConfig{IgnoreFuncBodies: true, AllowBinary: true, WithTestFiles: false}
-	conf.Info = &types.Info{
-		Uses:       make(map[*ast.Ident]types.Object),
-		Defs:       make(map[*ast.Ident]types.Object),
-		Selections: make(map[*ast.SelectorExpr]*types.Selection),
-		//Types:      make(map[ast.Expr]types.TypeAndValue),
-		//Scopes : make(map[ast.Node]*types.Scope)
-		//Implicits : make(map[ast.Node]types.Object)
-	}
-	conf.XInfo = &types.Info{
-		Uses:       make(map[*ast.Ident]types.Object),
-		Defs:       make(map[*ast.Ident]types.Object),
-		Selections: make(map[*ast.SelectorExpr]*types.Selection),
-	}
-	return conf
-}
+// func DefaultPkgConfig() *pkgwalk.PkgConfig {
+// 	conf := &pkgwalk.PkgConfig{IgnoreFuncBodies: true, AllowBinary: true, WithTestFiles: false}
+// 	conf.Info = &types.Info{
+// 		Uses:       make(map[*ast.Ident]types.Object),
+// 		Defs:       make(map[*ast.Ident]types.Object),
+// 		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+// 		//Types:      make(map[ast.Expr]types.TypeAndValue),
+// 		//Scopes : make(map[ast.Node]*types.Scope)
+// 		//Implicits : make(map[ast.Node]types.Object)
+// 	}
+// 	conf.XInfo = &types.Info{
+// 		Uses:       make(map[*ast.Ident]types.Object),
+// 		Defs:       make(map[*ast.Ident]types.Object),
+// 		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+// 	}
+// 	return conf
+// }
 
 func (p *types_parser) initSource(import_path string, path string, dir string, pfc *package_file_cache, c *auto_complete_context) {
 	//conf := &pkgwalk.PkgConfig{IgnoreFuncBodies: true, AllowBinary: false, WithTestFiles: true}
@@ -42,8 +41,8 @@ func (p *types_parser) initSource(import_path string, path string, dir string, p
 	//	conf.XInfo = &types.Info{}
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	conf := DefaultPkgConfig()
-	pkg, err := c.walker.ImportHelper(".", path, import_path, conf, false)
+	conf := pkgwalk.DefaultPkgConfig()
+	pkg, _, err := c.walker.ImportHelper(".", path, import_path, conf, nil)
 	if err != nil {
 		log.Println(err)
 	}
