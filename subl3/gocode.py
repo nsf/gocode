@@ -120,14 +120,35 @@ class GocodeGofmtCommand(sublime_plugin.TextCommand):
 				i += l
 
 class Gocode(sublime_plugin.EventListener):
-	def on_query_completions(self, view, prefix, locations):
-		loc = locations[0]
-		if not view.match_selector(loc, "source.go"):
-			return None
+	"""Sublime Text gocode integration."""
+
+	def __init__(self):
+		self._running = False
+		self._completions = None
+		self._location = 0
+		self._prefix = ""
+
+	def fetch_query_completions(self, view, prefix, location):
+		"""Fetches the query completions of for the given location
+
+		Execute gocode and parse the returned csv. If the cursor location did not change, a
+		result got returned and the current cursor location is still at the same position will the query completions
+		method be called again (to render the results).
+
+		:param view: currently active sublime view
+		:type view: sublime.View
+		:param prefix: string for completions
+		:type prefix: basestring
+		:param locations: offset from beginning
+		:type locations: int
+		"""
+
+		self._running = True
+		self._location = location
 
 		src = view.substr(sublime.Region(0, view.size()))
 		filename = view.file_name()
-		cloc = "c{0}".format(loc)
+		cloc = "c{0}".format(location)
 		gocode = subprocess.Popen(["gocode", "-f=csv", "autocomplete", filename, cloc],
 			stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 		out = gocode.communicate(src.encode())[0].decode()
@@ -135,10 +156,72 @@ class Gocode(sublime_plugin.EventListener):
 		result = []
 		for line in filter(bool, out.split("\n")):
 			arg = line.split(",,")
-			hint, subj = hint_and_subj(*arg)
+			hint, subj = hint_and_subj(arg[0], arg[1], arg[2])
 			result.append([hint, subj])
 
-		return (result, sublime.INHIBIT_WORD_COMPLETIONS)
+		# Exit conditions:
+		if len(result) == 0:
+			return
+
+		if self._prefix != prefix:
+			return
+
+		# Check if this query completions request is for the "latest" location
+		if self._location != location:
+			return
+
+		self._completions = result
+		self._running = False
+
+		self.open_query_completions(view)
+
+	def open_query_completions(self, view):
+		"""Opens (forced) the sublime autocomplete window"""
+
+		view.run_command("hide_auto_complete")
+		sublime.set_timeout(
+			lambda: view.run_command("auto_complete")
+		)
+
+	def on_query_completions(self, view, prefix, locations):
+		"""Sublime autocomplete event handler.
+
+		Get completions depends on current cursor position and return
+		them as list of ('possible completion', 'completion type')
+
+		:param view: currently active sublime view
+		:type view: sublime.View
+		:param prefix: string for completions
+		:type prefix: basestring
+		:param locations: offset from beginning
+		:type locations: int
+
+		:return: list of tuple(str, str)
+		"""
+
+		loc = locations[0]
+
+		if not view.match_selector(loc, "source.go"):
+			return []
+
+		if self._completions:
+			completions = self._completions
+
+			self._completions = None
+			self._prefix = ""
+
+			return completions
+
+		if self._running and len(prefix) != 0:
+			return []
+
+		self._prefix = prefix
+
+		sublime.set_timeout_async(
+			lambda: self.fetch_query_completions(view, prefix, loc)
+		)
+
+		return []
 
 	def on_pre_save(self, view):
 		if not view.match_selector(0, "source.go"):
