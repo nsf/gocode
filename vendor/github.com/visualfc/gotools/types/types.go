@@ -665,12 +665,15 @@ func (w *PkgWalker) parseFileEx(dir, file string, src interface{}, mtime int64, 
 	}
 	if f, ok := w.ParsedFileCache[filename]; ok {
 		if i, ok := w.ParsedFileModTime[filename]; ok {
-			if mtime != 0 && mtime == i {
-				return f, nil
-			}
-			info, err := os.Stat(filename)
-			if err == nil && info.ModTime().UnixNano() == i {
-				return f, nil
+			if mtime != 0 {
+				if mtime == i {
+					return f, nil
+				}
+			} else {
+				info, err := os.Stat(filename)
+				if err == nil && info.ModTime().UnixNano() == i {
+					return f, nil
+				}
 			}
 		}
 	}
