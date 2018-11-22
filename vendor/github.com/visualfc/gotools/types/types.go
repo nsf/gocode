@@ -934,9 +934,13 @@ func (w *PkgWalker) lookupNamedMethod(named *types.Named, name string) (types.Ob
 		for i := 0; i < iface.NumMethods(); i++ {
 			fn := iface.Method(i)
 			if fn.Name() == name {
+				if fn.Pkg() != named.Obj().Pkg() {
+					goto Embedded
+				}
 				return fn, named
 			}
 		}
+	Embedded:
 		for i := 0; i < iface.NumEmbeddeds(); i++ {
 			if obj, na := w.lookupNamedMethod(iface.Embedded(i), name); obj != nil {
 				return obj, na
@@ -1107,16 +1111,14 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 		sig := cursorObj.(*types.Func).Type().Underlying().(*types.Signature)
 		if _, ok := sig.Recv().Type().Underlying().(*types.Interface); ok {
 			if named, ok := cursorSelection.Recv().(*types.Named); ok {
-				obj, typ := w.lookupNamedMethod(named, cursorObj.Name())
-				if obj != nil {
+				obj, na := w.lookupNamedMethod(named, cursorObj.Name())
+				if obj != nil && na != nil {
 					cursorObj = obj
+					cursorPkg = na.Obj().Pkg()
+					cursorInterfaceTypeName = na.Obj().Name()
+					cursorInterfaceTypeNamed = na
+					cursorIsInterfaceMethod = true
 				}
-				if typ != nil {
-					cursorPkg = typ.Obj().Pkg()
-					cursorInterfaceTypeName = typ.Obj().Name()
-				}
-				cursorIsInterfaceMethod = true
-				cursorInterfaceTypeNamed = named
 			}
 		}
 	} else if kind == ObjField && cursorSelection != nil {
@@ -1145,9 +1147,9 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 			}
 		}
 	}
-	//	if typesVerbose {
-	//		w.cmd.Println("parser", cursorObj, kind, cursorIsInterfaceMethod)
-	//	}
+	if typesVerbose {
+		w.cmd.Println("parser", cursorObj, kind, cursorIsInterfaceMethod)
+	}
 	if cursorPkg != nil && cursorPkg != pkg &&
 		kind != ObjPkgName && w.isBinaryPkg(cursorPkg.Path()) {
 		pkg, conf, _ := w.Import("", cursorPkg.Path(), NewPkgConfig(true, true), nil)
@@ -1157,37 +1159,32 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 					if k != nil && v != nil && IsSameObject(v, cursorInterfaceTypeNamed.Obj()) {
 						named := v.Type().(*types.Named)
 						obj, typ := w.lookupNamedMethod(named, cursorObj.Name())
-						if obj != nil {
+						if obj != nil && typ != nil {
 							cursorObj = obj
 							cursorPos = obj.Pos()
-						}
-						if obj != nil {
-							cursorObj = obj
-						}
-						if typ != nil {
 							cursorPkg = typ.Obj().Pkg()
 							cursorInterfaceTypeName = typ.Obj().Name()
+							break
 						}
-						break
 					}
 				}
-				//				for _, obj := range conf.Info.Defs {
-				//					if obj == nil {
-				//						continue
-				//					}
-				//					if fn, ok := obj.(*types.Func); ok {
-				//						if fn.Name() == cursorObj.Name() {
-				//							if sig, ok := fn.Type().Underlying().(*types.Signature); ok {
-				//								if named, ok := sig.Recv().Type().(*types.Named); ok {
-				//									if named.Obj() != nil && named.Obj().Name() == cursorInterfaceTypeName {
-				//										cursorPos = obj.Pos()
-				//										break
-				//									}
-				//								}
-				//							}
-				//						}
-				//					}
-				//				}
+				// for _, obj := range conf.Info.Defs {
+				// 	if obj == nil {
+				// 		continue
+				// 	}
+				// 	if fn, ok := obj.(*types.Func); ok {
+				// 		if fn.Name() == cursorObj.Name() {
+				// 			if sig, ok := fn.Type().Underlying().(*types.Signature); ok {
+				// 				if named, ok := sig.Recv().Type().(*types.Named); ok {
+				// 					if named.Obj() != nil && named.Obj().Name() == cursorInterfaceTypeName {
+				// 						cursorPos = obj.Pos()
+				// 						break
+				// 					}
+				// 				}
+				// 			}
+				// 		}
+				// 	}
+				// }
 			} else if kind == ObjField && fieldTypeObj != nil {
 				for _, obj := range conf.Info.Defs {
 					if obj == nil {
