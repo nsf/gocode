@@ -180,7 +180,7 @@ func write_tyepsinfo(infos []string, num int) {
 
 func cmd_types_info(c *rpc.Client) {
 	context := pack_build_context(&build.Default)
-	file, filename, cursor := prepare_file_filename_cursor(false)
+	file, filename, cursor := prepare_file_filename_cursor(true)
 	write_tyepsinfo(client_types_info(c, file, filename, cursor, context))
 }
 
