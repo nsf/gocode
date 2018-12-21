@@ -765,7 +765,9 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 			if i, ok := d.typ.(*ast.Ident); ok {
 				if i.Obj != nil && i.Obj.Decl != nil {
 					if typ, ok := i.Obj.Decl.(*ast.TypeSpec); ok {
-						return infer_type(typ.Type, scope, -1)
+						if _, ok := typ.Type.(*ast.Ident); ok {
+							return infer_type(typ.Type, scope, -1)
+						}
 					}
 				}
 			}
