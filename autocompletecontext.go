@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
+	"go/build"
 	"go/parser"
 	"go/token"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/visualfc/gotools/pkgs"
 	pkgwalk "github.com/visualfc/gotools/types"
 )
 
@@ -157,6 +159,7 @@ type auto_complete_context struct {
 	declcache *decl_cache   // top-level declarations cache
 	fset      *token.FileSet
 	walker    *pkgwalk.PkgWalker
+	pkgindex  *pkgs.PathPkgsIndex
 	mutex     sync.Mutex
 }
 
@@ -167,6 +170,13 @@ func new_auto_complete_context(ctx *package_lookup_context, pcache package_cache
 	c.declcache = declcache
 	c.fset = token.NewFileSet()
 	c.walker = pkgwalk.NewPkgWalker(&ctx.Context)
+	c.pkgindex = nil
+	go func(c *auto_complete_context, ctx build.Context) {
+		var indexs pkgs.PathPkgsIndex
+		indexs.LoadIndex(ctx, pkgs.LoadAll)
+		indexs.Sort()
+		c.pkgindex = &indexs
+	}(c, ctx.Context)
 	return c
 }
 
@@ -293,9 +303,29 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {
 	currentPackagePath, pkgdirs := g_daemon.context.pkg_dirs()
 	resultSet := map[string]struct{}{}
-	for _, pkgdir := range pkgdirs {
-		// convert srcpath to pkgpath and get candidates
-		get_import_candidates_dir(pkgdir, filepath.FromSlash(partial), b.ignorecase, currentPackagePath, resultSet)
+	if c.pkgindex != nil {
+		for _, index := range c.pkgindex.Indexs {
+			for _, pkg := range index.Pkgs {
+				if pkg.IsCommand() {
+					continue
+				}
+				if !has_prefix(pkg.ImportPath, partial, b.ignorecase) {
+					continue
+				}
+				if pkg.Goroot && strings.HasPrefix(pkg.ImportPath, "golang.org/") {
+					continue
+				}
+				if strings.Contains(pkg.ImportPath, "/vendor/") {
+					continue
+				}
+				resultSet[pkg.ImportPath] = struct{}{}
+			}
+		}
+	} else {
+		for _, pkgdir := range pkgdirs {
+			// convert srcpath to pkgpath and get candidates
+			get_import_candidates_dir(pkgdir, filepath.FromSlash(partial), b.ignorecase, currentPackagePath, resultSet)
+		}
 	}
 	for k := range resultSet {
 		b.candidates = append(b.candidates, candidate{Name: k, Class: decl_import})
