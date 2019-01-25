@@ -302,8 +302,12 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {
 	currentPackagePath, pkgdirs := g_daemon.context.pkg_dirs()
 	resultSet := map[string]struct{}{}
-	if c.walker.ModPkg != nil {
-		c.walker.ModPkg.ModList
+	if c.walker.ModPkg != nil && c.walker.ModPkg.ModList != nil {
+		for _, module := range c.walker.ModPkg.ModList.Modules {
+			for _, mod := range module.Mods {
+				resultSet[mod.Require.Path] = struct{}{}
+			}
+		}
 	} else if c.pkgindex != nil {
 		for _, index := range c.pkgindex.Indexs {
 			for _, pkg := range index.Pkgs {
