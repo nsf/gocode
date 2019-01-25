@@ -175,6 +175,21 @@ func vendorlessImportPath(ipath string, currentPackagePath string) (string, bool
 	return ipath, true
 }
 
+func internalImportPath(ipath string, currentPackagePath string) (string, bool) {
+	split := strings.Split(ipath, "/internal")
+	// no vendor in path
+	// if len(split) == 1 {
+	// 	return "", false
+	// }
+	// this import path does not belong to the current package
+	if currentPackagePath != "" && !strings.Contains(currentPackagePath, split[0]) {
+		if split[0] != currentPackagePath+"/" {
+			return "", false
+		}
+	}
+	return ipath, true
+}
+
 //-------------------------------------------------------------------------
 // print_backtrace
 //
