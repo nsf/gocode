@@ -322,7 +322,7 @@ type PkgWalker struct {
 	ImportedFilesCheck map[string]*FilesCheck
 	gcimported         types.Importer
 	cmd                *command.Command
-	modPkg             *fastmod.Package
+	ModPkg             *fastmod.Package
 	findMode           *FindMode
 }
 
@@ -371,18 +371,18 @@ func (p *PkgWalker) Check(name string, conf *PkgConfig, cusror *FileCursor) (pkg
 	}
 	//p.Imported[name] = nil
 	p.importingName = make(map[string]bool)
-	p.modPkg = nil
+	p.ModPkg = nil
 	// check mod
 	var import_path string
 	if filepath.IsAbs(name) {
-		p.modPkg, _ = fastmod.LoadPackage(name, p.Context)
-		if p.modPkg != nil {
-			dir := filepath.ToSlash(p.modPkg.Node().ModDir())
+		p.ModPkg, _ = fastmod.LoadPackage(name, p.Context)
+		if p.ModPkg != nil {
+			dir := filepath.ToSlash(p.ModPkg.Node().ModDir())
 			fname := filepath.ToSlash(name)
 			if dir == fname {
-				import_path = p.modPkg.Node().Path()
+				import_path = p.ModPkg.Node().Path()
 			} else if strings.HasPrefix(fname, dir+"/") {
-				import_path = p.modPkg.Node().Path() + fname[len(dir):]
+				import_path = p.ModPkg.Node().Path() + fname[len(dir):]
 			}
 		}
 	}
@@ -410,8 +410,8 @@ func (w *PkgWalker) importPath(parentDir string, path string, mode build.ImportM
 	if stdlib.IsStdPkg(path) {
 		return stdlib.ImportStdPkg(w.Context, path, build.AllowBinary)
 	}
-	if w.modPkg != nil {
-		_path, dir, _ := w.modPkg.Lookup(path)
+	if w.ModPkg != nil {
+		_path, dir, _ := w.ModPkg.Lookup(path)
 		if dir != "" {
 			pkg, err := w.Context.ImportDir(dir, mode)
 			if pkg != nil {
@@ -1365,12 +1365,12 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 	}
 
 	cursorPkgPath := cursorObj.Pkg().Path()
-	if w.modPkg == nil && pkgutil.IsVendorExperiment() {
+	if w.ModPkg == nil && pkgutil.IsVendorExperiment() {
 		cursorPkgPath = pkgutil.VendorPathToImportPath(cursorPkgPath)
 	}
 	// check on module dir
-	if w.modPkg != nil {
-		dir := w.modPkg.Node().ModDir()
+	if w.ModPkg != nil {
+		dir := w.ModPkg.Node().ModDir()
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if !info.IsDir() {
 				return nil
@@ -1386,7 +1386,7 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 				return nil
 			}
 			if !bp.IsCommand() {
-				importPath := filepath.Join(w.modPkg.Node().Path(), path[len(dir)+1:])
+				importPath := filepath.Join(w.ModPkg.Node().Path(), path[len(dir)+1:])
 				if importPath == cursorPkgPath {
 					return nil
 				}
@@ -1412,7 +1412,7 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 	}
 	ctx := *w.Context
 	searchAll := true
-	if w.modPkg != nil {
+	if w.ModPkg != nil {
 		ctx.GOPATH = ""
 		if w.findMode.SkipGoroot {
 			searchAll = false

@@ -43,7 +43,7 @@ func LookupModFile(dir string) (string, error) {
 }
 
 type ModuleList struct {
-	mods map[string]*Module
+	Modules map[string]*Module
 }
 
 func NewModuleList(ctx *build.Context) *ModuleList {
@@ -90,7 +90,7 @@ type Module struct {
 	path  string
 	fmod  string
 	fdir  string
-	mods  []*Mod
+	Mods  []*Mod
 }
 
 func (m *Module) init() {
@@ -104,14 +104,14 @@ func (m *Module) init() {
 				break
 			}
 		}
-		m.mods = append(m.mods, mod)
+		m.Mods = append(m.Mods, mod)
 	}
 	for i, v := range m.f.Replace {
 		if rused[i] {
 			continue
 		}
 		mod := &Mod{Require: &Version{v.Old.Path, v.Old.Version}, Replace: &Version{v.New.Path, v.New.Version}}
-		m.mods = append(m.mods, mod)
+		m.Mods = append(m.Mods, mod)
 	}
 }
 
@@ -144,7 +144,7 @@ func (m *Module) Lookup(pkg string) (path string, dir string, typ PkgType) {
 		return pkg, filepath.Join(m.fdir, pkg[len(m.path+"/"):]), PkgTypeLocal
 	}
 	var encpath string
-	for _, r := range m.mods {
+	for _, r := range m.Mods {
 		if r.Require.Path == pkg {
 			path = r.VersionPath()
 			encpath = r.EncodeVersionPath()
@@ -177,7 +177,7 @@ func (mc *ModuleList) LoadModuleFile(fmod string) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	if m, ok := mc.mods[fmod]; ok {
+	if m, ok := mc.Modules[fmod]; ok {
 		if m.ftime == info.ModTime().UnixNano() {
 			return m, nil
 		}
@@ -192,7 +192,7 @@ func (mc *ModuleList) LoadModuleFile(fmod string) (*Module, error) {
 	}
 	m := &Module{f, info.ModTime().UnixNano(), f.Module.Mod.Path, fmod, filepath.Dir(fmod), nil}
 	m.init()
-	mc.mods[fmod] = m
+	mc.Modules[fmod] = m
 	return m, nil
 }
 
@@ -203,32 +203,28 @@ type Node struct {
 }
 
 type Package struct {
-	mlist   *ModuleList
-	root    *Node
-	nodeMap map[string]*Node
-}
-
-func (p *Package) ModuleList() *ModuleList {
-	return p.mlist
+	ModList *ModuleList
+	Root    *Node
+	NodeMap map[string]*Node
 }
 
 func (p *Package) Node() *Node {
-	return p.root
+	return p.Root
 }
 
 func (p *Package) load(node *Node) {
-	for _, v := range node.mods {
+	for _, v := range node.Mods {
 		var fmod string
 		if strings.HasPrefix(v.VersionPath(), "./") {
 			fmod = filepath.Join(node.ModDir(), v.VersionPath(), "go.mod")
 		} else {
 			fmod = filepath.Join(filepath.Join(PkgModPath, v.EncodeVersionPath()), "go.mod")
 		}
-		m, _ := p.mlist.LoadModuleFile(fmod)
+		m, _ := p.ModList.LoadModuleFile(fmod)
 		if m != nil {
 			child := &Node{m, node, nil}
 			node.Children = append(node.Children, child)
-			p.nodeMap[m.fdir] = child
+			p.NodeMap[m.fdir] = child
 			p.load(child)
 		}
 	}
@@ -249,7 +245,7 @@ func (p *Package) lookup(node *Node, pkg string) (path string, dir string, typ P
 }
 
 func (p *Package) Lookup(pkg string) (path string, dir string, typ PkgType) {
-	return p.lookup(p.root, pkg)
+	return p.lookup(p.Root, pkg)
 }
 
 func LoadPackage(dir string, ctx *build.Context) (*Package, error) {
@@ -260,7 +256,7 @@ func LoadPackage(dir string, ctx *build.Context) (*Package, error) {
 	}
 	node := &Node{m, nil, nil}
 	p := &Package{ml, node, make(map[string]*Node)}
-	p.nodeMap[m.fdir] = node
-	p.load(p.root)
+	p.NodeMap[m.fdir] = node
+	p.load(p.Root)
 	return p, nil
 }
