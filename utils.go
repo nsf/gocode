@@ -161,7 +161,9 @@ func vendorlessImportPath(ipath string, currentPackagePath string) (string, bool
 	}
 	// this import path does not belong to the current package
 	if currentPackagePath != "" && !strings.Contains(currentPackagePath, split[0]) {
-		return "", false
+		if split[0] != currentPackagePath+"/" {
+			return "", false
+		}
 	}
 	// Devendorize for use in import statement.
 	if i := strings.LastIndex(ipath, "/vendor/"); i >= 0 {

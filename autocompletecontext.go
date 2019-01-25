@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"go/build"
 	"go/parser"
 	"go/token"
 	"log"
@@ -171,12 +170,12 @@ func new_auto_complete_context(ctx *package_lookup_context, pcache package_cache
 	c.fset = token.NewFileSet()
 	c.walker = pkgwalk.NewPkgWalker(&ctx.Context)
 	c.pkgindex = nil
-	go func(c *auto_complete_context, ctx build.Context) {
-		var indexs pkgs.PathPkgsIndex
-		indexs.LoadIndex(ctx, pkgs.LoadAll)
-		indexs.Sort()
-		c.pkgindex = &indexs
-	}(c, ctx.Context)
+	//go func(c *auto_complete_context, ctx build.Context) {
+	var indexs pkgs.PathPkgsIndex
+	indexs.LoadIndex(ctx.Context, pkgs.LoadAll)
+	indexs.Sort()
+	c.pkgindex = &indexs
+	//}(c, ctx.Context)
 	return c
 }
 
@@ -312,10 +311,16 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 				if !has_prefix(pkg.ImportPath, partial, b.ignorecase) {
 					continue
 				}
-				if pkg.Goroot && strings.HasPrefix(pkg.ImportPath, "golang.org/") {
+				if pkg.Goroot &&
+					(strings.HasPrefix(pkg.ImportPath, "vendor/") ||
+						strings.HasPrefix(pkg.ImportPath, "cmd/")) {
 					continue
 				}
 				if strings.Contains(pkg.ImportPath, "/vendor/") {
+					//log.Println(pkg.ImportPath, currentPackagePath)
+					if ipath, ok := vendorlessImportPath(pkg.ImportPath, currentPackagePath); ok {
+						resultSet[ipath] = struct{}{}
+					}
 					continue
 				}
 				resultSet[pkg.ImportPath] = struct{}{}
