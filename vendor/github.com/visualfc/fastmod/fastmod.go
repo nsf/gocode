@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -203,6 +204,7 @@ type Node struct {
 }
 
 type Package struct {
+	ctx     *build.Context
 	ModList *ModuleList
 	Root    *Node
 	NodeMap map[string]*Node
@@ -248,6 +250,35 @@ func (p *Package) Lookup(pkg string) (path string, dir string, typ PkgType) {
 	return p.lookup(p.Root, pkg)
 }
 
+func (p *Package) DepImportList() []string {
+	if p.ModList == nil {
+		return nil
+	}
+	var ar []string
+	for _, m := range p.ModList.Modules {
+		for _, mod := range m.Mods {
+			ar = append(ar, mod.Require.Path)
+		}
+	}
+	return ar
+}
+
+func (p *Package) LocalImportList() []string {
+	var pkgs PathPkgsIndex
+	pkgs.LoadIndex(*p.ctx, p.Root.fdir)
+	pkgs.Sort()
+	var ar []string
+	for _, index := range pkgs.Indexs {
+		for _, pkg := range index.Pkgs {
+			if pkg.IsCommand() {
+				continue
+			}
+			ar = append(ar, path.Join(p.Root.path, pkg.ImportPath))
+		}
+	}
+	return ar
+}
+
 func LoadPackage(dir string, ctx *build.Context) (*Package, error) {
 	ml := NewModuleList(ctx)
 	m, err := ml.LoadModule(dir)
@@ -255,7 +286,7 @@ func LoadPackage(dir string, ctx *build.Context) (*Package, error) {
 		return nil, err
 	}
 	node := &Node{m, nil, nil}
-	p := &Package{ml, node, make(map[string]*Node)}
+	p := &Package{ctx, ml, node, make(map[string]*Node)}
 	p.NodeMap[m.fdir] = node
 	p.load(p.Root)
 	return p, nil
