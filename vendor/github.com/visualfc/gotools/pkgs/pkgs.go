@@ -265,7 +265,6 @@ func (p *PathPkgsIndex) LoadIndex(context build.Context, flag LoadFlag) {
 		f, err := os.Open(path)
 		if err != nil {
 			pkgsGate.leave()
-			fmt.Fprint(os.Stderr, err)
 			continue
 		}
 		children, err := f.Readdir(-1)

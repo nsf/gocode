@@ -324,14 +324,15 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 			}
 		}
 		//mod deps
-		deps := c.walker.ModPkg.DepImportList()
+		deps := c.walker.ModPkg.DepImportList(true, true)
 		//local path
-		locals := c.walker.ModPkg.LocalImportList()
+		locals := c.walker.ModPkg.LocalImportList(true)
 		for _, dep := range deps {
 			if !has_prefix(dep, partial, b.ignorecase) {
 				continue
 			}
-			if strings.Contains(dep, "/vendor/") {
+			if strings.Contains(dep, "/vendor/") ||
+				strings.Contains(dep, "/internal/") {
 				continue
 			}
 			resultSet[dep] = struct{}{}
@@ -340,7 +341,8 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 			if !has_prefix(local, partial, b.ignorecase) {
 				continue
 			}
-			if strings.Contains(local, "/vendor/") {
+			if strings.Contains(local, "/vendor/") ||
+				strings.Contains(local, "/internal/") {
 				continue
 			}
 			resultSet[local] = struct{}{}
