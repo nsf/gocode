@@ -314,7 +314,7 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 				}
 				if strings.HasPrefix(pkg.ImportPath, "cmd/") ||
 					strings.Contains(pkg.ImportPath, "vendor/") ||
-					strings.Contains(pkg.ImportPath, "internal/") {
+					strings.Contains(pkg.ImportPath, "internal") {
 					continue
 				}
 				if !has_prefix(pkg.ImportPath, partial, b.ignorecase) {
@@ -359,7 +359,7 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 				if pkg.Goroot &&
 					(strings.HasPrefix(pkg.ImportPath, "vendor/") ||
 						strings.HasPrefix(pkg.ImportPath, "cmd/") ||
-						strings.Contains(pkg.ImportPath, "internal/")) {
+						strings.Contains(pkg.ImportPath, "internal")) {
 					continue
 				}
 				if strings.Contains(pkg.ImportPath, "/internal") {
