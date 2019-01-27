@@ -332,7 +332,8 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 				continue
 			}
 			if strings.Contains(dep, "/vendor/") ||
-				strings.Contains(dep, "/internal/") {
+				strings.Contains(dep, "/internal/") ||
+				strings.HasSuffix(dep, "/internal") {
 				continue
 			}
 			resultSet[dep] = struct{}{}
@@ -341,8 +342,7 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 			if !has_prefix(local, partial, b.ignorecase) {
 				continue
 			}
-			if strings.Contains(local, "/vendor/") ||
-				strings.Contains(local, "/internal/") {
+			if strings.Contains(local, "/vendor/") {
 				continue
 			}
 			resultSet[local] = struct{}{}
@@ -369,7 +369,6 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 					continue
 				}
 				if strings.Contains(pkg.ImportPath, "/vendor/") {
-					//log.Println(pkg.ImportPath, currentPackagePath)
 					if ipath, ok := vendorlessImportPath(pkg.ImportPath, currentPackagePath); ok {
 						resultSet[ipath] = struct{}{}
 					}
