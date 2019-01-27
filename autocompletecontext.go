@@ -309,15 +309,15 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 				if pkg.IsCommand() {
 					continue
 				}
-				if !has_prefix(pkg.ImportPath, partial, b.ignorecase) {
-					continue
-				}
 				if !pkg.Goroot {
 					continue
 				}
 				if strings.HasPrefix(pkg.ImportPath, "cmd/") ||
 					strings.Contains(pkg.ImportPath, "vendor/") ||
 					strings.Contains(pkg.ImportPath, "internal/") {
+					continue
+				}
+				if !has_prefix(pkg.ImportPath, partial, b.ignorecase) {
 					continue
 				}
 				resultSet[pkg.ImportPath] = struct{}{}
@@ -328,12 +328,18 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 		//local path
 		locals := c.walker.ModPkg.LocalImportList()
 		for _, dep := range deps {
+			if !has_prefix(dep, partial, b.ignorecase) {
+				continue
+			}
 			if strings.Contains(dep, "/vendor/") {
 				continue
 			}
 			resultSet[dep] = struct{}{}
 		}
 		for _, local := range locals {
+			if !has_prefix(local, partial, b.ignorecase) {
+				continue
+			}
 			if strings.Contains(local, "/vendor/") {
 				continue
 			}
