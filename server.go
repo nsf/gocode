@@ -143,7 +143,7 @@ func (p *TypesInfo) Write(data []byte) (n int, err error) {
 	return len(data), nil
 }
 
-func server_types_info(file []byte, filename string, cursor int, context_packed go_build_context) (c []string, d int) {
+func server_types_info(file []byte, filename string, cursor int, addin string, context_packed go_build_context) (c []string, d int) {
 	context := unpack_build_context(&context_packed)
 	defer func() {
 		if err := recover(); err != nil {
@@ -197,6 +197,7 @@ func server_types_info(file []byte, filename string, cursor int, context_packed 
 
 		conf := pkgwalk.DefaultPkgConfig()
 		cursor := pkgwalk.NewFileCursor(file, dir, fname, cursor)
+		cursor.SetText(addin)
 		if file != nil {
 			g_daemon.autocomplete.walker.UpdateSourceData(filename, file)
 		}

@@ -44,6 +44,7 @@ var (
 	typesVerbose        bool
 	typesAllowBinary    bool
 	typesFilePos        string
+	typesCursorText     string
 	typesFileStdin      bool
 	typesFindUse        bool
 	typesFindDef        bool
@@ -60,6 +61,7 @@ func init() {
 	Command.Flag.BoolVar(&typesVerbose, "v", false, "verbose debugging")
 	Command.Flag.BoolVar(&typesAllowBinary, "b", false, "import can be satisfied by a compiled package object without corresponding sources.")
 	Command.Flag.StringVar(&typesFilePos, "pos", "", "file position \"file.go:pos\"")
+	Command.Flag.StringVar(&typesCursorText, "text", "", "file cursor text info")
 	Command.Flag.BoolVar(&typesFileStdin, "stdin", false, "input file use stdin")
 	Command.Flag.BoolVar(&typesFindInfo, "info", false, "find cursor info")
 	Command.Flag.BoolVar(&typesFindDef, "def", false, "find cursor define")
@@ -177,23 +179,22 @@ func runTypes(cmd *command.Command, args []string) error {
 	context.BuildTags = append(typesTagList, context.BuildTags...)
 
 	w := NewPkgWalker(context)
-	var cursor *FileCursor
+	cursor := &FileCursor{}
+	cursor.text = typesCursorText
 	if typesFilePos != "" {
-		var cursorInfo FileCursor
 		pos := strings.Index(typesFilePos, ":")
 		if pos != -1 {
-			cursorInfo.fileName = typesFilePos[:pos]
+			cursor.fileName = typesFilePos[:pos]
 			if i, err := strconv.Atoi(typesFilePos[pos+1:]); err == nil {
-				cursorInfo.cursorPos = i
+				cursor.cursorPos = i
 			}
 		}
 		if typesFileStdin {
 			src, err := ioutil.ReadAll(cmd.Stdin)
 			if err == nil {
-				cursorInfo.src = src
+				cursor.src = src
 			}
 		}
-		cursor = &cursorInfo
 	}
 	w.cmd = cmd
 	w.findMode = &FindMode{
@@ -236,10 +237,15 @@ type FileCursor struct {
 	pos       token.Pos
 	src       []byte
 	xtest     bool
+	text      string
 }
 
 func NewFileCursor(src []byte, dir string, filename string, pos int) *FileCursor {
 	return &FileCursor{fileDir: dir, fileName: filename, cursorPos: pos, src: src}
+}
+
+func (f *FileCursor) SetText(text string) {
+	f.text = text
 }
 
 type SourceData struct {
@@ -279,14 +285,17 @@ func DefaultPkgConfig() *PkgConfig {
 		Uses:       make(map[*ast.Ident]types.Object),
 		Defs:       make(map[*ast.Ident]types.Object),
 		Selections: make(map[*ast.SelectorExpr]*types.Selection),
-		//Types:      make(map[ast.Expr]types.TypeAndValue),
-		//Scopes : make(map[ast.Node]*types.Scope)
-		//Implicits : make(map[ast.Node]types.Object)
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Implicits:  make(map[ast.Node]types.Object),
 	}
 	conf.XInfo = &types.Info{
 		Uses:       make(map[*ast.Ident]types.Object),
 		Defs:       make(map[*ast.Ident]types.Object),
 		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Implicits:  make(map[ast.Node]types.Object),
 	}
 	return conf
 }
@@ -297,14 +306,17 @@ func NewPkgConfig(ignoreFuncBodies bool, withTestFiles bool) *PkgConfig {
 		Uses:       make(map[*ast.Ident]types.Object),
 		Defs:       make(map[*ast.Ident]types.Object),
 		Selections: make(map[*ast.SelectorExpr]*types.Selection),
-		//Types:      make(map[ast.Expr]types.TypeAndValue),
-		//Scopes : make(map[ast.Node]*types.Scope)
-		//Implicits : make(map[ast.Node]types.Object)
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Implicits:  make(map[ast.Node]types.Object),
 	}
 	conf.XInfo = &types.Info{
 		Uses:       make(map[*ast.Ident]types.Object),
 		Defs:       make(map[*ast.Ident]types.Object),
 		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Implicits:  make(map[ast.Node]types.Object),
 	}
 	return conf
 }
@@ -683,7 +695,7 @@ func (w *PkgWalker) parseFileEx(dir, file string, src interface{}, mtime int64, 
 		flag |= parser.ParseComments
 	}
 	f, err := parser.ParseFile(w.FileSet, filename, src, flag)
-	if err != nil {
+	if f == nil {
 		return f, err
 	}
 	if mtime != 0 {
@@ -695,7 +707,7 @@ func (w *PkgWalker) parseFileEx(dir, file string, src interface{}, mtime int64, 
 		}
 	}
 	w.ParsedFileCache[filename] = f
-	return f, nil
+	return f, err
 }
 
 func (w *PkgWalker) LookupCursor(pkg *types.Package, conf *PkgConfig, cursor *FileCursor) error {
@@ -929,6 +941,27 @@ func (w *PkgWalker) lookupNamedField(named *types.Named, name string) *types.Nam
 	return nil
 }
 
+func (w *PkgWalker) lookupNamedFieldVar(named *types.Named, name string) (*types.Var, *types.Named) {
+	if istruct, ok := named.Underlying().(*types.Struct); ok {
+		for i := 0; i < istruct.NumFields(); i++ {
+			field := istruct.Field(i)
+			if field.Anonymous() {
+				fieldType := orgType(field.Type())
+				if typ, ok := fieldType.(*types.Named); ok {
+					if obj, na := w.lookupNamedFieldVar(typ, name); na != nil {
+						return obj, na
+					}
+				}
+			} else {
+				if field.Name() == name {
+					return field, named
+				}
+			}
+		}
+	}
+	return nil, nil
+}
+
 func (w *PkgWalker) lookupNamedMethod(named *types.Named, name string) (types.Object, *types.Named) {
 	if iface, ok := named.Underlying().(*types.Interface); ok {
 		for i := 0; i < iface.NumMethods(); i++ {
@@ -1019,6 +1052,116 @@ func orgType(typ types.Type) types.Type {
 	return typ
 }
 
+func findScope(s *types.Scope, pos token.Pos) *types.Scope {
+	for i := 0; i < s.NumChildren(); i++ {
+		child := s.Child(i)
+		if child.Contains(pos) {
+			return findScope(child, pos)
+		}
+	}
+	return s
+}
+
+func (w *PkgWalker) lookupNamed(obj types.Object, cname string) types.Object {
+	typ := orgType(obj.Type())
+	if typ != nil {
+		if name, ok := typ.(*types.Named); ok {
+			obj, na := w.lookupNamedFieldVar(name, cname)
+			if na != nil {
+				return obj
+			} else {
+				obj, na := w.lookupNamedMethod(name, cname)
+				if na != nil {
+					return obj
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// pkg=fmt text=Println
+func (w *PkgWalker) lookupPackage(pkg *types.Package, text string) types.Object {
+	if pkg != nil && pkg.Scope() != nil {
+		ids := strings.Split(text, ".")
+		obj := pkg.Scope().Lookup(ids[0])
+		cursorObj := obj
+		if obj != nil {
+			var n int = 1
+			for n < len(ids) {
+				obj = w.lookupNamed(obj, ids[n])
+				if obj == nil {
+					break
+				}
+				cursorObj = obj
+				n++
+			}
+		}
+		return cursorObj
+	}
+	return nil
+}
+
+func (w *PkgWalker) LookupByText(pkgInfo *types.Info, text string) types.Object {
+	var cursorObj types.Object
+	ids := strings.Split(text, ".")
+	if len(ids) >= 2 {
+		//check pkg.Name
+		for _, obj := range pkgInfo.Uses {
+			if obj.Pkg() != nil {
+				if obj.Pkg().Name()+"."+obj.Name() == text {
+					cursorObj = obj
+					break
+				}
+			}
+		}
+		if cursorObj == nil {
+			//check local obj.name.name
+			for _, obj := range pkgInfo.Defs {
+				if obj != nil && obj.Name() == ids[0] {
+					var n int = 1
+					for n < len(ids) {
+						obj = w.lookupNamed(obj, ids[n])
+						if obj == nil {
+							break
+						}
+						cursorObj = obj
+						n++
+					}
+				}
+			}
+		}
+		if cursorObj == nil {
+			for _, obj := range pkgInfo.Implicits {
+				if obj != nil && obj.Name() == ids[0] {
+					if pkg, ok := obj.(*types.PkgName); ok {
+						cursorObj = w.lookupPackage(pkg.Imported(), strings.Join(ids[1:], "."))
+					}
+				}
+			}
+		}
+	}
+	//check local obj
+	if cursorObj == nil {
+		for _, obj := range pkgInfo.Defs {
+			if obj != nil && obj.Name() == text {
+				cursorObj = obj
+				break
+			}
+		}
+	}
+	//check implicitly declared objects
+	if cursorObj == nil {
+		for _, obj := range pkgInfo.Implicits {
+			if obj != nil && obj.Name() == text {
+				cursorObj = obj
+				break
+			}
+		}
+	}
+	return cursorObj
+}
+
 func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 	var cursorObj types.Object
 	var cursorSelection *types.Selection
@@ -1064,6 +1207,17 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 				break
 			}
 		}
+	}
+	if cursorObj == nil {
+		for id, obj := range pkgInfo.Implicits {
+			if cursor.pos >= id.Pos() && cursor.pos <= id.End() {
+				cursorObj = obj
+				break
+			}
+		}
+	}
+	if cursorObj == nil && cursor.text != "" {
+		cursorObj = w.LookupByText(pkgInfo, cursor.text)
 	}
 
 	var kind ObjKind

@@ -105,7 +105,7 @@ func try_to_connect(network, address string) (client *rpc.Client, err error) {
 	return
 }
 
-func prepare_file_filename_cursor(filter bool) ([]byte, string, int) {
+func prepare_file_filename_cursor(filter bool) ([]byte, string, int, string) {
 	var file []byte
 	var err error
 
@@ -123,12 +123,17 @@ func prepare_file_filename_cursor(filter bool) ([]byte, string, int) {
 	cursor := -1
 
 	offset := ""
+	addin := ""
 	switch flag.NArg() {
 	case 2:
 		offset = flag.Arg(1)
 	case 3:
 		filename = flag.Arg(1) // Override default filename
 		offset = flag.Arg(2)
+	case 4:
+		filename = flag.Arg(1) // Override default filename
+		offset = flag.Arg(2)
+		addin = flag.Arg(3)
 	}
 
 	var skipped int
@@ -151,7 +156,7 @@ func prepare_file_filename_cursor(filter bool) ([]byte, string, int) {
 		cwd, _ := os.Getwd()
 		filename = filepath.Join(cwd, filename)
 	}
-	return file, filename, cursor
+	return file, filename, cursor, addin
 }
 
 //-------------------------------------------------------------------------
@@ -164,7 +169,7 @@ func cmd_status(c *rpc.Client) {
 
 func cmd_auto_complete(c *rpc.Client) {
 	context := pack_build_context(&build.Default)
-	file, filename, cursor := prepare_file_filename_cursor(true)
+	file, filename, cursor, _ := prepare_file_filename_cursor(true)
 	f := get_formatter(*g_format)
 	f.write_candidates(client_auto_complete(c, file, filename, cursor, context))
 }
@@ -180,8 +185,8 @@ func write_tyepsinfo(infos []string, num int) {
 
 func cmd_types_info(c *rpc.Client) {
 	context := pack_build_context(&build.Default)
-	file, filename, cursor := prepare_file_filename_cursor(true)
-	write_tyepsinfo(client_types_info(c, file, filename, cursor, context))
+	file, filename, cursor, addin := prepare_file_filename_cursor(true)
+	write_tyepsinfo(client_types_info(c, file, filename, cursor, addin, context))
 }
 
 func cmd_close(c *rpc.Client) {

@@ -45,7 +45,8 @@ type Args_types_info struct {
 	Arg0 []byte
 	Arg1 string
 	Arg2 int
-	Arg3 go_build_context
+	Arg3 string
+	Arg4 go_build_context
 }
 type Reply_types_info struct {
 	Arg0 []string
@@ -53,17 +54,18 @@ type Reply_types_info struct {
 }
 
 func (r *RPC) RPC_types_info(args *Args_types_info, reply *Reply_types_info) error {
-	reply.Arg0, reply.Arg1 = server_types_info(args.Arg0, args.Arg1, args.Arg2, args.Arg3)
+	reply.Arg0, reply.Arg1 = server_types_info(args.Arg0, args.Arg1, args.Arg2, args.Arg3, args.Arg4)
 	return nil
 }
 
-func client_types_info(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, Arg3 go_build_context) (c []string, d int) {
+func client_types_info(cli *rpc.Client, Arg0 []byte, Arg1 string, Arg2 int, Arg3 string, Arg4 go_build_context) (c []string, d int) {
 	var args Args_types_info
 	var reply Reply_types_info
 	args.Arg0 = Arg0
 	args.Arg1 = Arg1
 	args.Arg2 = Arg2
 	args.Arg3 = Arg3
+	args.Arg4 = Arg4
 	err := cli.Call("RPC.RPC_types_info", &args, &reply)
 	if err != nil {
 		panic(err)
