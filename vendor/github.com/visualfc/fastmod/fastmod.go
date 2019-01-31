@@ -19,15 +19,15 @@ import (
 	"github.com/visualfc/fastmod/internal/module"
 )
 
-var (
-	PkgModPath string
-)
+// var (
+// 	PkgModPath string
+// )
 
-func UpdatePkgMod(ctx *build.Context) {
-	if list := filepath.SplitList(ctx.GOPATH); len(list) > 0 && list[0] != "" {
-		PkgModPath = filepath.Join(list[0], "pkg/mod")
-	}
-}
+// func UpdatePkgMod(ctx *build.Context) {
+// 	if list := filepath.SplitList(ctx.GOPATH); len(list) > 0 && list[0] != "" {
+// 		PkgModPath = filepath.Join(list[0], "pkg/mod")
+// 	}
+// }
 
 func fixVersion(path, vers string) (string, error) {
 	return vers, nil
@@ -167,7 +167,7 @@ func (m *Module) Lookup(pkg string) (path string, dir string, typ PkgType) {
 	if strings.HasPrefix(path, "./") {
 		return pkg, filepath.Join(m.fdir, path), PkgTypeLocalMod
 	}
-	return pkg, filepath.Join(PkgModPath, encpath), PkgTypeDepMod
+	return pkg, filepath.Join(m.pkgModPath, encpath), PkgTypeDepMod
 }
 
 func (mc *ModuleList) LoadModule(dir string) (*Module, error) {
