@@ -216,7 +216,7 @@ func runTypes(cmd *command.Command, args []string) error {
 			cursor.fileDir = dir
 		}
 		if cursor.src != nil {
-			w.UpdateSourceData(filepath.Join(pkgName, cursor.fileName), cursor.src)
+			w.UpdateSourceData(filepath.Join(pkgName, cursor.fileName), cursor.src, false)
 		}
 		conf := DefaultPkgConfig()
 		pkg, outconf, err := w.Check(pkgName, conf, cursor)
@@ -365,12 +365,16 @@ func (w *PkgWalker) SetFindMode(mode *FindMode) {
 	w.findMode = mode
 }
 
-func (w *PkgWalker) UpdateSourceData(filename string, data []byte) {
-	if sd, ok := w.fileSourceData[filename]; ok {
-		if bytes.Equal(sd.data, data) {
-			return
-		}
+func (w *PkgWalker) UpdateSourceData(filename string, data []byte, cleanAllSourceCache bool) {
+	if cleanAllSourceCache {
+		w.fileSourceData = make(map[string]*SourceData)
+		delete(w.ParsedFileModTime, filename)
 	}
+	// if sd, ok := w.fileSourceData[filename]; ok {
+	// 	if bytes.Equal(sd.data, data) {
+	// 		return
+	// 	}
+	// }
 	w.fileSourceData[filename] = &SourceData{data, time.Now().UnixNano()}
 }
 
