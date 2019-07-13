@@ -164,7 +164,7 @@ func (m *Module) Lookup(pkg string) (path string, dir string, typ PkgType) {
 	if path == "" {
 		return "", "", PkgTypeNil
 	}
-	if strings.HasPrefix(path, "./") {
+	if strings.HasPrefix(path, "./") || strings.HasPrefix(path, "../") {
 		return pkg, filepath.Join(m.fdir, path), PkgTypeLocalMod
 	}
 	return pkg, filepath.Join(m.pkgModPath, encpath), PkgTypeDepMod

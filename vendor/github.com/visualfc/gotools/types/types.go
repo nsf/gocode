@@ -370,11 +370,11 @@ func (w *PkgWalker) UpdateSourceData(filename string, data []byte, cleanAllSourc
 		w.fileSourceData = make(map[string]*SourceData)
 		delete(w.ParsedFileModTime, filename)
 	}
-	// if sd, ok := w.fileSourceData[filename]; ok {
-	// 	if bytes.Equal(sd.data, data) {
-	// 		return
-	// 	}
-	// }
+	if sd, ok := w.fileSourceData[filename]; ok {
+		if bytes.Equal(sd.data, data) {
+			return
+		}
+	}
 	w.fileSourceData[filename] = &SourceData{data, time.Now().UnixNano()}
 }
 
