@@ -8,43 +8,43 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/visualfc/fastmod",
-			"Rev": "a64c9cb9126ce483bb4db496a685fdc89f32fd1f"
+			"Rev": "3600cbe34ad55676ef2ce00f1916071200249352"
 		},
 		{
 			"ImportPath": "github.com/visualfc/fastmod/internal/modfile",
-			"Rev": "a64c9cb9126ce483bb4db496a685fdc89f32fd1f"
+			"Rev": "3600cbe34ad55676ef2ce00f1916071200249352"
 		},
 		{
 			"ImportPath": "github.com/visualfc/fastmod/internal/module",
-			"Rev": "a64c9cb9126ce483bb4db496a685fdc89f32fd1f"
+			"Rev": "3600cbe34ad55676ef2ce00f1916071200249352"
 		},
 		{
 			"ImportPath": "github.com/visualfc/fastmod/internal/semver",
-			"Rev": "a64c9cb9126ce483bb4db496a685fdc89f32fd1f"
+			"Rev": "3600cbe34ad55676ef2ce00f1916071200249352"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/buildctx",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/command",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/pkgutil",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkg/stdlib",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/pkgs",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/types",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "golang.org/x/tools/go/buildutil",
@@ -60,23 +60,23 @@
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/vendor/github.com/visualfc/fastmod",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/vendor/golang.org/x/tools/go/buildutil",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/vendor/github.com/visualfc/fastmod/internal/modfile",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/vendor/github.com/visualfc/fastmod/internal/module",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		},
 		{
 			"ImportPath": "github.com/visualfc/gotools/vendor/github.com/visualfc/fastmod/internal/semver",
-			"Rev": "d6e45235b85ac81a107c82b318832bd47b93d0ff"
+			"Rev": "03de1e535737757ff31d7cc647dd95ab4164c211"
 		}
 	]
 }

@@ -172,7 +172,10 @@ func (m *Module) Lookup(pkg string) (path string, dir string, typ PkgType) {
 
 func (mc *ModuleList) LoadModule(dir string) (*Module, error) {
 	fmod, err := LookupModFile(dir)
-	if fmod == "" {
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasSuffix(fmod, ".mod") {
 		return nil, err
 	}
 	return mc.LoadModuleFile(fmod)
