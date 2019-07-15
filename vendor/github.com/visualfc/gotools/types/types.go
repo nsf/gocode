@@ -493,7 +493,7 @@ func (w *PkgWalker) ImportHelper(parentDir string, name string, import_path stri
 		if strings.HasPrefix(name, ".") {
 			name = filepath.Join(parentDir, name)
 		} else {
-			if pkgutil.IsVendorExperiment() {
+			if w.ModPkg == nil && pkgutil.IsVendorExperiment() {
 				parentPkg := pkgutil.ImportDirEx(w.Context, parentDir)
 				var err error
 				name, err = pkgutil.VendoredImportPath(parentPkg, name)
@@ -1544,7 +1544,10 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 				return nil
 			}
 			if !bp.IsCommand() {
-				importPath := filepath.Join(w.ModPkg.Node().Path(), path[len(dir)+1:])
+				importPath := w.ModPkg.Node().Path()
+				if path != dir {
+					importPath = filepath.Join(importPath, path[len(dir)+1:])
+				}
 				if importPath == cursorPkgPath {
 					return nil
 				}

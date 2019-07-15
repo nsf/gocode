@@ -3,7 +3,7 @@ github.com/visualfc/fastmod
 github.com/visualfc/fastmod/internal/modfile
 github.com/visualfc/fastmod/internal/module
 github.com/visualfc/fastmod/internal/semver
-# github.com/visualfc/gotools v0.0.0-20190714085810-6a1e383f5add
+# github.com/visualfc/gotools v0.0.0-20190715051201-65fc5d96f479
 github.com/visualfc/gotools/pkgs
 github.com/visualfc/gotools/types
 github.com/visualfc/gotools/pkg/command
