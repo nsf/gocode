@@ -150,15 +150,21 @@ func (m *Module) Lookup(pkg string) (path string, dir string, typ PkgType) {
 		return pkg, filepath.Join(m.fdir, pkg[len(m.path+"/"):]), PkgTypeLocal
 	}
 	var encpath string
+	// match full version, github.com/my/mypkg/v2
 	for _, r := range m.Mods {
 		if r.Require.Path == pkg {
 			path = r.VersionPath()
 			encpath = r.EncodeVersionPath()
-			break
-		} else if strings.HasPrefix(pkg, r.Require.Path+"/") {
-			path = r.VersionPath() + pkg[len(r.Require.Path):]
-			encpath = r.VersionPath() + pkg[len(r.Require.Path):]
-			break
+		}
+	}
+	// match sub dir, github.com/my/mypkg/sub
+	if path == "" {
+		for _, r := range m.Mods {
+			if strings.HasPrefix(pkg, r.Require.Path+"/") {
+				path = r.VersionPath() + pkg[len(r.Require.Path):]
+				encpath = r.EncodeVersionPath() + pkg[len(r.Require.Path):]
+				break
+			}
 		}
 	}
 	if path == "" {

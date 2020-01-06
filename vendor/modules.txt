@@ -1,9 +1,9 @@
-# github.com/visualfc/fastmod v0.0.0-20190714050813-3600cbe34ad5
+# github.com/visualfc/fastmod v0.0.0-20200106141131-2bd8bfc0578f
 github.com/visualfc/fastmod
 github.com/visualfc/fastmod/internal/modfile
 github.com/visualfc/fastmod/internal/module
 github.com/visualfc/fastmod/internal/semver
-# github.com/visualfc/gotools v0.0.0-20190715051201-65fc5d96f479
+# github.com/visualfc/gotools v0.0.0-20200106141644-1f54722831ae
 github.com/visualfc/gotools/pkgs
 github.com/visualfc/gotools/types
 github.com/visualfc/gotools/pkg/command

@@ -1,6 +1,7 @@
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/cosiner/argv v0.0.0-20170225145430-13bacc38a0a5/go.mod h1:p/NrK5tF6ICIly4qwEDsf6VDirFiWWz0FenfYBwJaKQ=
 github.com/cpuguy83/go-md2man v1.0.8/go.mod h1:N6JayAiVKtlHSnuTCeuLSQVs75hb8q+dYQLjr7cDsKY=
+github.com/creack/pty v1.1.10-0.20191209115840-8ab47f72e854/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/go-delve/delve v1.2.1-0.20190713012804-df65be43aeb1/go.mod h1:DR/S+I+xQmTINVqEzooWl5FmZe6PYn9g6Mr99xEjhi0=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/kr/pty v1.1.5/go.mod h1:9r2w37qlBe7rQ6e1fg1S/9xpWHSnaqNdHD3WcMdbPDA=
@@ -15,10 +16,14 @@ github.com/spf13/cobra v0.0.0-20170417170307-b6cb39589372/go.mod h1:1l0Ry5zgKvJa
 github.com/spf13/pflag v0.0.0-20170417173400-9e4c21054fa1/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnInEg4=
 github.com/visualfc/fastmod v0.0.0-20190714050813-3600cbe34ad5 h1:FuGn4YpG80MHJ2F817yeZsSFMfnpXUYHJsuU5+W6AT8=
 github.com/visualfc/fastmod v0.0.0-20190714050813-3600cbe34ad5/go.mod h1:qklLSKOIVNIn5SdfGlics3Ljx4kOC29a2gwOS+NjDnQ=
+github.com/visualfc/fastmod v0.0.0-20200106141131-2bd8bfc0578f h1:XXkmqMVWchE7AizXintmZ8bZr3Sy8RaLk+wSjTbWOkk=
+github.com/visualfc/fastmod v0.0.0-20200106141131-2bd8bfc0578f/go.mod h1:qklLSKOIVNIn5SdfGlics3Ljx4kOC29a2gwOS+NjDnQ=
 github.com/visualfc/gotools v0.0.0-20190714085810-6a1e383f5add h1:IsM5nV9n6bYvYDJ4GYAZK75Tps329E3F/TFSHfI+8kQ=
 github.com/visualfc/gotools v0.0.0-20190714085810-6a1e383f5add/go.mod h1:m6PkBvi4j7UhZB5EFWuAmwz7EJXwiX5pQzzZm3nb64k=
 github.com/visualfc/gotools v0.0.0-20190715051201-65fc5d96f479 h1:kFZs8cTk1rlyn9WDZJ4De/+8lVZDvecANydVWn3Sowk=
 github.com/visualfc/gotools v0.0.0-20190715051201-65fc5d96f479/go.mod h1:m6PkBvi4j7UhZB5EFWuAmwz7EJXwiX5pQzzZm3nb64k=
+github.com/visualfc/gotools v0.0.0-20200106141644-1f54722831ae h1:+gFYnw038UDXdENB9zpp24o4ndEKAHgXCyxPZa/ClzQ=
+github.com/visualfc/gotools v0.0.0-20200106141644-1f54722831ae/go.mod h1:6EzUzmR//1Tc63pj2BE+38T23PQDW64AEyMQoncXOcI=
 go.starlark.net v0.0.0-20190702223751-32f345186213/go.mod h1:c1/X6cHgvdXj6pUlmWKMkuqRnW4K8x2vwt6JAaaircg=
 golang.org/x/arch v0.0.0-20171004143515-077ac972c2e4/go.mod h1:cYlCBUl1MsqxdiKgmc4uh7TxZfWSFLOGSRR090WDxt8=
 golang.org/x/crypto v0.0.0-20180614174826-fd5f17ee7299/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
