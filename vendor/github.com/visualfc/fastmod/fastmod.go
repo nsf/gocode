@@ -237,10 +237,13 @@ func (p *Package) load(node *Node) {
 		} else {
 			fmod = filepath.Join(filepath.Join(p.pkgModPath, v.EncodeVersionPath()), "go.mod")
 		}
-		m, _ := p.ModList.LoadModuleFile(fmod)
-		if m != nil {
-			child := &Node{m, node, nil}
-			node.Children = append(node.Children, child)
+		m, err := p.ModList.LoadModuleFile(fmod)
+		if err != nil {
+			continue
+		}
+		child := &Node{m, node, nil}
+		node.Children = append(node.Children, child)
+		if _, ok := p.NodeMap[m.fdir]; !ok {
 			p.NodeMap[m.fdir] = child
 			p.load(child)
 		}
