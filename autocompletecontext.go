@@ -525,7 +525,6 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 			c.get_candidates_from_decl(cc, class, b)
 		}
 	}
-
 	if len(b.candidates) == 0 {
 		return nil, 0
 	}

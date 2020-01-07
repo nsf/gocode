@@ -284,7 +284,7 @@ func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
 
 			d := new_decl_full(name.Name, class, decl_foreign|ast_decl_flags(data.decl), typ, v, vi, scope)
 			if d == nil {
-				return
+				continue
 			}
 
 			if !name.IsExported() && d.class != decl_type {

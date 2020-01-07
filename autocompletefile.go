@@ -158,7 +158,7 @@ func (f *auto_complete_file) process_decl(decl ast.Decl) {
 
 			d := new_decl_full(name.Name, class, ast_decl_flags(data.decl), typ, v, vi, prevscope)
 			if d == nil {
-				return
+				continue
 			}
 
 			f.scope.add_named_decl(d)
