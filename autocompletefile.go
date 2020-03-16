@@ -127,6 +127,10 @@ func (f *auto_complete_file) process_data(data []byte, ctx *auto_complete_contex
 func (f *auto_complete_file) process_decl_locals(decl ast.Decl) {
 	switch t := decl.(type) {
 	case *ast.FuncDecl:
+		// hack fix rbrace bug in Go 1.14
+		if t.Body.Rbrace < t.Body.Lbrace {
+			t.Body.Rbrace = t.Body.End() - 1
+		}
 		if f.cursor_in(t.Body) {
 			s := f.scope
 			f.scope = new_scope(f.scope)
