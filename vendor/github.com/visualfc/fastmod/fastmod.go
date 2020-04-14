@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 //
-// internal modfile/module/semver copy from Go1.11 source
 
 package fastmod
 
@@ -15,19 +14,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/visualfc/fastmod/internal/modfile"
-	"github.com/visualfc/fastmod/internal/module"
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 )
-
-// var (
-// 	PkgModPath string
-// )
-
-// func UpdatePkgMod(ctx *build.Context) {
-// 	if list := filepath.SplitList(ctx.GOPATH); len(list) > 0 && list[0] != "" {
-// 		PkgModPath = filepath.Join(list[0], "pkg/mod")
-// 	}
-// }
 
 func fixVersion(path, vers string) (string, error) {
 	return vers, nil
@@ -40,7 +29,11 @@ func LookupModFile(dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(string(data)), nil
+	fpath := strings.TrimSpace(string(data))
+	if strings.HasSuffix(fpath, ".mod") {
+		return fpath, nil
+	}
+	return "", nil
 }
 
 type ModuleList struct {
@@ -82,7 +75,7 @@ func (m *Mod) EncodeVersionPath() string {
 	if strings.HasPrefix(v.Path, "./") {
 		return v.Path
 	}
-	path, _ := module.EncodePath(v.Path)
+	path, _ := module.EscapePath(v.Path)
 	if v.Version != "" {
 		return path + "@" + v.Version
 	}
@@ -143,9 +136,13 @@ const (
 	PkgTypeLocal            // mod pkg sub local
 	PkgTypeLocalMod         // mod pkg sub local mod
 	PkgTypeDepMod           // mod pkg dep gopath/pkg/mod
+	PkgTypeVendor
 )
 
 func (m *Module) Lookup(pkg string) (path string, dir string, typ PkgType) {
+	if pkg == m.path {
+		return m.path, m.fdir, PkgTypeMod
+	}
 	if strings.HasPrefix(pkg, m.path+"/") {
 		return pkg, filepath.Join(m.fdir, pkg[len(m.path+"/"):]), PkgTypeLocal
 	}
@@ -181,8 +178,8 @@ func (mc *ModuleList) LoadModule(dir string) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !strings.HasSuffix(fmod, ".mod") {
-		return nil, err
+	if fmod == "" {
+		return nil, nil
 	}
 	return mc.LoadModuleFile(fmod)
 }
@@ -223,6 +220,7 @@ type Package struct {
 	ModList    *ModuleList
 	Root       *Node
 	NodeMap    map[string]*Node
+	isStd      bool
 }
 
 func (p *Package) Node() *Node {
@@ -265,6 +263,14 @@ func (p *Package) lookup(node *Node, pkg string) (path string, dir string, typ P
 }
 
 func (p *Package) Lookup(pkg string) (path string, dir string, typ PkgType) {
+	if p.isStd {
+		for _, m := range p.Root.Mods {
+			if m.Require.Path == pkg {
+				vpath := filepath.Join(p.Root.fdir, "vendor", pkg)
+				return pkg, vpath, PkgTypeVendor
+			}
+		}
+	}
 	return p.lookup(p.Root, pkg)
 }
 
@@ -334,15 +340,61 @@ func GetPkgModPath(ctx *build.Context) string {
 }
 
 func LoadPackage(dir string, ctx *build.Context) (*Package, error) {
+	fmod, err := LookupModFile(dir)
+	if err != nil {
+		return nil, err
+	}
+	if fmod == "" {
+		return nil, nil
+	}
 	ml := NewModuleList(ctx)
-	m, err := ml.LoadModule(dir)
-	if m == nil {
+	m, err := ml.LoadModuleFile(fmod)
+	if err != nil {
 		return nil, err
 	}
 	node := &Node{m, nil, nil}
 	pkgmpath := GetPkgModPath(ctx)
-	p := &Package{ctx, pkgmpath, ml, node, make(map[string]*Node)}
+	p := &Package{ctx, pkgmpath, ml, node, make(map[string]*Node), false}
 	p.NodeMap[m.fdir] = node
 	p.load(p.Root)
 	return p, nil
+}
+
+func NewPackage(ctx *build.Context) *Package {
+	return &Package{
+		ctx:        ctx,
+		pkgModPath: GetPkgModPath(ctx),
+	}
+}
+
+func (p *Package) Clear() {
+	p.ModList = NewModuleList(p.ctx)
+	p.Root = nil
+	p.NodeMap = make(map[string]*Node)
+}
+
+func (p *Package) LoadModule(dir string) (err error) {
+	p.Clear()
+	fmod, err := LookupModFile(dir)
+	if err != nil {
+		return err
+	}
+	if fmod == "" {
+		return nil
+	}
+	m, err := p.ModList.LoadModuleFile(fmod)
+	if err != nil {
+		return err
+	}
+	p.Root = &Node{m, nil, nil}
+	p.NodeMap[m.fdir] = p.Root
+	if m.path == "std" && filepath.Join(p.ctx.GOROOT, "src") == m.fdir {
+		p.isStd = true
+	}
+	p.load(p.Root)
+	return nil
+}
+
+func (p *Package) IsValid() bool {
+	return p.Root != nil
 }

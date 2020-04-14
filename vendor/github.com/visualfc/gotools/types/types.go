@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -41,19 +42,21 @@ var Command = &command.Command{
 }
 
 var (
-	typesVerbose        bool
-	typesAllowBinary    bool
-	typesFilePos        string
-	typesCursorText     string
-	typesFileStdin      bool
-	typesFindUse        bool
-	typesFindDef        bool
-	typesFindUseAll     bool
-	typesFindSkipGoroot bool
-	typesFindInfo       bool
-	typesFindDoc        bool
-	typesTags           string
-	typesTagList        = []string{} // exploded version of tags flag; set in main
+	typesVerbose         bool
+	typesAllowBinary     bool
+	typesFilePos         string
+	typesCursorText      string
+	typesFileStdin       bool
+	typesFindUse         bool
+	typesFindDef         bool
+	typesFindUseAll      bool
+	typesFindSkipGoroot  bool
+	typesFindInfo        bool
+	typesFindDoc         bool
+	typesFindImportRange bool
+	typesFindImport      bool
+	typesTags            string
+	typesTagList         = []string{} // exploded version of tags flag; set in main
 )
 
 //func init
@@ -67,6 +70,8 @@ func init() {
 	Command.Flag.BoolVar(&typesFindDef, "def", false, "find cursor define")
 	Command.Flag.BoolVar(&typesFindUse, "use", false, "find cursor usages")
 	Command.Flag.BoolVar(&typesFindUseAll, "all", false, "find cursor all usages in GOPATH")
+	Command.Flag.BoolVar(&typesFindImport, "import", false, "find cursor usages with import")
+	Command.Flag.BoolVar(&typesFindImportRange, "import_range", false, "find cursor usages with import range")
 	Command.Flag.BoolVar(&typesFindSkipGoroot, "skip_goroot", false, "find cursor all usages skip GOROOT")
 	Command.Flag.BoolVar(&typesFindDoc, "doc", false, "find cursor def doc")
 	Command.Flag.StringVar(&typesTags, "tags", "", "space-separated list of build tags to apply when parsing")
@@ -76,6 +81,7 @@ type ObjKind int
 
 const (
 	ObjNone ObjKind = iota
+	ObjPackage
 	ObjPkgName
 	ObjTypeName
 	ObjInterface
@@ -93,7 +99,7 @@ const (
 	ObjComment
 )
 
-var ObjKindName = []string{"none", "package",
+var ObjKindName = []string{"none", "package", "package",
 	"type", "interface", "struct",
 	"const", "var", "field",
 	"func", "method",
@@ -198,12 +204,14 @@ func runTypes(cmd *command.Command, args []string) error {
 	}
 	w.cmd = cmd
 	w.findMode = &FindMode{
-		Info:       typesFindInfo,
-		Define:     typesFindDef,
-		Doc:        typesFindDoc,
-		Usage:      typesFindUse,
-		UsageAll:   typesFindUseAll,
-		SkipGoroot: typesFindSkipGoroot,
+		Info:        typesFindInfo,
+		Define:      typesFindDef,
+		Doc:         typesFindDoc,
+		Usage:       typesFindUse,
+		UsageAll:    typesFindUseAll,
+		Import:      typesFindImport,
+		ImportRange: typesFindImportRange,
+		SkipGoroot:  typesFindSkipGoroot,
 	}
 
 	for _, pkgName := range args {
@@ -254,12 +262,14 @@ type SourceData struct {
 }
 
 type FindMode struct {
-	Info       bool
-	Doc        bool
-	Define     bool
-	Usage      bool
-	UsageAll   bool
-	SkipGoroot bool
+	Info        bool
+	Doc         bool
+	Define      bool
+	Usage       bool
+	UsageAll    bool
+	Import      bool
+	ImportRange bool
+	SkipGoroot  bool
 }
 
 func (f *FindMode) IsValid() bool {
@@ -387,10 +397,10 @@ func (p *PkgWalker) Check(name string, conf *PkgConfig, cusror *FileCursor) (pkg
 	}
 	//p.Imported[name] = nil
 	p.importingName = make(map[string]bool)
+	// check go mod and skip GOROOT
 	p.ModPkg = nil
-	// check mod
 	var import_path string
-	if filepath.IsAbs(name) {
+	if filepath.IsAbs(name) && !strings.HasPrefix(name, runtime.GOROOT()) {
 		p.ModPkg, _ = fastmod.LoadPackage(name, p.Context)
 		if p.ModPkg != nil {
 			dir := filepath.ToSlash(p.ModPkg.Node().ModDir())
@@ -725,6 +735,7 @@ func (w *PkgWalker) LookupCursor(pkg *types.Package, conf *PkgConfig, cursor *Fi
 		}
 		cursor.xtest = isXTest
 	}
+	return w.LookupObjects(conf, cursor)
 	if nm := w.CheckIsName(cursor); nm != nil {
 		return w.LookupName(pkg, conf, cursor, nm)
 	} else if is := w.CheckIsImport(cursor); is != nil {
@@ -774,6 +785,163 @@ func (w *PkgWalker) LookupName(pkg *types.Package, conf *PkgConfig, cursor *File
 	for _, pos := range usages {
 		w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
 	}
+
+	// if !w.findMode.UsageAll {
+	// 	return nil
+	// }
+
+	// cursorPkg := pkg
+	// if cursorPkg == nil {
+	// 	return nil
+	// }
+	// var pkg_path string
+	// var xpkg_path string
+	// if conf.Pkg != nil {
+	// 	pkg_path = conf.Pkg.Path()
+	// }
+	// if conf.XPkg != nil {
+	// 	xpkg_path = conf.XPkg.Path()
+	// }
+
+	// var find_def_pkg string
+	// var uses_paths []string
+
+	// if cursorPkg.Path() != pkg_path && cursorPkg.Path() != xpkg_path {
+	// 	find_def_pkg = cursorPkg.Path()
+	// 	if w.findMode.SkipGoroot {
+	// 		bp, err := w.importPath(conf.Bpkg.Dir, find_def_pkg, 0)
+	// 		if err == nil && !bp.Goroot {
+	// 			uses_paths = append(uses_paths, find_def_pkg)
+	// 		}
+	// 	} else {
+	// 		uses_paths = append(uses_paths, find_def_pkg)
+	// 	}
+	// }
+
+	// cursorPkgPath := pkg.Path()
+	// if w.ModPkg == nil && pkgutil.IsVendorExperiment() {
+	// 	cursorPkgPath = pkgutil.VendorPathToImportPath(cursorPkgPath)
+	// }
+	// // check on module dir
+	// if w.ModPkg != nil {
+	// 	dir := w.ModPkg.Node().ModDir()
+	// 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	// 		if !info.IsDir() {
+	// 			return nil
+	// 		}
+	// 		if path != dir && info.Name() == "vendor" {
+	// 			return filepath.SkipDir
+	// 		}
+	// 		if conf.Bpkg.Dir == path {
+	// 			return nil
+	// 		}
+	// 		bp, err := w.importPath(dir, path, 0)
+	// 		if err != nil {
+	// 			return nil
+	// 		}
+	// 		if !bp.IsCommand() {
+	// 			importPath := w.ModPkg.Node().Path()
+	// 			if path != dir {
+	// 				importPath = filepath.Join(importPath, path[len(dir)+1:])
+	// 			}
+	// 			if importPath == cursorPkgPath {
+	// 				return nil
+	// 			}
+	// 		}
+	// 		find := false
+	// 		for _, v := range bp.Imports {
+	// 			if v == cursorPkgPath {
+	// 				find = true
+	// 				break
+	// 			}
+	// 		}
+	// 		if find {
+	// 			importPath := path //filepath.Join(w.mod.Path(), path[len(dir)+1:])
+	// 			for _, v := range uses_paths {
+	// 				if v == importPath {
+	// 					return nil
+	// 				}
+	// 			}
+	// 			uses_paths = append(uses_paths, importPath)
+	// 		}
+	// 		return nil
+	// 	})
+	// }
+	// ctx := *w.Context
+	// searchAll := true
+	// if w.ModPkg != nil {
+	// 	ctx.GOPATH = ""
+	// 	if w.findMode.SkipGoroot {
+	// 		searchAll = false
+	// 	}
+	// }
+	// if searchAll {
+	// 	buildutil.ForEachPackage(&ctx, func(importPath string, err error) {
+	// 		if err != nil {
+	// 			return
+	// 		}
+	// 		if importPath == conf.Pkg.Path() {
+	// 			return
+	// 		}
+	// 		bp, err := w.importPath("", importPath, 0)
+	// 		if err != nil {
+	// 			return
+	// 		}
+	// 		find := false
+	// 		if bp.ImportPath == cursorPkg.Path() {
+	// 			find = true
+	// 		} else {
+	// 			for _, v := range bp.Imports {
+	// 				if v == cursorPkgPath {
+	// 					find = true
+	// 					break
+	// 				}
+	// 			}
+	// 		}
+	// 		if find {
+	// 			for _, v := range uses_paths {
+	// 				if v == bp.ImportPath {
+	// 					return
+	// 				}
+	// 			}
+	// 			if w.findMode.SkipGoroot && bp.Goroot {
+	// 				return
+	// 			}
+	// 			uses_paths = append(uses_paths, bp.ImportPath)
+	// 		}
+	// 	})
+	// }
+
+	// //w.Imported = make(map[string]*types.Package)
+
+	// for _, v := range uses_paths {
+	// 	var usages []int
+	// 	vpkg, conf, _ := w.Import("", v, NewPkgConfig(false, true), nil)
+	// 	if vpkg != nil && vpkg != pkg {
+	// 		if conf.Info != nil {
+	// 			for k, v := range conf.Info.Uses {
+	// 				if k != nil && v != nil && IsSameObject(v, cursorObj) {
+	// 					usages = append(usages, int(k.Pos()))
+	// 				}
+	// 			}
+	// 		}
+	// 		if conf.XInfo != nil {
+	// 			for k, v := range conf.XInfo.Uses {
+	// 				if k != nil && v != nil && IsSameObject(v, cursorObj) {
+	// 					usages = append(usages, int(k.Pos()))
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// 	if v == find_def_pkg {
+	// 		usages = append(usages, int(cursorPos))
+	// 	}
+	// 	(sort.IntSlice(usages)).Sort()
+	// 	for _, pos := range usages {
+	// 		w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
+	// 	}
+	// }
+
 	return nil
 }
 
@@ -1169,9 +1337,9 @@ func (w *PkgWalker) LookupByText(pkgInfo *types.Info, text string) types.Object 
 func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 	var cursorObj types.Object
 	var cursorSelection *types.Selection
-	var cursorObjIsDef bool
+	var cursorId ast.Expr
+	var kind ObjKind
 	//lookup defs
-
 	var pkg *types.Package
 	var pkgInfo *types.Info
 	if cursor.xtest {
@@ -1181,98 +1349,586 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 		pkgInfo = conf.Info
 		pkg = conf.Pkg
 	}
-
-	_ = cursorObjIsDef
-	if cursorObj == nil {
-		for sel, obj := range pkgInfo.Selections {
-			if cursor.pos >= sel.Sel.Pos() && cursor.pos <= sel.Sel.End() {
-				cursorObj = obj.Obj()
-				cursorSelection = obj
-				break
-			}
+	var packageName string
+	var packagePath string
+	var isImport bool
+	if im := w.CheckIsName(cursor); im != nil {
+		cursorId = im
+		kind = ObjPackage
+		packageName = im.Name
+		packagePath = pkg.Path()
+	} else if im := w.CheckIsImport(cursor); im != nil {
+		cursorId = im.Path
+		kind = ObjPkgName
+		isImport = true
+		packagePath, _ = strconv.Unquote(im.Path.Value)
+		if im.Name != nil {
+			packageName = im.Name.Name
+		} else {
+			nameList := strings.Split(packagePath, "/")
+			packageName = nameList[len(nameList)-1]
 		}
-	}
-	var cursorId *ast.Ident
-	if cursorObj == nil {
-		for id, obj := range pkgInfo.Defs {
-			if cursor.pos >= id.Pos() && cursor.pos <= id.End() {
-				cursorObj = obj
-				cursorId = id
-				cursorObjIsDef = true
-				break
-			}
+	} else if v := w.CheckIsBasic(cursor, pkgInfo); v != nil {
+		if w.findMode.Info {
+			w.cmd.Println(fmt.Sprintf("basic type %v (%v)", v.Kind, v.Value))
+			return nil
 		}
-	}
-	_ = cursorSelection
-	if cursorObj == nil {
-		for id, obj := range pkgInfo.Uses {
-			if cursor.pos >= id.Pos() && cursor.pos <= id.End() {
-				cursorObj = obj
-				break
-			}
-		}
-	}
-	if cursorObj == nil {
-		for id, obj := range pkgInfo.Implicits {
-			if cursor.pos >= id.Pos() && cursor.pos <= id.End() {
-				cursorObj = obj
-				break
-			}
-		}
-	}
-	if cursorObj == nil && cursor.text != "" {
-		cursorObj = w.LookupByText(pkgInfo, cursor.text)
-	}
-
-	var kind ObjKind
-	if cursorObj != nil {
-		var err error
-		kind, err = parserObjKind(cursorObj)
-		if err != nil {
-			return err
-		}
-	} else if cursorId != nil {
-		kind = ObjImplicit
+		return fmt.Errorf("not support basic type: %v (%v)", v.Kind, v.Value)
 	} else {
-		for id, _ := range pkgInfo.Types {
-			if cursor.pos >= id.Pos() && cursor.pos <= id.End() {
-				switch v := id.(type) {
-				case *ast.BasicLit:
-					if w.findMode.Info {
-						w.cmd.Println(fmt.Sprintf("basic type %v (%v)", v.Kind, v.Value))
-						return nil
+		cursorObj, cursorSelection = w.CheckIsObject(cursor, pkgInfo)
+		if cursorObj == nil && cursor.text != "" {
+			cursorObj = w.LookupByText(pkgInfo, cursor.text)
+		}
+		if cursorObj != nil {
+			kind, _ = parserObjKind(cursorObj)
+			if kind == ObjField {
+				if cursorObj.(*types.Var).Anonymous() {
+					typ := orgType(cursorObj.Type())
+					if named, ok := typ.(*types.Named); ok {
+						cursorObj = named.Obj()
 					}
-					return fmt.Errorf("not support basic type: %v (%v)", v.Kind, v.Value)
+				}
+			} else if kind == ObjPkgName {
+				packageName = cursorObj.(*types.PkgName).Imported().Name()
+				packagePath = cursorObj.(*types.PkgName).Imported().Path()
+			}
+		}
+	}
+
+	if cursorId == nil && cursorObj == nil {
+		return fmt.Errorf("not found object")
+	}
+
+	var findInfo *ObjectInfo
+	var cursorPkg *types.Package
+	var cursorPos token.Pos
+	if cursorObj != nil {
+		findInfo = w.CheckObjectInfo(cursorObj, cursorSelection, kind, pkg, pkgInfo)
+	} else {
+		findInfo = &ObjectInfo{
+			pkg: pkg,
+			pos: cursorId.Pos(),
+		}
+	}
+	cursorPkg = findInfo.pkg
+	cursorPos = findInfo.pos
+
+	if w.findMode.Define {
+		if isImport {
+			var fname = packageName
+			var fpath = packagePath
+			var findpath string = fpath
+			//check imported and vendor
+			for _, v := range w.Imported {
+				vpath := v.Path()
+				pos := strings.Index(vpath, "/vendor/")
+				if pos >= 0 {
+					vpath = vpath[pos+8:]
+				}
+				if vpath == fpath {
+					findpath = v.Path()
+					break
+				}
+			}
+			bp, err := w.importPath("", findpath, build.FindOnly)
+			if err == nil {
+				w.cmd.Println(w.FileSet.Position(findInfo.pos).String() + "::" + fname + "::" + fpath + "::" + bp.Dir)
+			} else {
+				w.cmd.Println(w.FileSet.Position(findInfo.pos))
+			}
+		} else {
+			w.cmd.Println(w.FileSet.Position(findInfo.pos))
+		}
+	}
+	if w.findMode.Info {
+		// if kind == ObjField && fieldTypeObj != nil {
+		// 	typeName := fieldTypeObj.Name()
+		// 	if fieldTypeObj.Pkg() != nil && fieldTypeObj.Pkg() != pkg {
+		// 		typeName = fieldTypeObj.Pkg().Name() + "." + fieldTypeObj.Name()
+		// 	}
+		// 	fmt.Println(typeName, simpleObjInfo(cursorObj))
+		// } else
+		if kind == ObjBuiltin {
+			w.cmd.Println(builtinInfo(cursorObj.Name()))
+		} else if kind == ObjPackage {
+			if packageName == packagePath {
+				w.cmd.Printf("package %s\n", packageName)
+			} else {
+				w.cmd.Printf("package %s (%q)\n", packageName, packagePath)
+			}
+		} else if kind == ObjPkgName {
+			if packageName == packagePath {
+				w.cmd.Printf("package %s\n", packageName)
+			} else {
+				w.cmd.Printf("package %s (%q)\n", packageName, packagePath)
+			}
+		} else if kind == ObjImplicit {
+			w.cmd.Printf("%s is implicit\n", cursorObj)
+		} else if findInfo.isInterfaceMethod {
+			if cursorPkg == nil {
+				// error.Error()
+				w.cmd.Println(simpleObjInfo(findInfo.obj))
+			} else {
+				w.cmd.Println(strings.Replace(simpleObjInfo(findInfo.obj), "(interface)", cursorPkg.Name()+"."+findInfo.interfaceTypeName, 1))
+			}
+		} else {
+			w.cmd.Println(simpleObjInfo(cursorObj))
+		}
+	}
+	if w.findMode.Doc && w.findMode.Define {
+		pos := w.FileSet.Position(cursorPos)
+		file := w.ParsedFileCache[pos.Filename]
+		if file != nil {
+			line := pos.Line
+			var group *ast.CommentGroup
+			for _, v := range file.Comments {
+				lastLine := w.FileSet.Position(v.End()).Line
+				if lastLine == line || lastLine == line-1 {
+					group = v
+				} else if lastLine > line {
+					break
+				}
+			}
+			if group != nil {
+				w.cmd.Println(group.Text())
+			}
+		}
+	}
+
+	if !w.findMode.Usage {
+		return nil
+	}
+
+	var usages []int
+	var importRange []ast.Expr
+	if kind == ObjPackage {
+		if !cursor.xtest {
+			usages = append(usages, findPackageDef(packageName, conf.Files)...)
+			if conf.XInfo != nil {
+				usages = append(usages, findPackageUses(packagePath, conf.XTestFiles, conf.XInfo)...)
+				if w.findMode.ImportRange {
+					importRange = append(importRange, findPackageImportRange(packagePath, conf.XTestFiles)...)
+				} else if w.findMode.Import {
+					usages = append(usages, findPackageImports(packageName, packagePath, conf.XTestFiles)...)
+				}
+			}
+		} else {
+			usages = append(usages, findPackageDef(packageName, conf.XTestFiles)...)
+		}
+	} else if kind == ObjPkgName {
+		if conf.Info != nil {
+			usages = append(usages, findPackageUses(packagePath, conf.Files, conf.Info)...)
+			if w.findMode.ImportRange {
+				importRange = append(importRange, findPackageImportRange(packagePath, conf.Files)...)
+			} else if w.findMode.Import {
+				usages = append(usages, findPackageImports(packageName, packagePath, conf.Files)...)
+			}
+		}
+		if conf.XInfo != nil {
+			usages = append(usages, findPackageUses(packagePath, conf.XTestFiles, conf.XInfo)...)
+			if w.findMode.ImportRange {
+				importRange = append(importRange, findPackageImportRange(packagePath, conf.XTestFiles)...)
+			} else if w.findMode.Import {
+				usages = append(usages, findPackageImports(packageName, packagePath, conf.XTestFiles)...)
+			}
+		}
+	} else {
+		if cursorObj != nil {
+			for id, obj := range pkgInfo.Uses {
+				if obj == cursorObj { //!= nil && cursorObj.Pos() == obj.Pos() {
+					usages = append(usages, int(id.Pos()))
+				}
+			}
+		} else {
+			for id, obj := range pkgInfo.Uses {
+				if obj != nil && obj.Pos() == cursorPos { //!= nil && cursorObj.Pos() == obj.Pos() {
+					usages = append(usages, int(id.Pos()))
 				}
 			}
 		}
-		//TODO
-		return fmt.Errorf("not find object %v:%v", cursor.fileName, cursor.pos)
 	}
-	if kind == ObjField {
-		if cursorObj.(*types.Var).Anonymous() {
-			typ := orgType(cursorObj.Type())
-			if named, ok := typ.(*types.Named); ok {
-				cursorObj = named.Obj()
+	var pkg_path string
+	var xpkg_path string
+	if conf.Pkg != nil {
+		pkg_path = conf.Pkg.Path()
+	}
+	if conf.XPkg != nil {
+		xpkg_path = conf.XPkg.Path()
+	}
+
+	if cursorPkg != nil &&
+		(cursorPkg.Path() == pkg_path || cursorPkg.Path() == xpkg_path) &&
+		kind != ObjPkgName && kind != ObjPackage {
+		usages = append(usages, int(cursorPos))
+	}
+
+	(sort.IntSlice(usages)).Sort()
+	for _, pos := range usages {
+		w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
+	}
+	//check look for current pkg.object on pkg_test
+	if w.findMode.UsageAll || IsSamePkg(cursorPkg, conf.Pkg) || IsSamePkg(cursorPkg, conf.XPkg) {
+		var addInfo *types.Info
+		if cursor.xtest {
+			addInfo = conf.Info
+		} else {
+			addInfo = conf.XInfo
+		}
+		if addInfo != nil && cursorPkg != nil {
+			var usages []int
+			// for id, obj := range addInfo.Defs {
+			// 	if id != nil && obj != nil && obj.Id() == cursorObj.Id() {
+			// 		usages = append(usages, int(id.Pos()))
+			// 	}
+			// }
+			for k, v := range addInfo.Uses {
+				if k != nil && v != nil && IsSameObject(v, cursorObj) {
+					usages = append(usages, int(k.Pos()))
+				}
+			}
+
+			if importRange != nil {
+				sort.Sort(ExprSlice(importRange))
+				for _, expr := range importRange {
+					pos := w.FileSet.Position(expr.Pos() + 1)
+					pos.String()
+					w.cmd.Printf("%s:%d:%d-%d\n",
+						pos.Filename, pos.Line, pos.Column,
+						pos.Column+int(expr.End())-int(expr.Pos())-2)
+				}
+			}
+
+			(sort.IntSlice(usages)).Sort()
+			for _, pos := range usages {
+				w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
 			}
 		}
 	}
 
-	var cursorPkg *types.Package
-	var cursorPos token.Pos
-
-	if cursorObj != nil {
-		cursorPkg = cursorObj.Pkg()
-		cursorPos = cursorObj.Pos()
-	} else {
-		cursorPkg = pkg
-		cursorPos = cursorId.Pos()
+	if !w.findMode.UsageAll {
+		return nil
 	}
-	//var fieldTypeInfo *types.Info
+
+	if cursorPkg == nil {
+		return nil
+	}
+
+	var find_def_pkg string
+	var uses_paths []string
+
+	if cursorPkg.Path() != pkg_path && cursorPkg.Path() != xpkg_path {
+		find_def_pkg = cursorPkg.Path()
+		if w.findMode.SkipGoroot {
+			bp, err := w.importPath(conf.Bpkg.Dir, find_def_pkg, 0)
+			if err == nil && !bp.Goroot {
+				uses_paths = append(uses_paths, find_def_pkg)
+			}
+		} else {
+			uses_paths = append(uses_paths, find_def_pkg)
+		}
+	}
+	findPkgPath := pkg.Path()
+	if cursorObj != nil {
+		findPkgPath = cursorObj.Pkg().Path()
+	}
+	if kind == ObjPackage || kind == ObjPkgName {
+		findPkgPath = packagePath
+	}
+
+	//cursorPkgPath := cursorObj.Pkg().Path()
+	if w.ModPkg == nil && pkgutil.IsVendorExperiment() {
+		findPkgPath = pkgutil.VendorPathToImportPath(findPkgPath)
+	}
+	// check on module dir
+	if w.ModPkg != nil {
+		dir := w.ModPkg.Node().ModDir()
+		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if !info.IsDir() {
+				return nil
+			}
+			if path != dir && info.Name() == "vendor" {
+				return filepath.SkipDir
+			}
+			if conf.Bpkg.Dir == path {
+				return nil
+			}
+			bp, err := w.importPath(dir, path, 0)
+			if err != nil {
+				return nil
+			}
+			if !bp.IsCommand() {
+				importPath := w.ModPkg.Node().Path()
+				if path != dir {
+					importPath = filepath.Join(importPath, path[len(dir)+1:])
+				}
+				if kind == ObjPackage && importPath == findPkgPath {
+					return nil
+				}
+			}
+			if kind == ObjPkgName && bp.ImportPath == findPkgPath {
+				uses_paths = append(uses_paths, bp.ImportPath)
+			} else {
+				find := false
+				imports := append(append([]string{}, bp.Imports...), bp.XTestImports...)
+				for _, v := range imports {
+					if v == findPkgPath {
+						find = true
+						break
+					}
+				}
+				if find {
+					importPath := path //filepath.Join(w.mod.Path(), path[len(dir)+1:])
+					for _, v := range uses_paths {
+						if v == importPath {
+							return nil
+						}
+					}
+					uses_paths = append(uses_paths, importPath)
+				}
+			}
+			return nil
+		})
+	}
+	ctx := *w.Context
+	searchAll := true
+	if w.ModPkg != nil {
+		ctx.GOPATH = ""
+		if w.findMode.SkipGoroot {
+			searchAll = false
+		}
+	}
+	if searchAll {
+		buildutil.ForEachPackage(&ctx, func(importPath string, err error) {
+			if err != nil {
+				return
+			}
+
+			if importPath == conf.Pkg.Path() {
+				return
+			}
+			bp, err := w.importPath("", importPath, 0)
+			if err != nil {
+				return
+			}
+			if kind == ObjPkgName && bp.ImportPath == findPkgPath {
+				uses_paths = append(uses_paths, bp.ImportPath)
+			} else {
+				find := false
+				if bp.ImportPath == cursorPkg.Path() {
+					find = true
+				} else {
+					imports := append(append([]string{}, bp.Imports...), bp.XTestImports...)
+					for _, v := range imports {
+						if v == findPkgPath {
+							find = true
+							break
+						}
+					}
+				}
+				if find {
+					for _, v := range uses_paths {
+						if v == bp.ImportPath {
+							return
+						}
+					}
+					if w.findMode.SkipGoroot && bp.Goroot {
+						return
+					}
+					uses_paths = append(uses_paths, bp.ImportPath)
+				}
+			}
+		})
+	}
+
+	//w.Imported = make(map[string]*types.Package)
+	for _, v := range uses_paths {
+		var usages []int
+		var importRange []ast.Expr
+		vpkg, conf, _ := w.Import("", v, NewPkgConfig(false, true), nil)
+		if vpkg != nil && vpkg.Path() == packagePath && kind == ObjPkgName {
+			usages = append(usages, findPackageDef(packageName, conf.Files)...)
+		}
+		if vpkg != nil && vpkg != pkg {
+			if kind == ObjPackage || kind == ObjPkgName {
+				if conf.Info != nil {
+					usages = append(usages, findPackageUses(packagePath, conf.Files, conf.Info)...)
+					if w.findMode.ImportRange {
+						importRange = append(importRange, findPackageImportRange(packagePath, conf.Files)...)
+					} else if w.findMode.Import {
+						usages = append(usages, findPackageImports(packageName, packagePath, conf.Files)...)
+					}
+				}
+				if conf.XInfo != nil {
+					usages = append(usages, findPackageUses(packagePath, conf.XTestFiles, conf.XInfo)...)
+					if w.findMode.ImportRange {
+						importRange = append(importRange, findPackageImportRange(packagePath, conf.XTestFiles)...)
+					} else if w.findMode.Import {
+						usages = append(usages, findPackageImports(packageName, packagePath, conf.XTestFiles)...)
+					}
+				}
+			} else {
+				if conf.Info != nil {
+					for k, v := range conf.Info.Uses {
+						if k != nil && v != nil && IsSameObject(v, cursorObj) {
+							usages = append(usages, int(k.Pos()))
+						}
+					}
+				}
+				if conf.XInfo != nil {
+					for k, v := range conf.XInfo.Uses {
+						if k != nil && v != nil && IsSameObject(v, cursorObj) {
+							usages = append(usages, int(k.Pos()))
+						}
+					}
+				}
+			}
+		}
+		if v == find_def_pkg {
+			usages = append(usages, int(cursorPos))
+		}
+
+		if importRange != nil {
+			sort.Sort(ExprSlice(importRange))
+			for _, expr := range importRange {
+				pos := w.FileSet.Position(expr.Pos() + 1)
+				pos.String()
+				w.cmd.Printf("%s:%d:%d-%d\n",
+					pos.Filename, pos.Line, pos.Column,
+					pos.Column+int(expr.End())-int(expr.Pos())-2)
+			}
+		}
+		(sort.IntSlice(usages)).Sort()
+		for _, pos := range usages {
+			w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
+		}
+	}
+	return nil
+}
+
+func findPackageDef(pkgname string, files map[string]*ast.File) (pos []int) {
+	for _, f := range files {
+		if pkgname == f.Name.Name {
+			pos = append(pos, int(f.Name.Pos()))
+		}
+	}
+	return
+}
+
+func findPackageImports(pkgname string, pkgpath string, files map[string]*ast.File) (pos []int) {
+	for _, f := range files {
+		for _, im := range f.Imports {
+			fpath, _ := strconv.Unquote(im.Path.Value)
+			if fpath == pkgpath {
+				pos = append(pos, int(im.Path.End())-len(pkgname)-1)
+			}
+		}
+	}
+	return
+}
+
+func findPackageImportRange(pkgpath string, files map[string]*ast.File) (expr []ast.Expr) {
+	for _, f := range files {
+		for _, im := range f.Imports {
+			fpath, _ := strconv.Unquote(im.Path.Value)
+			if fpath == pkgpath {
+				expr = append(expr, im.Path)
+			}
+		}
+	}
+	return
+}
+
+func findPackageUses(pkgpath string, files map[string]*ast.File, info *types.Info) (pos []int) {
+	for id, obj := range info.Uses {
+		if p, ok := obj.(*types.PkgName); ok {
+			if im := p.Imported(); im != nil && im.Path() == pkgpath {
+				pos = append(pos, int(id.Pos()))
+			}
+		}
+	}
+	return
+}
+
+func (w *PkgWalker) CheckIsName(cursor *FileCursor) *ast.Ident {
+	if cursor.fileDir == "" {
+		return nil
+	}
+	file, _ := w.parseFile(cursor.fileDir, cursor.fileName)
+	if file == nil {
+		return nil
+	}
+	if inRange(file.Name, cursor.pos) {
+		return file.Name
+	}
+	return nil
+}
+
+func (w *PkgWalker) CheckIsImport(cursor *FileCursor) *ast.ImportSpec {
+	if cursor.fileDir == "" {
+		return nil
+	}
+	file, _ := w.parseFile(cursor.fileDir, cursor.fileName)
+	if file == nil {
+		return nil
+	}
+	for _, is := range file.Imports {
+		if inRange(is, cursor.pos) {
+			return is
+		}
+	}
+	return nil
+}
+
+func (w *PkgWalker) CheckIsBasic(cursor *FileCursor, pkgInfo *types.Info) *ast.BasicLit {
+	for id, _ := range pkgInfo.Types {
+		if cursor.pos >= id.Pos() && cursor.pos <= id.End() {
+			switch v := id.(type) {
+			case *ast.BasicLit:
+				return v
+			}
+		}
+	}
+	return nil
+}
+
+func (w *PkgWalker) CheckIsObject(cursor *FileCursor, pkgInfo *types.Info) (cursorObj types.Object, cursorSelection *types.Selection) {
+	//check selection
+	for sel, obj := range pkgInfo.Selections {
+		if cursor.pos >= sel.Sel.Pos() && cursor.pos <= sel.Sel.End() {
+			cursorObj = obj.Obj()
+			cursorSelection = obj
+			return
+		}
+	}
+	//check def
+	for id, obj := range pkgInfo.Defs {
+		if cursor.pos >= id.Pos() && cursor.pos <= id.End() {
+			cursorObj = obj
+			return
+		}
+	}
+	//check use
+	for id, obj := range pkgInfo.Uses {
+		if cursor.pos >= id.Pos() && cursor.pos <= id.End() {
+			cursorObj = obj
+			return
+		}
+	}
+	//check implicits
+	for id, obj := range pkgInfo.Implicits {
+		if cursor.pos >= id.Pos() && cursor.pos <= id.End() {
+			cursorObj = obj
+			return
+		}
+	}
+	return
+}
+
+func (w *PkgWalker) CheckObjectInfo(cursorObj types.Object, cursorSelection *types.Selection, kind ObjKind, pkg *types.Package, pkgInfo *types.Info) *ObjectInfo {
+	cursorPkg := cursorObj.Pkg()
+	cursorPos := cursorObj.Pos()
+
 	var fieldTypeObj types.Object
-	//	if cursorPkg == pkg {
-	//		fieldTypeInfo = pkgInfo
-	//	}
 	cursorIsInterfaceMethod := false
 	var cursorInterfaceTypeName string
 	var cursorInterfaceTypeNamed *types.Named
@@ -1316,9 +1972,6 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 				}
 			}
 		}
-	}
-	if typesVerbose {
-		w.cmd.Println("parser", cursorObj, kind, cursorIsInterfaceMethod)
 	}
 	if cursorPkg != nil && cursorPkg != pkg &&
 		kind != ObjPkgName && w.isBinaryPkg(cursorPkg.Path()) {
@@ -1387,307 +2040,21 @@ func (w *PkgWalker) LookupObjects(conf *PkgConfig, cursor *FileCursor) error {
 		//			fieldTypeInfo = conf.Info
 		//		}
 	}
-	//	if kind == ObjField {
-	//		fieldTypeObj = w.LookupStructFromField(fieldTypeInfo, cursorPkg, cursorObj, cursorPos)
-	//	}
-	if w.findMode.Define {
-		w.cmd.Println(w.FileSet.Position(cursorPos))
+	return &ObjectInfo{
+		cursorPkg,
+		cursorObj,
+		cursorPos,
+		cursorIsInterfaceMethod,
+		cursorInterfaceTypeName,
 	}
-	if w.findMode.Info {
-		/*if kind == ObjField && fieldTypeObj != nil {
-			typeName := fieldTypeObj.Name()
-			if fieldTypeObj.Pkg() != nil && fieldTypeObj.Pkg() != pkg {
-				typeName = fieldTypeObj.Pkg().Name() + "." + fieldTypeObj.Name()
-			}
-			fmt.Println(typeName, simpleObjInfo(cursorObj))
-		} else */
-		if kind == ObjBuiltin {
-			w.cmd.Println(builtinInfo(cursorObj.Name()))
-		} else if kind == ObjPkgName {
-			w.cmd.Println(cursorObj.String())
-		} else if kind == ObjImplicit {
-			w.cmd.Printf("%s is implicit\n", cursorId.Name)
-		} else if cursorIsInterfaceMethod {
-			w.cmd.Println(strings.Replace(simpleObjInfo(cursorObj), "(interface)", cursorPkg.Name()+"."+cursorInterfaceTypeName, 1))
-		} else {
-			w.cmd.Println(simpleObjInfo(cursorObj))
-		}
-	}
-
-	if w.findMode.Doc && w.findMode.Define {
-		pos := w.FileSet.Position(cursorPos)
-		file := w.ParsedFileCache[pos.Filename]
-		if file != nil {
-			line := pos.Line
-			var group *ast.CommentGroup
-			for _, v := range file.Comments {
-				lastLine := w.FileSet.Position(v.End()).Line
-				if lastLine == line || lastLine == line-1 {
-					group = v
-				} else if lastLine > line {
-					break
-				}
-			}
-			if group != nil {
-				w.cmd.Println(group.Text())
-			}
-		}
-	}
-	if !w.findMode.Usage {
-		return nil
-	}
-
-	var usages []int
-	if kind == ObjPkgName {
-		for id, obj := range pkgInfo.Uses {
-			if obj != nil && obj.Id() == cursorObj.Id() { //!= nil && cursorObj.Pos() == obj.Pos() {
-				if _, ok := obj.(*types.PkgName); ok {
-					usages = append(usages, int(id.Pos()))
-				}
-			}
-		}
-	} else {
-		//		for id, obj := range pkgInfo.Defs {
-		//			if obj == cursorObj { //!= nil && cursorObj.Pos() == obj.Pos() {
-		//				usages = append(usages, int(id.Pos()))
-		//			}
-		//		}
-		if cursorObj != nil {
-			for id, obj := range pkgInfo.Uses {
-				if obj == cursorObj { //!= nil && cursorObj.Pos() == obj.Pos() {
-					usages = append(usages, int(id.Pos()))
-				}
-			}
-		} else {
-			for id, obj := range pkgInfo.Uses {
-				if obj != nil && obj.Pos() == cursorPos { //!= nil && cursorObj.Pos() == obj.Pos() {
-					usages = append(usages, int(id.Pos()))
-				}
-			}
-		}
-	}
-	var pkg_path string
-	var xpkg_path string
-	if conf.Pkg != nil {
-		pkg_path = conf.Pkg.Path()
-	}
-	if conf.XPkg != nil {
-		xpkg_path = conf.XPkg.Path()
-	}
-
-	if cursorPkg != nil &&
-		(cursorPkg.Path() == pkg_path || cursorPkg.Path() == xpkg_path) &&
-		kind != ObjPkgName {
-		usages = append(usages, int(cursorPos))
-	}
-
-	(sort.IntSlice(usages)).Sort()
-	for _, pos := range usages {
-		w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
-	}
-	//check look for current pkg.object on pkg_test
-	if w.findMode.UsageAll || IsSamePkg(cursorPkg, conf.Pkg) {
-		var addInfo *types.Info
-		if cursor.xtest {
-			addInfo = conf.Info
-		} else {
-			addInfo = conf.XInfo
-		}
-		if addInfo != nil && cursorPkg != nil {
-			var usages []int
-			//		for id, obj := range addInfo.Defs {
-			//			if id != nil && obj != nil && obj.Id() == cursorObj.Id() {
-			//				usages = append(usages, int(id.Pos()))
-			//			}
-			//		}
-			for k, v := range addInfo.Uses {
-				if k != nil && v != nil && IsSameObject(v, cursorObj) {
-					usages = append(usages, int(k.Pos()))
-				}
-			}
-			(sort.IntSlice(usages)).Sort()
-			for _, pos := range usages {
-				w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
-			}
-		}
-	}
-	if !w.findMode.UsageAll {
-		return nil
-	}
-
-	if cursorPkg == nil {
-		return nil
-	}
-
-	var find_def_pkg string
-	var uses_paths []string
-
-	if cursorPkg.Path() != pkg_path && cursorPkg.Path() != xpkg_path {
-		find_def_pkg = cursorPkg.Path()
-		if w.findMode.SkipGoroot {
-			bp, err := w.importPath(conf.Bpkg.Dir, find_def_pkg, 0)
-			if err == nil && !bp.Goroot {
-				uses_paths = append(uses_paths, find_def_pkg)
-			}
-		} else {
-			uses_paths = append(uses_paths, find_def_pkg)
-		}
-	}
-
-	cursorPkgPath := cursorObj.Pkg().Path()
-	if w.ModPkg == nil && pkgutil.IsVendorExperiment() {
-		cursorPkgPath = pkgutil.VendorPathToImportPath(cursorPkgPath)
-	}
-	// check on module dir
-	if w.ModPkg != nil {
-		dir := w.ModPkg.Node().ModDir()
-		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			if !info.IsDir() {
-				return nil
-			}
-			if path != dir && info.Name() == "vendor" {
-				return filepath.SkipDir
-			}
-			if conf.Bpkg.Dir == path {
-				return nil
-			}
-			bp, err := w.importPath(dir, path, 0)
-			if err != nil {
-				return nil
-			}
-			if !bp.IsCommand() {
-				importPath := w.ModPkg.Node().Path()
-				if path != dir {
-					importPath = filepath.Join(importPath, path[len(dir)+1:])
-				}
-				if importPath == cursorPkgPath {
-					return nil
-				}
-			}
-			find := false
-			for _, v := range bp.Imports {
-				if v == cursorPkgPath {
-					find = true
-					break
-				}
-			}
-			if find {
-				importPath := path //filepath.Join(w.mod.Path(), path[len(dir)+1:])
-				for _, v := range uses_paths {
-					if v == importPath {
-						return nil
-					}
-				}
-				uses_paths = append(uses_paths, importPath)
-			}
-			return nil
-		})
-	}
-	ctx := *w.Context
-	searchAll := true
-	if w.ModPkg != nil {
-		ctx.GOPATH = ""
-		if w.findMode.SkipGoroot {
-			searchAll = false
-		}
-	}
-	if searchAll {
-		buildutil.ForEachPackage(&ctx, func(importPath string, err error) {
-			if err != nil {
-				return
-			}
-			if importPath == conf.Pkg.Path() {
-				return
-			}
-			bp, err := w.importPath("", importPath, 0)
-			if err != nil {
-				return
-			}
-			find := false
-			if bp.ImportPath == cursorPkg.Path() {
-				find = true
-			} else {
-				for _, v := range bp.Imports {
-					if v == cursorPkgPath {
-						find = true
-						break
-					}
-				}
-			}
-			if find {
-				for _, v := range uses_paths {
-					if v == bp.ImportPath {
-						return
-					}
-				}
-				if w.findMode.SkipGoroot && bp.Goroot {
-					return
-				}
-				uses_paths = append(uses_paths, bp.ImportPath)
-			}
-		})
-	}
-
-	//w.Imported = make(map[string]*types.Package)
-
-	for _, v := range uses_paths {
-		var usages []int
-		vpkg, conf, _ := w.Import("", v, NewPkgConfig(false, true), nil)
-		if vpkg != nil && vpkg != pkg {
-			if conf.Info != nil {
-				for k, v := range conf.Info.Uses {
-					if k != nil && v != nil && IsSameObject(v, cursorObj) {
-						usages = append(usages, int(k.Pos()))
-					}
-				}
-			}
-			if conf.XInfo != nil {
-				for k, v := range conf.XInfo.Uses {
-					if k != nil && v != nil && IsSameObject(v, cursorObj) {
-						usages = append(usages, int(k.Pos()))
-					}
-				}
-			}
-		}
-		if v == find_def_pkg {
-			usages = append(usages, int(cursorPos))
-		}
-		(sort.IntSlice(usages)).Sort()
-		for _, pos := range usages {
-			w.cmd.Println(w.FileSet.Position(token.Pos(pos)))
-		}
-	}
-	return nil
 }
 
-func (w *PkgWalker) CheckIsName(cursor *FileCursor) *ast.Ident {
-	if cursor.fileDir == "" {
-		return nil
-	}
-	file, _ := w.parseFile(cursor.fileDir, cursor.fileName)
-	if file == nil {
-		return nil
-	}
-	if inRange(file.Name, cursor.pos) {
-		return file.Name
-	}
-	return nil
-}
-
-func (w *PkgWalker) CheckIsImport(cursor *FileCursor) *ast.ImportSpec {
-	if cursor.fileDir == "" {
-		return nil
-	}
-	file, _ := w.parseFile(cursor.fileDir, cursor.fileName)
-	if file == nil {
-		return nil
-	}
-	for _, is := range file.Imports {
-		if inRange(is, cursor.pos) {
-			return is
-		}
-	}
-	return nil
+type ObjectInfo struct {
+	pkg               *types.Package
+	obj               types.Object
+	pos               token.Pos
+	isInterfaceMethod bool
+	interfaceTypeName string
 }
 
 func inRange(node ast.Node, p token.Pos) bool {
@@ -1705,3 +2072,9 @@ func (w *PkgWalker) nodeString(node interface{}) string {
 	printer.Fprint(&b, w.FileSet, node)
 	return b.String()
 }
+
+type ExprSlice []ast.Expr
+
+func (p ExprSlice) Len() int           { return len(p) }
+func (p ExprSlice) Less(i, j int) bool { return p[i].Pos() < p[j].Pos() }
+func (p ExprSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
