@@ -1,6 +1,6 @@
-# github.com/visualfc/fastmod v1.2.1
+# github.com/visualfc/fastmod v1.3.2
 github.com/visualfc/fastmod
-# github.com/visualfc/gotools v1.2.0
+# github.com/visualfc/gotools v1.3.1
 github.com/visualfc/gotools/pkg/buildctx
 github.com/visualfc/gotools/pkg/command
 github.com/visualfc/gotools/pkg/pkgutil
