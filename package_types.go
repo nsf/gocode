@@ -8,8 +8,8 @@ import (
 	"io"
 	"log"
 
+	"github.com/visualfc/gocode/internal/gcexportdata"
 	pkgwalk "github.com/visualfc/gotools/types"
-	"golang.org/x/tools/go/gcexportdata"
 )
 
 type types_parser struct {

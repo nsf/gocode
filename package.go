@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"golang.org/x/tools/go/gcexportdata"
+	"github.com/visualfc/gocode/internal/gcexportdata"
 )
 
 type package_parser interface {
