@@ -37,6 +37,8 @@ github.com/visualfc/fastmod v1.0.0 h1:3UcYFM+mzdk5AeKF7itO7D7rEv9Vkk0f2HOZi6KCMh
 github.com/visualfc/fastmod v1.0.0/go.mod h1:MjR7AyXKzcr5S9uEeJPI4xID37/q88a8FSBS/2H8AFc=
 github.com/visualfc/fastmod v1.2.0 h1:DwuyA4xcSzQ/dwAA75nO2J8YXr8h/ouLEzzhIKGfURA=
 github.com/visualfc/fastmod v1.2.0/go.mod h1:GGLvzTGsAMsVBMSLEnypACnwEj6syguJSV0qob6LveI=
+github.com/visualfc/fastmod v1.2.1 h1:k+YsMjzLO3PyhMd/VxYMDvNW2RtAF3RRCe8a9xR0c1A=
+github.com/visualfc/fastmod v1.2.1/go.mod h1:GGLvzTGsAMsVBMSLEnypACnwEj6syguJSV0qob6LveI=
 github.com/visualfc/gotools v0.0.0-20190714085810-6a1e383f5add h1:IsM5nV9n6bYvYDJ4GYAZK75Tps329E3F/TFSHfI+8kQ=
 github.com/visualfc/gotools v0.0.0-20190714085810-6a1e383f5add/go.mod h1:m6PkBvi4j7UhZB5EFWuAmwz7EJXwiX5pQzzZm3nb64k=
 github.com/visualfc/gotools v0.0.0-20190715051201-65fc5d96f479 h1:kFZs8cTk1rlyn9WDZJ4De/+8lVZDvecANydVWn3Sowk=
@@ -47,6 +49,8 @@ github.com/visualfc/gotools v1.0.0 h1:08O9KKHoW68uvacgpHOxJWL/lPiMtISUsaBH5yd7++
 github.com/visualfc/gotools v1.0.0/go.mod h1:imEdbI+QLcpnRkK4UUnFFjwUZF7Dl4cjqknTIJ4Zms0=
 github.com/visualfc/gotools v1.1.0 h1:zVzTsi1dwYV1RCldZa8iCNMnPlVnxt2JJq2SQEqWls0=
 github.com/visualfc/gotools v1.1.0/go.mod h1:2v+PW2aVfSHAyGN/K6YY+0USyWUDHM6m1rt814MaOhc=
+github.com/visualfc/gotools v1.2.0 h1:58GKKJvO4LOcFfh/HL8STJrKNabzH4JRbNZNvnOvjlk=
+github.com/visualfc/gotools v1.2.0/go.mod h1:TMYm8wb8oTdahzzJ9fp5+SprhE4wIMK/RwpTbOayrgo=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.starlark.net v0.0.0-20190702223751-32f345186213/go.mod h1:c1/X6cHgvdXj6pUlmWKMkuqRnW4K8x2vwt6JAaaircg=
 golang.org/x/arch v0.0.0-20171004143515-077ac972c2e4/go.mod h1:cYlCBUl1MsqxdiKgmc4uh7TxZfWSFLOGSRR090WDxt8=
