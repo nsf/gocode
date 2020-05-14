@@ -230,7 +230,8 @@ func (p *Package) Node() *Node {
 func (p *Package) load(node *Node) {
 	for _, v := range node.Mods {
 		var fmod string
-		if strings.HasPrefix(v.VersionPath(), "./") {
+		if strings.HasPrefix(v.VersionPath(), "./") ||
+			strings.HasPrefix(v.VersionPath(), "../") {
 			fmod = filepath.Join(node.ModDir(), v.VersionPath(), "go.mod")
 		} else {
 			fmod = filepath.Join(filepath.Join(p.pkgModPath, v.EncodeVersionPath()), "go.mod")
@@ -262,10 +263,14 @@ func (p *Package) lookup(node *Node, pkg string) (path string, dir string, typ P
 	return
 }
 
+func (p *Package) IsStd() bool {
+	return p.isStd
+}
+
 func (p *Package) Lookup(pkg string) (path string, dir string, typ PkgType) {
 	if p.isStd {
 		for _, m := range p.Root.Mods {
-			if m.Require.Path == pkg {
+			if strings.HasPrefix(pkg, m.Require.Path) {
 				vpath := filepath.Join(p.Root.fdir, "vendor", pkg)
 				return pkg, vpath, PkgTypeVendor
 			}
@@ -326,7 +331,8 @@ func (p *Package) LocalImportList(skipcmd bool) []string {
 			if skipcmd && pkg.IsCommand() {
 				continue
 			}
-			ar = append(ar, path.Join(p.Root.path, pkg.Dir[len(p.Root.fdir):]))
+			dir := filepath.Join(p.Root.path, pkg.Dir[len(p.Root.fdir):])
+			ar = append(ar, filepath.ToSlash(dir))
 		}
 	}
 	return ar
