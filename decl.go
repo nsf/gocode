@@ -598,6 +598,10 @@ func lookup_pkg(tp type_path, scope *scope) string {
 }
 
 func type_to_decl(t ast.Expr, scope *scope) *decl {
+	if t == nil {
+		//TODO
+		return nil
+	}
 	tp := get_type_path(t)
 	d := lookup_path(tp, scope)
 	if d != nil && d.class == decl_var {
@@ -1042,6 +1046,11 @@ func (d *decl) find_child(name string) *decl {
 func (d *decl) find_child_and_in_embedded(name string) *decl {
 	if d == nil {
 		return nil
+	}
+	if d.is_alias() {
+		if dd := d.type_dealias(); dd != nil {
+			return dd.find_child_and_in_embedded(name)
+		}
 	}
 
 	if d.is_visited() {
