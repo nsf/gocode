@@ -167,8 +167,12 @@ func (m *Module) Lookup(pkg string) (path string, dir string, typ PkgType) {
 	if path == "" {
 		return "", "", PkgTypeNil
 	}
-	if strings.HasPrefix(path, "./") || strings.HasPrefix(path, "../") {
-		return pkg, filepath.Join(m.fdir, path), PkgTypeLocalMod
+	if modfile.IsDirectoryPath(path) {
+		if filepath.IsAbs(path) {
+			return pkg, path, PkgTypeLocalMod
+		} else {
+			return pkg, filepath.Join(m.fdir, path), PkgTypeLocalMod
+		}
 	}
 	return pkg, filepath.Join(m.pkgModPath, encpath), PkgTypeDepMod
 }
@@ -230,9 +234,13 @@ func (p *Package) Node() *Node {
 func (p *Package) load(node *Node) {
 	for _, v := range node.Mods {
 		var fmod string
-		if strings.HasPrefix(v.VersionPath(), "./") ||
-			strings.HasPrefix(v.VersionPath(), "../") {
-			fmod = filepath.Join(node.ModDir(), v.VersionPath(), "go.mod")
+		vpath := v.VersionPath()
+		if modfile.IsDirectoryPath(vpath) {
+			if filepath.IsAbs(vpath) {
+				fmod = filepath.Join(vpath, "go.mod")
+			} else {
+				fmod = filepath.Join(node.fdir, vpath, "go.mod")
+			}
 		} else {
 			fmod = filepath.Join(filepath.Join(p.pkgModPath, v.EncodeVersionPath()), "go.mod")
 		}

@@ -1,4 +1,4 @@
-# github.com/visualfc/fastmod v1.3.5
+# github.com/visualfc/fastmod v1.3.6
 github.com/visualfc/fastmod
 # github.com/visualfc/gotools v1.3.2
 github.com/visualfc/gotools/pkg/buildctx
