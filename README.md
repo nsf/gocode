@@ -28,7 +28,7 @@ Also watch the [demo screencast](https://nosmileface.dev/images/gocode-demo.swf)
 
  2. Then you need to get the appropriate version of the gocode, for 6g/8g/5g compiler you can do this:
 
-    `go get -u github.com/nsf/gocode` (-u flag for "update")
+    `go install github.com/nsf/gocode@latest`
 
     Windows users should consider doing this instead:
 
