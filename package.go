@@ -354,7 +354,8 @@ package unsafe
 	func @"".Offsetof (? any) uintptr
 	func @"".Sizeof (? any) uintptr
 	func @"".Alignof (? any) uintptr
-
+	func @"".Add(ptr Pointer, len IntegerType) Pointer
+	func @"".Slice(ptr *ArbitraryType, len IntegerType) []ArbitraryType
 $$
 `)
 
