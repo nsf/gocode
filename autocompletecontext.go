@@ -302,7 +302,7 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {
 	currentPackagePath, pkgdirs := g_daemon.context.pkg_dirs()
 	resultSet := map[string]struct{}{}
-	if c.walker.ModPkg != nil {
+	if c.walker.Mod != nil {
 		//goroot
 		for _, index := range c.pkgindex.Indexs {
 			for _, pkg := range index.Pkgs {
@@ -324,9 +324,9 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 			}
 		}
 		//mod deps
-		deps := c.walker.ModPkg.DepImportList(true, true)
+		deps := c.walker.Mod.DepImportList()
 		//local path
-		locals := c.walker.ModPkg.LocalImportList(true)
+		locals := c.walker.Mod.LocalImportList(true)
 		for _, dep := range deps {
 			if !has_prefix(dep, partial, b.ignorecase) {
 				continue
