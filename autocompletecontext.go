@@ -326,7 +326,7 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 		//mod path
 		resultSet[c.walker.Mod.Root().Path] = struct{}{}
 		//mod deps
-		deps := c.walker.Mod.DepImportList()
+		deps := c.walker.Mod.DepImportList(true, true)
 		//local path
 		locals := c.walker.Mod.LocalImportList(true)
 		for _, dep := range deps {
