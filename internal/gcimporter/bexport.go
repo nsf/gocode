@@ -379,6 +379,11 @@ func (p *exporter) typ(t types.Type) {
 		p.int(int(3 - t.Dir())) // hack
 		p.typ(t.Elem())
 
+	case *TypeParam:
+		p.tag(typeParamTag)
+		p.pos(t.Obj())
+		p.qualifiedName(t.Obj())
+		p.typ(t.Underlying())
 	default:
 		panic(internalErrorf("unexpected type %T: %s", t, t))
 	}

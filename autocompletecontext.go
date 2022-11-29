@@ -305,11 +305,11 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 	if c.walker.Mod != nil {
 		//goroot
 		for _, index := range c.pkgindex.Indexs {
+			if !index.Goroot {
+				continue
+			}
 			for _, pkg := range index.Pkgs {
 				if pkg.IsCommand() {
-					continue
-				}
-				if !pkg.Goroot {
 					continue
 				}
 				if strings.HasPrefix(pkg.ImportPath, "cmd/") ||
@@ -323,8 +323,10 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 				resultSet[pkg.ImportPath] = struct{}{}
 			}
 		}
+		//mod path
+		resultSet[c.walker.Mod.Root().Path] = struct{}{}
 		//mod deps
-		deps := c.walker.Mod.DepImportList()
+		deps := c.walker.Mod.DepImportList(true, true)
 		//local path
 		locals := c.walker.Mod.LocalImportList(true)
 		for _, dep := range deps {
