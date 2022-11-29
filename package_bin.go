@@ -351,7 +351,7 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 
 	// otherwise, i is the type tag (< 0)
 	switch i {
-	case namedTag:
+	case namedTag, typeParamTag:
 		// read type object
 		p.pos()
 		parent, name := p.qualifiedName()
@@ -777,6 +777,7 @@ const (
 
 	// Types
 	namedTag
+	typeParamTag
 	arrayTag
 	sliceTag
 	dddTag

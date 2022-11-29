@@ -17,8 +17,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/visualfc/gocode/internal/gcimporter"
 	"golang.org/x/tools/go/buildutil"
-	"golang.org/x/tools/go/internal/gcimporter"
 	"golang.org/x/tools/go/loader"
 )
 

@@ -951,6 +951,7 @@ const (
 
 	// Types
 	namedTag
+	typeParamTag
 	arrayTag
 	sliceTag
 	dddTag
