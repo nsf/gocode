@@ -150,6 +150,7 @@ func (f *auto_complete_file) process_decl(decl ast.Decl) {
 	prevscope := f.scope
 	foreach_decl(decl, func(data *foreach_decl_struct) {
 		class := ast_decl_class(data.decl)
+		typeparams := ast_decl_typeparams(data.decl)
 		if class != decl_type {
 			f.scope, prevscope = advance_scope(f.scope)
 		}
@@ -160,6 +161,7 @@ func (f *auto_complete_file) process_decl(decl ast.Decl) {
 			if d == nil {
 				continue
 			}
+			d.typeparams = typeparams
 
 			f.scope.add_named_decl(d)
 		}

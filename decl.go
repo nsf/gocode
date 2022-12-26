@@ -85,6 +85,9 @@ type decl struct {
 	class decl_class
 	flags decl_flags
 
+	// typeparams
+	typeparams *ast.FieldList
+
 	// functions for interface type, fields+methods for struct type
 	children map[string]*decl
 
@@ -526,8 +529,9 @@ func func_return_type(f *ast.FuncType, index int) ast.Expr {
 }
 
 type type_path struct {
-	pkg  string
-	name string
+	pkg     string
+	name    string
+	indices []ast.Expr // typeparam index
 }
 
 func (tp *type_path) is_nil() bool {
@@ -580,6 +584,7 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 	}
 	tp := get_type_path(t)
 	d := lookup_path(tp, scope)
+
 	if d != nil && d.class == decl_var {
 		// weird variable declaration pointing to itself
 		return nil

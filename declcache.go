@@ -120,6 +120,7 @@ func (f *decl_file_cache) process_data(data []byte) {
 func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
 	foreach_decl(decl, func(data *foreach_decl_struct) {
 		class := ast_decl_class(data.decl)
+		typeparams := ast_decl_typeparams(data.decl)
 		for i, name := range data.names {
 			typ, v, vi := data.type_value_index(i)
 
@@ -127,6 +128,7 @@ func append_to_top_decls(decls map[string]*decl, decl ast.Decl, scope *scope) {
 			if d == nil {
 				continue
 			}
+			d.typeparams = typeparams
 
 			methodof := method_of(decl)
 			if methodof != "" {

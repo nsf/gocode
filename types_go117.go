@@ -28,3 +28,7 @@ func get_type_path(e ast.Expr) (r type_path) {
 	}
 	return
 }
+
+func ast_decl_typeparams(decl ast.Decl) *ast.FieldList {
+	return nil
+}

@@ -279,6 +279,7 @@ func (m *package_file_cache) add_package_to_scope(alias, realname string) {
 func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
 	foreach_decl(decl, func(data *foreach_decl_struct) {
 		class := ast_decl_class(data.decl)
+		typeparams := ast_decl_typeparams(data.decl)
 		for i, name := range data.names {
 			typ, v, vi := data.type_value_index(i)
 
@@ -286,6 +287,7 @@ func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
 			if d == nil {
 				continue
 			}
+			d.typeparams = typeparams
 
 			if !name.IsExported() && d.class != decl_type {
 				return
