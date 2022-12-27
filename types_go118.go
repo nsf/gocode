@@ -26,14 +26,17 @@ func get_type_path(e ast.Expr) (r type_path) {
 	case *ast.SelectorExpr:
 		if ident, ok := t.X.(*ast.Ident); ok {
 			r.pkg = ident.Name
+			if r.pkg == "main" {
+				r.pkg = ""
+			}
 		}
 		r.name = t.Sel.Name
 	case *ast.IndexExpr:
 		r = get_type_path(t.X)
-		r.indices = []ast.Expr{t.Index}
+		r.targs = []ast.Expr{t.Index}
 	case *ast.IndexListExpr:
 		r = get_type_path(t.X)
-		r.indices = t.Indices
+		r.targs = t.Indices
 	}
 	return
 }

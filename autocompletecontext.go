@@ -158,6 +158,7 @@ type auto_complete_context struct {
 	declcache *decl_cache   // top-level declarations cache
 	fset      *token.FileSet
 	walker    *pkgwalk.PkgWalker
+	conf      *pkgwalk.PkgConfig
 	pkgindex  *pkgs.PathPkgsIndex
 	mutex     sync.Mutex
 }

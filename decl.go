@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"io"
 	"reflect"
 	"strings"
 	"sync"
+
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 // decl.class
@@ -529,9 +532,9 @@ func func_return_type(f *ast.FuncType, index int) ast.Expr {
 }
 
 type type_path struct {
-	pkg     string
-	name    string
-	indices []ast.Expr // typeparam index
+	pkg   string
+	name  string
+	targs []ast.Expr // typeparam index
 }
 
 func (tp *type_path) is_nil() bool {
@@ -577,6 +580,20 @@ func lookup_pkg(tp type_path, scope *scope) string {
 	return decl.name
 }
 
+func instance_decl(d *decl, typ ast.Expr, targs []ast.Expr) *decl {
+	return new_decl_full(d.name, d.class, d.flags, typ, d.value, d.value_index, d.scope)
+}
+
+func lookup_types(t ast.Expr) types.Type {
+	text := types.ExprString(t)
+	for k, v := range g_daemon.autocomplete.conf.Info.Types {
+		if text == types.ExprString(k) {
+			return v.Type
+		}
+	}
+	return nil
+}
+
 func type_to_decl(t ast.Expr, scope *scope) *decl {
 	if t == nil {
 		//TODO
@@ -584,6 +601,30 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 	}
 	tp := get_type_path(t)
 	d := lookup_path(tp, scope)
+	if d == nil {
+		// typeparams targs struct type: Typ[struct{...}]
+		if typ := lookup_types(t); typ != nil {
+			if _, ok := typ.(*types.Struct); ok {
+				dt := toType(nil, typ)
+				d = new_decl_full(typ.String(), decl_type, 0, dt, nil, -1, scope)
+			}
+		}
+	} else if d.typeparams != nil {
+		// typeparams named type instance
+		if typ := lookup_types(t); typ != nil {
+			if named, ok := typ.(*types.Named); ok {
+				pkg := named.Obj().Pkg()
+				dt := toType(pkg, named.Underlying())
+				d = new_decl_full(named.Obj().Name(), decl_type, 0, dt, nil, -1, scope)
+				// add methods
+				for _, sel := range typeutil.IntuitiveMethodSet(named, nil) {
+					ft := toType(pkg, sel.Type())
+					method := sel.Obj().Name()
+					d.children[method] = new_decl_full(method, decl_methods_stub, 0, ft, nil, -1, scope)
+				}
+			}
+		}
+	}
 
 	if d != nil && d.class == decl_var {
 		// weird variable declaration pointing to itself
