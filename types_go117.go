@@ -43,6 +43,10 @@ func hasTypeParams(typ types.Type) bool {
 	return false
 }
 
+func funcHasTypeParams(typ *ast.FuncType) bool {
+	return false
+}
+
 func toNamedType(pkg *types.Package, t *types.Named) ast.Expr {
 	return toObjectExpr(pkg, t.Obj())
 }
