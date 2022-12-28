@@ -597,6 +597,7 @@ func lookup_types(t ast.Expr) types.Type {
 				return typ
 			}
 		}
+		return nil
 	}
 	if typ := lookup_types_expr(t, conf.Info); typ != nil {
 		return typ
@@ -844,14 +845,6 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		if d := scope.lookup(t.Name); d != nil {
 			if d.class == decl_package {
 				return ast.NewIdent(t.Name), scope, false
-			}
-			if d.typ == nil || d.typeparams != nil {
-				typ := lookup_types(v)
-				if named, ok := typ.(*types.Named); ok {
-					return toType(named.Obj().Pkg(), typ), scope, true
-				} else {
-					d.typ = toType(nil, typ)
-				}
 			}
 			//check type, fix bug test.0055
 			if i, ok := d.typ.(*ast.Ident); ok {
