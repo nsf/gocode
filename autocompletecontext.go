@@ -159,6 +159,7 @@ type auto_complete_context struct {
 	fset      *token.FileSet
 	walker    *pkgwalk.PkgWalker
 	conf      *pkgwalk.PkgConfig
+	cursor    int
 	pkgindex  *pkgs.PathPkgsIndex
 	mutex     sync.Mutex
 }

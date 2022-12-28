@@ -6,6 +6,10 @@ package main
 import (
 	"go/ast"
 	"go/token"
+	"go/types"
+	"sort"
+
+	pkgwalk "github.com/visualfc/gotools/types"
 )
 
 // converts type expressions like:
@@ -55,4 +59,81 @@ func ast_decl_typeparams(decl ast.Decl) *ast.FieldList {
 		return t.Type.TypeParams
 	}
 	return nil
+}
+
+func hasTypeParams(typ types.Type) bool {
+	switch t := typ.(type) {
+	case *types.Named:
+		return t.TypeParams() != nil && (t.Origin() == t)
+	case *types.Signature:
+		return t.TypeParams() != nil
+	}
+	return false
+}
+
+func toNamedType(pkg *types.Package, t *types.Named) ast.Expr {
+	expr := toObjectExpr(pkg, t.Obj())
+	if targs := t.TypeArgs(); targs != nil {
+		n := targs.Len()
+		indices := make([]ast.Expr, n)
+		for i := 0; i < n; i++ {
+			indices[i] = toType(pkg, targs.At(i))
+		}
+		if n == 1 {
+			expr = &ast.IndexExpr{
+				X:     expr,
+				Index: indices[0],
+			}
+		} else {
+			expr = &ast.IndexListExpr{
+				X:       expr,
+				Indices: indices,
+			}
+		}
+	}
+	return expr
+}
+
+func lookup_types_near_instance(ident *ast.Ident, pos token.Pos, info *types.Info) types.Type {
+	var ar []*typ_distance
+	for k, v := range info.Instances {
+		if ident.Name == k.Name && pos > k.End() {
+			ar = append(ar, &typ_distance{k.End(), v.Type})
+		}
+	}
+	switch len(ar) {
+	case 0:
+		return nil
+	case 1:
+		return ar[0].typ
+	default:
+		sort.Slice(ar, func(i, j int) bool {
+			return ar[i].pos < ar[j].pos
+		})
+		return ar[0].typ
+	}
+	return nil
+}
+
+func DefaultPkgConfig() *pkgwalk.PkgConfig {
+	conf := &pkgwalk.PkgConfig{IgnoreFuncBodies: false, AllowBinary: true, WithTestFiles: true}
+	conf.Info = &types.Info{
+		Uses:       make(map[*ast.Ident]types.Object),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Implicits:  make(map[ast.Node]types.Object),
+		Instances:  make(map[*ast.Ident]types.Instance),
+	}
+	conf.XInfo = &types.Info{
+		Uses:       make(map[*ast.Ident]types.Object),
+		Defs:       make(map[*ast.Ident]types.Object),
+		Selections: make(map[*ast.SelectorExpr]*types.Selection),
+		Types:      make(map[ast.Expr]types.TypeAndValue),
+		Scopes:     make(map[ast.Node]*types.Scope),
+		Implicits:  make(map[ast.Node]types.Object),
+		Instances:  make(map[*ast.Ident]types.Instance),
+	}
+	return conf
 }

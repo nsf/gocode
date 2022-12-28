@@ -151,29 +151,6 @@ func toType(pkg *types.Package, typ types.Type) ast.Expr {
 	return nil
 }
 
-func toNamedType(pkg *types.Package, t *types.Named) ast.Expr {
-	expr := toObjectExpr(pkg, t.Obj())
-	if targs := t.TypeArgs(); targs != nil {
-		n := targs.Len()
-		indices := make([]ast.Expr, n)
-		for i := 0; i < n; i++ {
-			indices[i] = toType(pkg, targs.At(i))
-		}
-		if n == 1 {
-			expr = &ast.IndexExpr{
-				X:     expr,
-				Index: indices[0],
-			}
-		} else {
-			expr = &ast.IndexListExpr{
-				X:       expr,
-				Indices: indices,
-			}
-		}
-	}
-	return expr
-}
-
 func toObjectExpr(pkg *types.Package, v types.Object) ast.Expr {
 	atPkg, name := v.Pkg(), v.Name()
 	if atPkg == nil || atPkg == pkg { // at universe or at this package

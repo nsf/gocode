@@ -585,8 +585,66 @@ func instance_decl(d *decl, typ ast.Expr, targs []ast.Expr) *decl {
 }
 
 func lookup_types(t ast.Expr) types.Type {
+	conf := g_daemon.autocomplete.conf
+	pos := token.Pos(g_daemon.autocomplete.cursor)
+
+	if ident, ok := t.(*ast.Ident); ok {
+		if typ := lookup_types_ident(ident, pos, conf.Info); typ != nil {
+			return typ
+		}
+		if conf.XInfo != nil {
+			if typ := lookup_types_ident(ident, pos, conf.XInfo); typ != nil {
+				return typ
+			}
+		}
+	}
+	if typ := lookup_types_expr(t, conf.Info); typ != nil {
+		return typ
+	}
+	if conf.XInfo != nil {
+		if typ := lookup_types_expr(t, conf.XInfo); typ != nil {
+			return typ
+		}
+	}
+	return nil
+}
+
+func lookup_types_scope(pos token.Pos, info *types.Info) *types.Scope {
+	for node, scope := range info.Scopes {
+		if pos >= node.Pos() && pos < node.End() {
+			return scope.Innermost(pos)
+		}
+	}
+	return nil
+}
+
+type typ_distance struct {
+	pos token.Pos
+	typ types.Type
+}
+
+// lookup type by ident, from scope or near instance
+func lookup_types_ident(ident *ast.Ident, pos token.Pos, info *types.Info) types.Type {
+	var typ types.Type
+	if scope := lookup_types_scope(pos, info); scope != nil {
+		if obj := scope.Lookup(ident.Name); obj != nil {
+			typ = obj.Type()
+		}
+		if _, obj := scope.LookupParent(ident.Name, pos); obj != nil {
+			typ = obj.Type()
+		}
+	}
+	// is typeparams lookup instance
+	if hasTypeParams(typ) {
+		return lookup_types_near_instance(ident, pos, info)
+	}
+	return typ
+}
+
+// lookup type by type, from type.
+func lookup_types_expr(t ast.Expr, info *types.Info) types.Type {
 	text := types.ExprString(t)
-	for k, v := range g_daemon.autocomplete.conf.Info.Types {
+	for k, v := range info.Types {
 		if text == types.ExprString(k) {
 			return v.Type
 		}
@@ -786,6 +844,14 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		if d := scope.lookup(t.Name); d != nil {
 			if d.class == decl_package {
 				return ast.NewIdent(t.Name), scope, false
+			}
+			if d.typ == nil || d.typeparams != nil {
+				typ := lookup_types(v)
+				if named, ok := typ.(*types.Named); ok {
+					return toType(named.Obj().Pkg(), typ), scope, true
+				} else {
+					d.typ = toType(nil, typ)
+				}
 			}
 			//check type, fix bug test.0055
 			if i, ok := d.typ.(*ast.Ident); ok {
@@ -1015,6 +1081,7 @@ func (d *decl) infer_type() (ast.Expr, *scope) {
 
 	var scope *scope
 	d.typ, scope, _ = infer_type(d.value, d.scope, d.value_index)
+
 	return d.typ, scope
 }
 

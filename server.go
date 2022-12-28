@@ -270,7 +270,8 @@ func server_auto_complete(file []byte, filename string, cursor int, context_pack
 
 		//g_daemon.modList = gomod.LooupModList(dir)
 
-		g_daemon.autocomplete.conf = pkgwalk.DefaultPkgConfig()
+		g_daemon.autocomplete.conf = DefaultPkgConfig()
+		g_daemon.autocomplete.cursor = cursor
 		cursor := pkgwalk.NewFileCursor(file, dir, fname, cursor)
 		if file != nil {
 			g_daemon.autocomplete.walker.UpdateSourceData(filename, file, true)
