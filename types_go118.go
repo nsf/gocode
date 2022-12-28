@@ -102,7 +102,7 @@ func lookup_types_near_instance(ident *ast.Ident, pos token.Pos, info *types.Inf
 	var ar []*typ_distance
 	for k, v := range info.Instances {
 		if ident.Name == k.Name && pos > k.End() {
-			ar = append(ar, &typ_distance{k.End(), v.Type})
+			ar = append(ar, &typ_distance{pos - k.End(), v.Type})
 		}
 	}
 	switch len(ar) {

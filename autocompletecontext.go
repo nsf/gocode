@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"log"
 	"os"
 	"path/filepath"
@@ -156,12 +157,13 @@ type auto_complete_context struct {
 
 	pcache    package_cache // packages cache
 	declcache *decl_cache   // top-level declarations cache
-	fset      *token.FileSet
-	walker    *pkgwalk.PkgWalker
-	conf      *pkgwalk.PkgConfig
-	cursor    int
 	pkgindex  *pkgs.PathPkgsIndex
 	mutex     sync.Mutex
+	// types
+	typesWalker *pkgwalk.PkgWalker
+	typesConf   *pkgwalk.PkgConfig
+	typesPkg    *types.Package
+	typesCursor int
 }
 
 func new_auto_complete_context(ctx *package_lookup_context, pcache package_cache, declcache *decl_cache) *auto_complete_context {
@@ -169,8 +171,7 @@ func new_auto_complete_context(ctx *package_lookup_context, pcache package_cache
 	c.current = new_auto_complete_file("", declcache.context)
 	c.pcache = pcache
 	c.declcache = declcache
-	c.fset = token.NewFileSet()
-	c.walker = pkgwalk.NewPkgWalker(&ctx.Context)
+	c.typesWalker = pkgwalk.NewPkgWalker(&ctx.Context)
 	c.pkgindex = nil
 	//go func(c *auto_complete_context, ctx build.Context) {
 	var indexs pkgs.PathPkgsIndex
@@ -304,7 +305,7 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {
 	currentPackagePath, pkgdirs := g_daemon.context.pkg_dirs()
 	resultSet := map[string]struct{}{}
-	if c.walker.Mod != nil {
+	if c.typesWalker.Mod != nil {
 		//goroot
 		for _, index := range c.pkgindex.Indexs {
 			if !index.Goroot {
@@ -326,11 +327,11 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 			}
 		}
 		//mod path
-		resultSet[c.walker.Mod.Root().Path] = struct{}{}
+		resultSet[c.typesWalker.Mod.Root().Path] = struct{}{}
 		//mod deps
-		deps := c.walker.Mod.DepImportList(true, true)
+		deps := c.typesWalker.Mod.DepImportList(true, true)
 		//local path
-		locals := c.walker.Mod.LocalImportList(true)
+		locals := c.typesWalker.Mod.LocalImportList(true)
 		for _, dep := range deps {
 			if !has_prefix(dep, partial, b.ignorecase) {
 				continue

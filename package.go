@@ -92,12 +92,12 @@ func (m *package_file_cache) update_cache(c *auto_complete_context) {
 	if m.vendor_name != "" {
 		import_path = m.vendor_name
 	}
-	if pkg := c.walker.Imported[import_path]; pkg != nil {
+	if pkg := c.typesWalker.Imported[import_path]; pkg != nil {
 		if pkg.Name() == "" {
 			log.Println("error parser", import_path)
 			return
 		}
-		if chk, ok := c.walker.ImportedFilesCheck[import_path]; ok {
+		if chk, ok := c.typesWalker.ImportedFilesCheck[import_path]; ok {
 			if m.mtime == chk.ModTime {
 				return
 			}

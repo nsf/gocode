@@ -395,7 +395,7 @@ func find_global_file(imp string, context *package_lookup_context) (string, stri
 		}
 	}
 
-	for _, v := range g_daemon.autocomplete.walker.Imported {
+	for _, v := range g_daemon.autocomplete.typesWalker.Imported {
 		if v.Path() == imp {
 			return imp, v.Path(), true
 		}

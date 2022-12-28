@@ -585,8 +585,8 @@ func instance_decl(d *decl, typ ast.Expr, targs []ast.Expr) *decl {
 }
 
 func lookup_types(t ast.Expr) types.Type {
-	conf := g_daemon.autocomplete.conf
-	pos := token.Pos(g_daemon.autocomplete.cursor)
+	conf := g_daemon.autocomplete.typesConf
+	pos := token.Pos(g_daemon.autocomplete.typesCursor)
 
 	if ident, ok := t.(*ast.Ident); ok {
 		if typ := lookup_types_ident(ident, pos, conf.Info); typ != nil {
@@ -610,13 +610,8 @@ func lookup_types(t ast.Expr) types.Type {
 	return nil
 }
 
-func lookup_types_scope(pos token.Pos, info *types.Info) *types.Scope {
-	for node, scope := range info.Scopes {
-		if pos >= node.Pos() && pos < node.End() {
-			return scope.Innermost(pos)
-		}
-	}
-	return nil
+func lookup_types_scope(pos token.Pos) *types.Scope {
+	return g_daemon.autocomplete.typesPkg.Scope().Innermost(pos)
 }
 
 type typ_distance struct {
@@ -627,7 +622,7 @@ type typ_distance struct {
 // lookup type by ident, from scope or near instance
 func lookup_types_ident(ident *ast.Ident, pos token.Pos, info *types.Info) types.Type {
 	var typ types.Type
-	if scope := lookup_types_scope(pos, info); scope != nil {
+	if scope := lookup_types_scope(pos); scope != nil {
 		if obj := scope.Lookup(ident.Name); obj != nil {
 			typ = obj.Type()
 		}
@@ -971,18 +966,19 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		// this is a function call or a type cast:
 		// myFunc(1,2,3) or int16(myvar)
 		it, s, is_type := infer_type(t.Fun, scope, -1)
-
 		if it == nil {
 			// func[targs](params)
 			if typ := lookup_types(t.Fun); typ != nil {
 				it = toType(nil, typ)
 				s = scope
+				is_type = false
 			}
 		} else if ct, ok := it.(*ast.FuncType); ok {
 			// ast.FuncType.TypeParams != nil
 			if funcHasTypeParams(ct) {
 				if typ := lookup_types(t.Fun); typ != nil {
 					it = toType(nil, typ)
+					is_type = false
 				}
 			}
 		}

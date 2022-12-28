@@ -68,8 +68,8 @@ func (f *auto_complete_file) process_data(data []byte, ctx *auto_complete_contex
 	// topLevelTok fix rip_off_decl on multi var decl
 	// var (\n jsData  = `{	}`\n 	file2  *File = func() *File {
 	var topLevelTok token.Token
-	if cf, ok := ctx.walker.ParsedFileCache[f.name]; ok {
-		pos := token.Pos(ctx.walker.FileSet.File(cf.Pos()).Base()) + token.Pos(f.cursor)
+	if cf, ok := ctx.typesWalker.ParsedFileCache[f.name]; ok {
+		pos := token.Pos(ctx.typesWalker.FileSet.File(cf.Pos()).Base()) + token.Pos(f.cursor)
 		for _, decl := range cf.Decls {
 			if pos >= decl.Pos() && pos <= decl.End() {
 				if decl, ok := decl.(*ast.GenDecl); ok {
