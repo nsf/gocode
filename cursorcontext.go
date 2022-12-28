@@ -227,11 +227,21 @@ loop:
 				break loop
 			}
 			this.skip_to_balanced_pair()
-		case token.RPAREN, token.RBRACK:
-			// After ']' and ')' their opening counterparts are valid '[', '(',
+		case token.RPAREN:
+			// After ')' their opening counterparts are valid '[', '(',
 			// as well as the dot.
 			switch prev {
 			case token.PERIOD, token.LBRACK, token.LPAREN:
+				// all ok
+			default:
+				break loop
+			}
+			this.skip_to_balanced_pair()
+		case token.RBRACK:
+			// After ']' their opening counterparts are valid '[', '(', '{',
+			// as well as the dot.
+			switch prev {
+			case token.PERIOD, token.LBRACK, token.LPAREN, token.LBRACE:
 				// all ok
 			default:
 				break loop
