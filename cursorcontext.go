@@ -263,8 +263,13 @@ loop:
 // expression.
 func token_items_to_string(tokens []token_item) string {
 	var buf bytes.Buffer
+	var last token_item
 	for _, t := range tokens {
+		if t.tok == token.IDENT && last.tok == token.IDENT {
+			buf.WriteString(" ")
+		}
 		buf.WriteString(t.literal())
+		last = t
 	}
 	return buf.String()
 }
