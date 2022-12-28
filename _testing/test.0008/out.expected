@@ -1,5 +1,6 @@
-Found 6 candidates:
+Found 7 candidates:
   func Lock()
+  func TryLock() bool
   func Unlock()
   var Mutex sync.Mutex
   var data map[string][]string

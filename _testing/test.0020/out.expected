@@ -1,5 +1,6 @@
-Found 4 candidates:
+Found 5 candidates:
   func Lock()
+  func TryLock() bool
   func Unlock()
   var Dummy Dummy
   var Mutex sync.Mutex
