@@ -211,6 +211,14 @@ loop:
 			if prev != token.IDENT {
 				break loop
 			}
+		case token.STRUCT:
+			// struct {
+			switch prev {
+			case token.LBRACE:
+				// all ok
+			default:
+				break loop
+			}
 		case token.IDENT:
 			// Valid tokens after IDENT are '.', '[', '{' and '('.
 			switch prev {
@@ -223,7 +231,11 @@ loop:
 			// This one can only be a part of type initialization, like:
 			//   Dummy{}.Hello()
 			// It is valid Go if Hello method is defined on a non-pointer receiver.
-			if prev != token.PERIOD {
+			// struct {...}{}
+			switch prev {
+			case token.PERIOD, token.LBRACE:
+				// all ok
+			default:
 				break loop
 			}
 			this.skip_to_balanced_pair()
