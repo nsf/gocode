@@ -673,13 +673,13 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 		if typ := lookup_types(t); typ != nil {
 			if named, ok := typ.(*types.Named); ok {
 				pkg := named.Obj().Pkg()
-				dt := toType(pkg, named.Underlying())
+				dt := toType(pkg, typ.Underlying())
 				d = new_decl_full(named.Obj().Name(), decl_type, 0, dt, nil, -1, scope)
 				// add methods
 				for _, sel := range typeutil.IntuitiveMethodSet(named, nil) {
 					ft := toType(pkg, sel.Type())
 					method := sel.Obj().Name()
-					d.children[method] = new_decl_full(method, decl_methods_stub, 0, ft, nil, -1, scope)
+					d.add_child(new_decl_full(method, decl_func, 0, ft, nil, -1, scope))
 				}
 			}
 		}
