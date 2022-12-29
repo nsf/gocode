@@ -152,14 +152,13 @@ func toType(pkg *types.Package, typ types.Type) ast.Expr {
 }
 
 func toObjectExpr(pkg *types.Package, v types.Object) ast.Expr {
-	atPkg, name := v.Pkg(), v.Name()
-	if atPkg == nil || atPkg == pkg { // at universe or at this package
+	vpkg, name := v.Pkg(), v.Name()
+	if vpkg == nil || vpkg == g_daemon.autocomplete.typesPkg { // at universe or at this package
 		return ident(name)
 	}
-	x := ident(atPkg.Name())
 	return &ast.SelectorExpr{
-		X:   x,
-		Sel: ident(v.Name()),
+		X:   ident(vpkg.Name()),
+		Sel: ident(name),
 	}
 }
 
