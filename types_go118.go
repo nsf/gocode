@@ -12,6 +12,88 @@ import (
 	pkgwalk "github.com/visualfc/gotools/types"
 )
 
+type TypeParam = types.TypeParam
+type TypeParamList = types.TypeParamList
+
+func newFuncType(tparams, params, results *ast.FieldList) *ast.FuncType {
+	return &ast.FuncType{TypeParams: tparams, Params: params, Results: results}
+}
+
+func newTypeSpec(name string, tparams *ast.FieldList) *ast.TypeSpec {
+	return &ast.TypeSpec{
+		Name:       ast.NewIdent(name),
+		TypeParams: tparams,
+	}
+}
+
+func toTypeParam(pkg *types.Package, t *TypeParam) ast.Expr {
+	return toType(pkg, t.Constraint())
+}
+
+func ForSignature(sig *types.Signature) *TypeParamList {
+	return sig.TypeParams()
+}
+
+// RecvTypeParams returns a nil slice.
+func RecvTypeParams(sig *types.Signature) *TypeParamList {
+	return sig.RecvTypeParams()
+}
+
+func ForNamed(named *types.Named) *TypeParamList {
+	return named.TypeParams()
+}
+
+func toFieldListX(pkg *types.Package, t *types.TypeParamList) *ast.FieldList {
+	if t == nil {
+		return nil
+	}
+	n := t.Len()
+	flds := make([]*ast.Field, n)
+	for i := 0; i < n; i++ {
+		item := t.At(i)
+		names := []*ast.Ident{ast.NewIdent(item.Obj().Name())}
+		typ := toType(pkg, item.Constraint())
+		flds[i] = &ast.Field{Names: names, Type: typ}
+	}
+	return &ast.FieldList{
+		List: flds,
+	}
+}
+
+func toFuncType(pkg *types.Package, sig *types.Signature) *ast.FuncType {
+	params := toFieldList(pkg, sig.Params())
+	results := toFieldList(pkg, sig.Results())
+	if sig.Variadic() {
+		n := len(params)
+		if n == 0 {
+			panic("TODO: toFuncType error")
+		}
+		toVariadic(params[n-1])
+	}
+	return &ast.FuncType{
+		TypeParams: toFieldListX(pkg, sig.TypeParams()),
+		Params:     &ast.FieldList{List: params},
+		Results:    &ast.FieldList{List: results},
+	}
+}
+
+func toTypeSpec(pkg *types.Package, t *types.TypeName) *ast.TypeSpec {
+	var assign token.Pos
+	if t.IsAlias() {
+		assign = 1
+	}
+	typ := t.Type()
+	ts := &ast.TypeSpec{
+		Name:   ast.NewIdent(t.Name()),
+		Assign: assign,
+		Type:   toType(pkg, typ.Underlying()),
+	}
+	if named, ok := typ.(*types.Named); ok {
+		ts.TypeParams = toFieldListX(pkg, named.TypeParams())
+	}
+	return ts
+}
+
 // converts type expressions like:
 // ast.Expr
 // *ast.Expr

@@ -11,6 +11,69 @@ import (
 	pkgwalk "github.com/visualfc/gotools/types"
 )
 
+func unsupported() {
+	panic("type parameters are unsupported at this go version")
+}
+
+type TypeParam struct{ types.Type }
+
+func (*TypeParam) String() string           { unsupported(); return "" }
+func (*TypeParam) Underlying() types.Type   { unsupported(); return nil }
+func (*TypeParam) Index() int               { unsupported(); return 0 }
+func (*TypeParam) Constraint() types.Type   { unsupported(); return nil }
+func (*TypeParam) SetConstraint(types.Type) { unsupported() }
+func (*TypeParam) Obj() *types.TypeName     { unsupported(); return nil }
+
+// TypeParamList is a placeholder for an empty type parameter list.
+type TypeParamList struct{}
+
+func (*TypeParamList) Len() int          { return 0 }
+func (*TypeParamList) At(int) *TypeParam { unsupported(); return nil }
+
+func newFuncType(tparams, params, results *ast.FieldList) *ast.FuncType {
+	return &ast.FuncType{Params: params, Results: results}
+}
+
+func newTypeSpec(name string, tparams *ast.FieldList) *ast.TypeSpec {
+	return &ast.TypeSpec{
+		Name: ast.NewIdent(name),
+	}
+}
+
+func toTypeParam(pkg *types.Package, t *TypeParam) ast.Expr {
+	unsupported()
+	return nil
+}
+
+func toTypeSpec(pkg *types.Package, t *types.TypeName) *ast.TypeSpec {
+	var assign token.Pos
+	if t.IsAlias() {
+		assign = 1
+	}
+	typ := t.Type()
+	return &ast.TypeSpec{
+		Name:   ast.NewIdent(t.Name()),
+		Assign: assign,
+		Type:   toType(pkg, typ.Underlying()),
+	}
+}
+
+func toFuncType(pkg *types.Package, sig *types.Signature) *ast.FuncType {
+	params := toFieldList(pkg, sig.Params())
+	results := toFieldList(pkg, sig.Results())
+	if sig.Variadic() {
+		n := len(params)
+		if n == 0 {
+			panic("TODO: toFuncType error")
+		}
+		toVariadic(params[n-1])
+	}
+	return &ast.FuncType{
+		Params:  &ast.FieldList{List: params},
+		Results: &ast.FieldList{List: results},
+	}
+}
+
 // converts type expressions like:
 // ast.Expr
 // *ast.Expr

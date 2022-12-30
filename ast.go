@@ -50,6 +50,9 @@ func boolean(v bool) *ast.Ident {
 }
 
 func toRecv(pkg *types.Package, recv *types.Var) *ast.FieldList {
+	if recv == nil {
+		return nil
+	}
 	var names []*ast.Ident
 	if name := recv.Name(); name != "" {
 		names = []*ast.Ident{ident(name)}
@@ -106,22 +109,6 @@ func toVariadic(fld *ast.Field) {
 	fld.Type = &ast.Ellipsis{Elt: t.Elt}
 }
 
-func toFuncType(pkg *types.Package, sig *types.Signature) *ast.FuncType {
-	params := toFieldList(pkg, sig.Params())
-	results := toFieldList(pkg, sig.Results())
-	if sig.Variadic() {
-		n := len(params)
-		if n == 0 {
-			panic("TODO: toFuncType error")
-		}
-		toVariadic(params[n-1])
-	}
-	return &ast.FuncType{
-		Params:  &ast.FieldList{List: params},
-		Results: &ast.FieldList{List: results},
-	}
-}
-
 // -----------------------------------------------------------------------------
 
 func toType(pkg *types.Package, typ types.Type) ast.Expr {
@@ -146,6 +133,8 @@ func toType(pkg *types.Package, typ types.Type) ast.Expr {
 		return toChanType(pkg, t)
 	case *types.Signature:
 		return toFuncType(pkg, t)
+	case *TypeParam:
+		return toTypeParam(pkg, t)
 	}
 	log.Panicln("TODO: toType -", reflect.TypeOf(typ))
 	return nil
@@ -167,7 +156,7 @@ func toBasicType(pkg *types.Package, t *types.Basic) ast.Expr {
 		return &ast.SelectorExpr{X: ast.NewIdent("unsafe"), Sel: ast.NewIdent("Pointer")}
 	}
 	if (t.Info() & types.IsUntyped) != 0 {
-		panic("unexpected: untyped type")
+		//panic("unexpected: untyped type")
 	}
 	return &ast.Ident{Name: t.Name()}
 }

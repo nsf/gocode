@@ -663,7 +663,7 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 				d = new_decl_full(typ.String(), decl_type, 0, dt, nil, -1, scope)
 			}
 		}
-	} else if d.typeparams != nil || tp.targs != nil {
+	} else if d.typeparams != nil {
 		// typeparams named type instance
 		if typ := lookup_types(t); typ != nil {
 			if named, ok := typ.(*types.Named); ok {
@@ -978,6 +978,7 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 			if funcHasTypeParams(ct) {
 				if typ := lookup_types(t.Fun); typ != nil {
 					it = toType(nil, typ)
+					s = scope
 					is_type = false
 				}
 			}

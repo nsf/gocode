@@ -114,8 +114,7 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 	// read version specific flags - extend as necessary
 	switch p.version {
 	// case 7:
-	// 	...
-	//	fallthrough
+	// 	fallthrough
 	case 6, 5, 4, 3, 2, 1:
 		p.debugFormat = p.rawStringln(p.rawByte()) == "debug"
 		p.trackAllTypes = p.int() != 0
@@ -262,14 +261,18 @@ func (p *gc_bin_parser) obj(tag int) {
 			},
 		})
 
-	case funcTag:
+	case funcTag, func2Tag:
+		var tparams *ast.FieldList
+		if tag == func2Tag {
+			tparams = p.paramList()
+		}
 		p.pos()
 		pkg, name := p.qualifiedName()
 		params := p.paramList()
 		results := p.paramList()
 		p.callback(pkg, &ast.FuncDecl{
 			Name: ast.NewIdent(name),
-			Type: &ast.FuncType{Params: params, Results: results},
+			Type: newFuncType(tparams, params, results),
 		})
 
 	default:
@@ -351,16 +354,18 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 
 	// otherwise, i is the type tag (< 0)
 	switch i {
-	case namedTag, typeParamTag:
+	case namedTag, named2Tag, typeParamTag:
+		var typeParams *ast.FieldList
+		if i == named2Tag {
+			typeParams = p.paramList()
+		}
 		// read type object
 		p.pos()
 		parent, name := p.qualifiedName()
 		tdecl := &ast.GenDecl{
 			Tok: token.TYPE,
 			Specs: []ast.Spec{
-				&ast.TypeSpec{
-					Name: ast.NewIdent(name),
-				},
+				newTypeSpec(name, typeParams),
 			},
 		}
 
@@ -387,17 +392,15 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 			if !exported(name) {
 				p.pkg()
 			}
-
 			recv := p.paramList()
 			params := p.paramList()
 			results := p.paramList()
 			p.int() // go:nointerface pragma - discarded
-
 			strip_method_receiver(recv)
 			p.callback(parent, &ast.FuncDecl{
 				Recv: recv,
 				Name: ast.NewIdent(name),
-				Type: &ast.FuncType{Params: params, Results: results},
+				Type: newFuncType(nil, params, results),
 			})
 		}
 		return t
@@ -777,7 +780,6 @@ const (
 
 	// Types
 	namedTag
-	typeParamTag
 	arrayTag
 	sliceTag
 	dddTag
@@ -801,6 +803,11 @@ const (
 
 	// Type aliases
 	aliasTag
+
+	typeParamTag
+	named2Tag     // has typeparams
+	func2Tag      // has typeparams
+	signature2Tag // has typeparams
 )
 
 var predeclared = []ast.Expr{

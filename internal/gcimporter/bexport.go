@@ -225,10 +225,16 @@ func (p *exporter) obj(obj types.Object) {
 		p.typ(obj.Type())
 
 	case *types.Func:
-		p.tag(funcTag)
+		sig := obj.Type().(*types.Signature)
+		tp := typeParamsForSig(sig)
+		if tp != nil {
+			p.tag(func2Tag)
+			p.paramList(typeParamsToTuple(tp), false)
+		} else {
+			p.tag(funcTag)
+		}
 		p.pos(obj)
 		p.qualifiedName(obj)
-		sig := obj.Type().(*types.Signature)
 		p.paramList(sig.Params(), sig.Variadic())
 		p.paramList(sig.Results(), false)
 
@@ -331,7 +337,13 @@ func (p *exporter) typ(t types.Type) {
 			p.typIndex[t] = len(p.typIndex)
 		}
 
-		p.tag(namedTag)
+		tp := typeParamsForNamed(t)
+		if tp != nil {
+			p.tag(named2Tag)
+			p.paramList(typeParamsToTuple(tp), false)
+		} else {
+			p.tag(namedTag)
+		}
 		p.pos(t.Obj())
 		p.qualifiedName(t.Obj())
 		p.typ(t.Underlying())
