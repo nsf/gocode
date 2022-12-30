@@ -658,8 +658,12 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 	if d == nil {
 		// typeparams targs struct type: Typ[struct{...}]
 		if typ := lookup_types(t); typ != nil {
-			if _, ok := typ.(*types.Struct); ok {
+			switch st := typ.(type) {
+			case *types.Struct:
 				dt := toType(nil, typ)
+				d = new_decl_full(typ.String(), decl_type, 0, dt, nil, -1, scope)
+			case *TypeParam:
+				dt := toType(nil, st.Constraint().Underlying())
 				d = new_decl_full(typ.String(), decl_type, 0, dt, nil, -1, scope)
 			}
 		}

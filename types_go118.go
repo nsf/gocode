@@ -29,7 +29,7 @@ func newTypeSpec(name string, tparams *ast.FieldList) *ast.TypeSpec {
 }
 
 func toTypeParam(pkg *types.Package, t *TypeParam) ast.Expr {
-	return toType(pkg, t.Constraint())
+	return toObjectExpr(pkg, t.Obj())
 }
 
 func ForSignature(sig *types.Signature) *TypeParamList {
