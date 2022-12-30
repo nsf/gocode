@@ -39,3 +39,37 @@ func typeParamsForSig(sig *types.Signature) *TypeParamList {
 func typeParamsToTuple(tparams *TypeParamList) *types.Tuple {
 	return types.NewTuple()
 }
+
+func originType(t types.Type) types.Type {
+	return t
+}
+
+// Term holds information about a structural type restriction.
+type Term struct {
+	tilde bool
+	typ   types.Type
+}
+
+func (m *Term) Tilde() bool      { return m.tilde }
+func (m *Term) Type() types.Type { return m.typ }
+func (m *Term) String() string {
+	pre := ""
+	if m.tilde {
+		pre = "~"
+	}
+	return pre + m.typ.String()
+}
+
+// NewTerm creates a new placeholder term type.
+func NewTerm(tilde bool, typ types.Type) *Term {
+	return &Term{tilde, typ}
+}
+
+// Union is a placeholder type, as type parameters are not supported at this Go
+// version. Its methods panic on use.
+type Union struct{ types.Type }
+
+func (*Union) String() string         { unsupported(); return "" }
+func (*Union) Underlying() types.Type { unsupported(); return nil }
+func (*Union) Len() int               { return 0 }
+func (*Union) Term(i int) *Term       { unsupported(); return nil }

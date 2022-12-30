@@ -83,11 +83,11 @@ func (m *package_file_cache) update_cache(c *auto_complete_context) {
 	if m.mtime == -1 {
 		return
 	}
-	defer func() {
-		if err := recover(); err != nil {
-			log.Println("update_cache recover error:", err)
-		}
-	}()
+	// defer func() {
+	// 	if err := recover(); err != nil {
+	// 		log.Println("update_cache recover error:", err)
+	// 	}
+	// }()
 
 	import_path := m.import_name
 	if m.vendor_name != "" {

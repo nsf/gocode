@@ -15,6 +15,8 @@ func unsupported() {
 	panic("type parameters are unsupported at this go version")
 }
 
+var TILDE = token.VAR + 3
+
 type TypeParam struct{ types.Type }
 
 func (*TypeParam) String() string           { unsupported(); return "" }

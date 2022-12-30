@@ -354,7 +354,7 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 
 	// otherwise, i is the type tag (< 0)
 	switch i {
-	case namedTag, named2Tag, typeParamTag:
+	case namedTag, named2Tag:
 		var typeParams *ast.FieldList
 		if i == named2Tag {
 			typeParams = p.paramList()
@@ -440,18 +440,16 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 
 	case interfaceTag:
 		i := p.reserveMaybe()
-		var embeddeds []*ast.SelectorExpr
-		for n := p.int(); n > 0; n-- {
-			p.pos()
-			if named, ok := p.typ(parent).(*ast.SelectorExpr); ok {
-				embeddeds = append(embeddeds, named)
+		var embeddeds []*ast.Field
+		n := p.int()
+		if n > 0 {
+			embeddeds = make([]*ast.Field, n)
+			for i := 0; i < n; i++ {
+				embeddeds[i] = &ast.Field{Type: p.typ(parent)}
 			}
 		}
 		methods := p.methodList(parent)
-		for _, field := range embeddeds {
-			methods = append(methods, &ast.Field{Type: field})
-		}
-		return p.recordMaybe(i, &ast.InterfaceType{Methods: &ast.FieldList{List: methods}})
+		return p.recordMaybe(i, &ast.InterfaceType{Methods: &ast.FieldList{List: append(embeddeds, methods...)}})
 
 	case mapTag:
 		i := p.reserveMaybe()
@@ -474,7 +472,31 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 		}
 		elt := p.typ(parent)
 		return p.recordMaybe(i, &ast.ChanType{Dir: dir, Value: elt})
-
+	case typeParamTag:
+		i := p.reserveMaybe()
+		t0 := p.typ(parent)
+		return p.recordMaybe(i, t0)
+	case unionTag:
+		i := p.reserveMaybe()
+		n := p.int()
+		var expr ast.Expr
+		for i := 0; i < n; i++ {
+			title := p.int() != 0
+			t0 := p.typ(parent)
+			if title {
+				t0 = &ast.UnaryExpr{Op: TILDE, X: t0}
+			}
+			if i == 0 {
+				expr = t0
+			} else {
+				expr = &ast.BinaryExpr{
+					X:  expr,
+					Op: token.OR,
+					Y:  t0,
+				}
+			}
+		}
+		return p.recordMaybe(i, expr)
 	default:
 		panic(fmt.Sprintf("unexpected type tag %d", i))
 	}
@@ -805,6 +827,7 @@ const (
 	aliasTag
 
 	typeParamTag
+	unionTag      // types.Union
 	named2Tag     // has typeparams
 	func2Tag      // has typeparams
 	signature2Tag // has typeparams

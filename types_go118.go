@@ -15,6 +15,8 @@ import (
 type TypeParam = types.TypeParam
 type TypeParamList = types.TypeParamList
 
+var TILDE = token.TILDE
+
 func newFuncType(tparams, params, results *ast.FieldList) *ast.FuncType {
 	return &ast.FuncType{TypeParams: tparams, Params: params, Results: results}
 }

@@ -306,6 +306,9 @@ func (p *exporter) typ(t types.Type) {
 		panic(internalError("nil type"))
 	}
 
+	// check named.Origin
+	t = originType(t)
+
 	// Possible optimization: Anonymous pointer types *T where
 	// T is a named type are common. We could canonicalize all
 	// such types *T to a single type PT = *T. This would lead
@@ -316,6 +319,7 @@ func (p *exporter) typ(t types.Type) {
 	// this later, without encoding format change.
 
 	// if we saw the type before, write its index (>= 0)
+
 	if i, ok := p.typIndex[t]; ok {
 		p.index('T', i)
 		return
@@ -393,9 +397,16 @@ func (p *exporter) typ(t types.Type) {
 
 	case *TypeParam:
 		p.tag(typeParamTag)
-		p.pos(t.Obj())
-		p.qualifiedName(t.Obj())
-		p.typ(t.Underlying())
+		p.typ(t.Constraint())
+	case *Union:
+		p.tag(unionTag)
+		n := t.Len()
+		p.int(n)
+		for i := 0; i < n; i++ {
+			term := t.Term(i)
+			p.bool(term.Tilde())
+			p.typ(term.Type())
+		}
 	default:
 		panic(internalErrorf("unexpected type %T: %s", t, t))
 	}
@@ -474,9 +485,13 @@ func (p *exporter) field(f *types.Var) {
 func (p *exporter) iface(t *types.Interface) {
 	// TODO(gri): enable importer to load embedded interfaces,
 	// then emit Embeddeds and ExplicitMethods separately here.
-	p.int(0)
+	n := t.NumEmbeddeds()
+	p.int(n)
+	for i := 0; i < n; i++ {
+		p.typ(t.EmbeddedType(i))
+	}
 
-	n := t.NumMethods()
+	n = t.NumMethods()
 	if trace && n > 0 {
 		p.tracef("methods {>\n")
 		defer p.tracef("<\n} ")

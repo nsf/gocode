@@ -35,3 +35,13 @@ func typeParamsToTuple(tparams *types.TypeParamList) *types.Tuple {
 	}
 	return types.NewTuple(ar...)
 }
+
+func originType(t types.Type) types.Type {
+	if named, ok := t.(*types.Named); ok {
+		t = named.Origin()
+	}
+	return t
+}
+
+type Union = types.Union
+type Term = types.Term
