@@ -691,6 +691,20 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 	return d
 }
 
+func advance_type_to_decl(t ast.Expr, scope *scope) *decl {
+	if t == nil {
+		//TODO
+		return nil
+	}
+	tp := get_type_path(t)
+	d := lookup_path(tp, scope)
+	if d != nil && d.class == decl_var {
+		// weird variable declaration pointing to itself
+		return nil
+	}
+	return d
+}
+
 func expr_to_decl(e ast.Expr, scope *scope) *decl {
 	t, scope, _ := infer_type(e, scope, -1)
 	return type_to_decl(t, scope)
@@ -707,7 +721,7 @@ func advance_to_type(pred type_predicate, v ast.Expr, scope *scope) (ast.Expr, *
 		return v, scope
 	}
 
-	decl := type_to_decl(v, scope)
+	decl := advance_type_to_decl(v, scope)
 	if decl == nil {
 		return nil, nil
 	}
