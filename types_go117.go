@@ -76,6 +76,10 @@ func toFuncType(pkg *types.Package, sig *types.Signature) *ast.FuncType {
 	}
 }
 
+func ForFuncType(typ *ast.FuncType) *ast.FieldList {
+	return nil
+}
+
 // converts type expressions like:
 // ast.Expr
 // *ast.Expr

@@ -36,6 +36,10 @@ func ForSignature(sig *types.Signature) *TypeParamList {
 	return sig.TypeParams()
 }
 
+func ForFuncType(typ *ast.FuncType) *ast.FieldList {
+	return typ.TypeParams
+}
+
 // RecvTypeParams returns a nil slice.
 func RecvTypeParams(sig *types.Signature) *TypeParamList {
 	return sig.RecvTypeParams()
