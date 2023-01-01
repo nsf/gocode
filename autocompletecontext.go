@@ -18,6 +18,7 @@ import (
 
 	"github.com/visualfc/gotools/pkgs"
 	pkgwalk "github.com/visualfc/gotools/types"
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 //-------------------------------------------------------------------------
@@ -477,13 +478,32 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	}
 	if !ok {
 		var d *decl
-		if ident, ok := cc.expr.(*ast.Ident); ok && g_config.UnimportedPackages {
-			p := c.resolveKnownPackageIdent(ident.Name, c.current.name, c.current.context)
-			if p != nil {
-				c.pcache[p.name] = p
-				d = p.main
+		// lookup types
+		if ident, ok := cc.expr.(*ast.Ident); ok {
+			if g_config.UnimportedPackages {
+				p := c.resolveKnownPackageIdent(ident.Name, c.current.name, c.current.context)
+				if p != nil {
+					c.pcache[p.name] = p
+					d = p.main
+				}
+			}
+			if d == nil {
+				if typ := g_daemon.autocomplete.lookup_ident(ident); typ != nil {
+					if named, ok := typ.(*types.Named); ok {
+						pkg := named.Obj().Pkg()
+						dt := toType(pkg, typ.Underlying())
+						d = new_decl_full(ident.Name, decl_type, 0, dt, nil, -1, nil)
+						// add methods
+						for _, sel := range typeutil.IntuitiveMethodSet(named, nil) {
+							ft := toType(pkg, sel.Type())
+							method := sel.Obj().Name()
+							d.add_child(new_decl_full(method, decl_func, 0, ft, nil, -1, nil))
+						}
+					}
+				}
 			}
 		}
+
 		if d == nil {
 			return nil, 0
 		}
