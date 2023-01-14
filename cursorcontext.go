@@ -211,6 +211,14 @@ loop:
 			if prev != token.IDENT {
 				break loop
 			}
+		case token.STRUCT:
+			// struct {
+			switch prev {
+			case token.LBRACE:
+				// all ok
+			default:
+				break loop
+			}
 		case token.IDENT:
 			// Valid tokens after IDENT are '.', '[', '{' and '('.
 			switch prev {
@@ -223,15 +231,29 @@ loop:
 			// This one can only be a part of type initialization, like:
 			//   Dummy{}.Hello()
 			// It is valid Go if Hello method is defined on a non-pointer receiver.
-			if prev != token.PERIOD {
+			// struct {...}{}
+			switch prev {
+			case token.PERIOD, token.LBRACE:
+				// all ok
+			default:
 				break loop
 			}
 			this.skip_to_balanced_pair()
-		case token.RPAREN, token.RBRACK:
-			// After ']' and ')' their opening counterparts are valid '[', '(',
+		case token.RPAREN:
+			// After ')' their opening counterparts are valid '[', '(',
 			// as well as the dot.
 			switch prev {
 			case token.PERIOD, token.LBRACK, token.LPAREN:
+				// all ok
+			default:
+				break loop
+			}
+			this.skip_to_balanced_pair()
+		case token.RBRACK:
+			// After ']' their opening counterparts are valid '[', '(', '{',
+			// as well as the dot.
+			switch prev {
+			case token.PERIOD, token.LBRACK, token.LPAREN, token.LBRACE:
 				// all ok
 			default:
 				break loop
@@ -253,8 +275,13 @@ loop:
 // expression.
 func token_items_to_string(tokens []token_item) string {
 	var buf bytes.Buffer
+	var last token_item
 	for _, t := range tokens {
+		if t.tok == token.IDENT && last.tok == token.IDENT {
+			buf.WriteString(" ")
+		}
 		buf.WriteString(t.literal())
+		last = t
 	}
 	return buf.String()
 }

@@ -1,12 +1,17 @@
-Found 61 candidates:
+Found 70 candidates:
   func Addr() reflect.Value
   func Bool() bool
   func Bytes() []byte
   func Call(in []reflect.Value) []reflect.Value
   func CallSlice(in []reflect.Value) []reflect.Value
   func CanAddr() bool
+  func CanComplex() bool
+  func CanConvert(t reflect.Type) bool
+  func CanFloat() bool
+  func CanInt() bool
   func CanInterface() bool
   func CanSet() bool
+  func CanUint() bool
   func Cap() int
   func Close()
   func Complex() complex128
@@ -14,6 +19,7 @@ Found 61 candidates:
   func Elem() reflect.Value
   func Field(i int) reflect.Value
   func FieldByIndex(index []int) reflect.Value
+  func FieldByIndexErr(index []int) (reflect.Value, error)
   func FieldByName(name string) reflect.Value
   func FieldByNameFunc(match func(string) bool) reflect.Value
   func Float() float64
@@ -47,6 +53,8 @@ Found 61 candidates:
   func SetComplex(x complex128)
   func SetFloat(x float64)
   func SetInt(x int64)
+  func SetIterKey(iter *reflect.MapIter)
+  func SetIterValue(iter *reflect.MapIter)
   func SetLen(n int)
   func SetMapIndex(key reflect.Value, elem reflect.Value)
   func SetPointer(x unsafe.Pointer)
@@ -60,3 +68,4 @@ Found 61 candidates:
   func Type() reflect.Type
   func Uint() uint64
   func UnsafeAddr() uintptr
+  func UnsafePointer() unsafe.Pointer

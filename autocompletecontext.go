@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/visualfc/gotools/pkgs"
 	pkgwalk "github.com/visualfc/gotools/types"
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 //-------------------------------------------------------------------------
@@ -156,10 +158,13 @@ type auto_complete_context struct {
 
 	pcache    package_cache // packages cache
 	declcache *decl_cache   // top-level declarations cache
-	fset      *token.FileSet
-	walker    *pkgwalk.PkgWalker
 	pkgindex  *pkgs.PathPkgsIndex
 	mutex     sync.Mutex
+	// types
+	typesWalker *pkgwalk.PkgWalker
+	typesConf   *pkgwalk.PkgConfig
+	typesPkg    *types.Package
+	typesCursor int
 }
 
 func new_auto_complete_context(ctx *package_lookup_context, pcache package_cache, declcache *decl_cache) *auto_complete_context {
@@ -167,8 +172,7 @@ func new_auto_complete_context(ctx *package_lookup_context, pcache package_cache
 	c.current = new_auto_complete_file("", declcache.context)
 	c.pcache = pcache
 	c.declcache = declcache
-	c.fset = token.NewFileSet()
-	c.walker = pkgwalk.NewPkgWalker(&ctx.Context)
+	c.typesWalker = pkgwalk.NewPkgWalker(&ctx.Context)
 	c.pkgindex = nil
 	//go func(c *auto_complete_context, ctx build.Context) {
 	var indexs pkgs.PathPkgsIndex
@@ -302,7 +306,7 @@ func (c *auto_complete_context) get_candidates_from_decl(cc cursor_context, clas
 func (c *auto_complete_context) get_import_candidates(partial string, b *out_buffers) {
 	currentPackagePath, pkgdirs := g_daemon.context.pkg_dirs()
 	resultSet := map[string]struct{}{}
-	if c.walker.Mod != nil {
+	if c.typesWalker.Mod != nil {
 		//goroot
 		for _, index := range c.pkgindex.Indexs {
 			if !index.Goroot {
@@ -324,11 +328,11 @@ func (c *auto_complete_context) get_import_candidates(partial string, b *out_buf
 			}
 		}
 		//mod path
-		resultSet[c.walker.Mod.Root().Path] = struct{}{}
+		resultSet[c.typesWalker.Mod.Root().Path] = struct{}{}
 		//mod deps
-		deps := c.walker.Mod.DepImportList(true, true)
+		deps := c.typesWalker.Mod.DepImportList(true, true)
 		//local path
-		locals := c.walker.Mod.LocalImportList(true)
+		locals := c.typesWalker.Mod.LocalImportList(true)
 		for _, dep := range deps {
 			if !has_prefix(dep, partial, b.ignorecase) {
 				continue
@@ -474,13 +478,32 @@ func (c *auto_complete_context) apropos(file []byte, filename string, cursor int
 	}
 	if !ok {
 		var d *decl
-		if ident, ok := cc.expr.(*ast.Ident); ok && g_config.UnimportedPackages {
-			p := c.resolveKnownPackageIdent(ident.Name, c.current.name, c.current.context)
-			if p != nil {
-				c.pcache[p.name] = p
-				d = p.main
+		// lookup types
+		if ident, ok := cc.expr.(*ast.Ident); ok {
+			if g_config.UnimportedPackages {
+				p := c.resolveKnownPackageIdent(ident.Name, c.current.name, c.current.context)
+				if p != nil {
+					c.pcache[p.name] = p
+					d = p.main
+				}
+			}
+			if d == nil {
+				if typ := g_daemon.autocomplete.lookup_ident(ident); typ != nil {
+					if named, ok := typ.(*types.Named); ok {
+						pkg := named.Obj().Pkg()
+						dt := toType(pkg, typ.Underlying())
+						d = new_decl_full(ident.Name, decl_type, 0, dt, nil, -1, nil)
+						// add methods
+						for _, sel := range typeutil.IntuitiveMethodSet(named, nil) {
+							ft := toType(pkg, sel.Type())
+							method := sel.Obj().Name()
+							d.add_child(new_decl_full(method, decl_func, 0, ft, nil, -1, nil))
+						}
+					}
+				}
 			}
 		}
+
 		if d == nil {
 			return nil, 0
 		}

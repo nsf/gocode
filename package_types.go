@@ -42,7 +42,7 @@ func (p *types_parser) initSource(import_path string, path string, dir string, p
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	conf := pkgwalk.DefaultPkgConfig()
-	pkg, _, err := c.walker.ImportHelper(".", path, import_path, conf, nil)
+	pkg, _, err := c.typesWalker.ImportHelper(".", path, import_path, conf, nil)
 	if err != nil {
 		log.Println(err)
 	}
@@ -62,7 +62,7 @@ func (p *types_parser) initData(path string, data []byte, pfc *package_file_cach
 	}).Import(path)
 	p.pfc = pfc
 	if p.pkg != nil {
-		c.walker.Imported[p.pkg.Path()] = p.pkg
+		c.typesWalker.Imported[p.pkg.Path()] = p.pkg
 	}
 }
 

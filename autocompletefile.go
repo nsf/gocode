@@ -6,7 +6,10 @@ import (
 	"go/parser"
 	"go/scanner"
 	"go/token"
+	"go/types"
 	"log"
+
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 func parse_decl_list(fset *token.FileSet, data []byte) ([]ast.Decl, error) {
@@ -68,8 +71,8 @@ func (f *auto_complete_file) process_data(data []byte, ctx *auto_complete_contex
 	// topLevelTok fix rip_off_decl on multi var decl
 	// var (\n jsData  = `{	}`\n 	file2  *File = func() *File {
 	var topLevelTok token.Token
-	if cf, ok := ctx.walker.ParsedFileCache[f.name]; ok {
-		pos := token.Pos(ctx.walker.FileSet.File(cf.Pos()).Base()) + token.Pos(f.cursor)
+	if cf, ok := ctx.typesWalker.ParsedFileCache[f.name]; ok {
+		pos := token.Pos(ctx.typesWalker.FileSet.File(cf.Pos()).Base()) + token.Pos(f.cursor)
 		for _, decl := range cf.Decls {
 			if pos >= decl.Pos() && pos <= decl.End() {
 				if decl, ok := decl.(*ast.GenDecl); ok {
@@ -131,6 +134,7 @@ func (f *auto_complete_file) process_decl_locals(decl ast.Decl) {
 			s := f.scope
 			f.scope = new_scope(f.scope)
 
+			f.process_field_list_typeparams(ForFuncType(t.Type), s)
 			f.process_field_list(t.Recv, s)
 			f.process_field_list(t.Type.Params, s)
 			f.process_field_list(t.Type.Results, s)
@@ -150,6 +154,7 @@ func (f *auto_complete_file) process_decl(decl ast.Decl) {
 	prevscope := f.scope
 	foreach_decl(decl, func(data *foreach_decl_struct) {
 		class := ast_decl_class(data.decl)
+		typeparams := ast_decl_typeparams(data.decl)
 		if class != decl_type {
 			f.scope, prevscope = advance_scope(f.scope)
 		}
@@ -160,6 +165,7 @@ func (f *auto_complete_file) process_decl(decl ast.Decl) {
 			if d == nil {
 				continue
 			}
+			d.typeparams = typeparams
 
 			f.scope.add_named_decl(d)
 		}
@@ -394,6 +400,43 @@ func (f *auto_complete_file) process_field_list(field_list *ast.FieldList, s *sc
 		decls := ast_field_list_to_decls(field_list, decl_var, 0, s, false)
 		for _, d := range decls {
 			f.scope.add_named_decl(d)
+		}
+	}
+}
+
+func (f *auto_complete_file) process_field_list_typeparams(field_list *ast.FieldList, s *scope) {
+	if field_list == nil {
+		return
+	}
+	for _, tp := range field_list.List {
+		for _, name := range tp.Names {
+			if typ := g_daemon.autocomplete.lookup_types(tp.Type); typ != nil {
+				switch st := typ.(type) {
+				case *TypeParam:
+					dt := toType(nil, st.Constraint().Underlying())
+					d := new_decl_full(name.Name, decl_type, 0, dt, nil, -1, s)
+					s.add_named_decl(d)
+				case *types.Named:
+					named := st
+					pkg := named.Obj().Pkg()
+					dt := toType(pkg, typ.Underlying())
+					d := new_decl_full(name.Name, decl_type, 0, dt, nil, -1, s)
+					// add methods
+					for _, sel := range typeutil.IntuitiveMethodSet(named, nil) {
+						ft := toType(pkg, sel.Type())
+						method := sel.Obj().Name()
+						d.add_child(new_decl_full(method, decl_func, 0, ft, nil, -1, s))
+					}
+					s.add_named_decl(d)
+				default:
+					dt := toType(nil, typ)
+					d := new_decl_full(name.Name, decl_type, 0, dt, nil, -1, s)
+					s.add_named_decl(d)
+				}
+			} else {
+				d := new_decl_full(name.Name, decl_type, 0, tp.Type, nil, -1, s)
+				s.add_named_decl(d)
+			}
 		}
 	}
 }

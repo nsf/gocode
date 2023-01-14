@@ -1,2 +1,2 @@
 Found 1 candidates:
-  func NewReader(r io.Reader) io.Reader
+  func NewReader(r myio.Reader) myio.Reader

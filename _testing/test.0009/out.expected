@@ -1,3 +1,4 @@
-Found 2 candidates:
+Found 3 candidates:
   func Lock()
+  func TryLock() bool
   func Unlock()
