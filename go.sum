@@ -1,7 +1,8 @@
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/visualfc/gomod v0.1.1 h1:17IpmvYEWjH+owa+J9gZPG0lFXL9f5wIBDGF0q3ut8g=
 github.com/visualfc/gomod v0.1.1/go.mod h1:rV5goiA/Ul6yT8X2eDnc/dl0dVy0cDHJLZVOuJ8PdmM=
+github.com/visualfc/gomod v0.1.2 h1:7qfPmifcA8r/0ZTpTPZQqsm5aJUiQ/EeyHEENPyywDg=
+github.com/visualfc/gomod v0.1.2/go.mod h1:rV5goiA/Ul6yT8X2eDnc/dl0dVy0cDHJLZVOuJ8PdmM=
 github.com/visualfc/gotools v1.3.10 h1:dSPxoCAXZ6iSYRGsx74xsCqGNthiZAbuPXwxfeJ3Rv4=
 github.com/visualfc/gotools v1.3.10/go.mod h1:CXKhMSUJoq9VN5wEoniBZ82fO6qtRoDZIoN1NdGhJNM=
 github.com/visualfc/goversion v1.1.0/go.mod h1:Gr3s6bW8NTomhheImwAttqno97Mw6pAnFn2dU8/EMa8=
