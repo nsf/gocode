@@ -951,7 +951,6 @@ const (
 
 	// Types
 	namedTag
-	typeParamTag
 	arrayTag
 	sliceTag
 	dddTag
@@ -975,6 +974,13 @@ const (
 
 	// Type aliases
 	aliasTag
+
+	typeParamTag
+	unionTag      // types.Union
+	named2Tag     // has typeparams
+	func2Tag      // has typeparams
+	signature2Tag // has typeparams
+	interface2Tag // has embeddeds
 )
 
 var predecl []types.Type // initialized lazily

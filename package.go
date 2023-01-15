@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/visualfc/gocode/internal/gcexportdata"
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 type package_parser interface {
@@ -82,22 +83,22 @@ func (m *package_file_cache) update_cache(c *auto_complete_context) {
 	if m.mtime == -1 {
 		return
 	}
-	defer func() {
-		if err := recover(); err != nil {
-			log.Println("update_cache recover error:", err)
-		}
-	}()
+	// defer func() {
+	// 	if err := recover(); err != nil {
+	// 		log.Println("update_cache recover error:", err)
+	// 	}
+	// }()
 
 	import_path := m.import_name
 	if m.vendor_name != "" {
 		import_path = m.vendor_name
 	}
-	if pkg := c.walker.Imported[import_path]; pkg != nil {
+	if pkg := c.typesWalker.Imported[import_path]; pkg != nil {
 		if pkg.Name() == "" {
 			log.Println("error parser", import_path)
 			return
 		}
-		if chk, ok := c.walker.ImportedFilesCheck[import_path]; ok {
+		if chk, ok := c.typesWalker.ImportedFilesCheck[import_path]; ok {
 			if m.mtime == chk.ModTime {
 				return
 			}
@@ -125,6 +126,91 @@ func (m *package_file_cache) update_cache(c *auto_complete_context) {
 	}
 }
 
+type types_export struct {
+	pkg *types.Package
+	pfc *package_file_cache
+}
+
+func (p *types_export) init(pkg *types.Package, pfc *package_file_cache) {
+	p.pkg = pkg
+	p.pfc = pfc
+	pfc.defalias = pkg.Name()
+	for _, pkg := range p.pkg.Imports() {
+		pkgid := "!" + pkg.Path() + "!" + pkg.Name()
+		pfc.add_package_to_scope(pkgid, pkg.Path())
+	}
+	pkgid := "!" + pkg.Path() + "!" + pkg.Name()
+	pfc.add_package_to_scope(pkgid, pkg.Path())
+}
+
+func (p *types_export) parse_export(callback func(pkg string, decl ast.Decl)) {
+	for _, pkg := range p.pkg.Imports() {
+		pkg_parse_export(pkg, p.pfc, callback)
+	}
+	pkg_parse_export(p.pkg, p.pfc, callback)
+}
+
+func pkg_parse_export(pkg *types.Package, pfc *package_file_cache, callback func(pkg string, decl ast.Decl)) {
+	pkgid := "!" + pkg.Path() + "!" + pkg.Name()
+	//pfc.add_package_to_scope(pkgid, pkg.Path())
+
+	for _, name := range pkg.Scope().Names() {
+		if obj := pkg.Scope().Lookup(name); obj != nil {
+			if !obj.Exported() {
+				continue
+			}
+			name := obj.Name()
+			var decl ast.Decl
+			switch t := obj.(type) {
+			case *types.Const:
+				decl = &ast.GenDecl{
+					Tok: token.CONST,
+					Specs: []ast.Spec{
+						&ast.ValueSpec{
+							Names: []*ast.Ident{ast.NewIdent(name)},
+							Type:  toType(pkg, t.Type()),
+						},
+					},
+				}
+			case *types.Var:
+				decl = &ast.GenDecl{
+					Tok: token.VAR,
+					Specs: []ast.Spec{
+						&ast.ValueSpec{
+							Names: []*ast.Ident{ast.NewIdent(name)},
+							Type:  toType(pkg, t.Type()),
+						},
+					},
+				}
+			case *types.TypeName:
+				decl = &ast.GenDecl{
+					Tok:   token.TYPE,
+					Specs: []ast.Spec{toTypeSpec(pkg, t)},
+				}
+				if named, ok := t.Type().(*types.Named); ok {
+					for _, sel := range typeutil.IntuitiveMethodSet(named, nil) {
+						sig := sel.Type().(*types.Signature)
+						decl := &ast.FuncDecl{
+							Recv: toRecv(pkg, sig.Recv()),
+							Name: ast.NewIdent(sel.Obj().Name()),
+							Type: toFuncType(pkg, sig),
+						}
+						callback(pkgid, decl)
+					}
+				}
+			case *types.Func:
+				sig := t.Type().(*types.Signature)
+				decl = &ast.FuncDecl{
+					Recv: toRecv(pkg, sig.Recv()),
+					Name: ast.NewIdent(name),
+					Type: toFuncType(pkg, sig),
+				}
+			}
+			callback(pkgid, decl)
+		}
+	}
+}
+
 func (m *package_file_cache) process_package_types(c *auto_complete_context, pkg *types.Package) {
 	m.scope = new_named_scope(g_universe_scope, m.name)
 
@@ -142,6 +228,7 @@ func (m *package_file_cache) process_package_types(c *auto_complete_context, pkg
 	pp = &p
 
 	prefix := "!" + m.name + "!"
+	//log.Println("load pkg", pkg.Path(), pkg.Imports())
 	pp.parse_export(func(pkg string, decl ast.Decl) {
 		anonymify_ast(decl, decl_foreign, m.scope)
 		if pkg == "" || strings.HasPrefix(pkg, prefix) {
@@ -279,6 +366,7 @@ func (m *package_file_cache) add_package_to_scope(alias, realname string) {
 func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
 	foreach_decl(decl, func(data *foreach_decl_struct) {
 		class := ast_decl_class(data.decl)
+		typeparams := ast_decl_typeparams(data.decl)
 		for i, name := range data.names {
 			typ, v, vi := data.type_value_index(i)
 
@@ -286,6 +374,7 @@ func add_ast_decl_to_package(pkg *decl, decl ast.Decl, scope *scope) {
 			if d == nil {
 				continue
 			}
+			d.typeparams = typeparams
 
 			if !name.IsExported() && d.class != decl_type {
 				return

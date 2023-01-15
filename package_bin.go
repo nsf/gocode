@@ -114,8 +114,7 @@ func (p *gc_bin_parser) parse_export(callback func(string, ast.Decl)) {
 	// read version specific flags - extend as necessary
 	switch p.version {
 	// case 7:
-	// 	...
-	//	fallthrough
+	// 	fallthrough
 	case 6, 5, 4, 3, 2, 1:
 		p.debugFormat = p.rawStringln(p.rawByte()) == "debug"
 		p.trackAllTypes = p.int() != 0
@@ -262,14 +261,18 @@ func (p *gc_bin_parser) obj(tag int) {
 			},
 		})
 
-	case funcTag:
+	case funcTag, func2Tag:
+		var tparams *ast.FieldList
+		if tag == func2Tag {
+			tparams = p.paramList()
+		}
 		p.pos()
 		pkg, name := p.qualifiedName()
 		params := p.paramList()
 		results := p.paramList()
 		p.callback(pkg, &ast.FuncDecl{
 			Name: ast.NewIdent(name),
-			Type: &ast.FuncType{Params: params, Results: results},
+			Type: newFuncType(tparams, params, results),
 		})
 
 	default:
@@ -351,16 +354,18 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 
 	// otherwise, i is the type tag (< 0)
 	switch i {
-	case namedTag, typeParamTag:
+	case namedTag, named2Tag:
+		var typeParams *ast.FieldList
+		if i == named2Tag {
+			typeParams = p.paramList()
+		}
 		// read type object
 		p.pos()
 		parent, name := p.qualifiedName()
 		tdecl := &ast.GenDecl{
 			Tok: token.TYPE,
 			Specs: []ast.Spec{
-				&ast.TypeSpec{
-					Name: ast.NewIdent(name),
-				},
+				newTypeSpec(name, typeParams),
 			},
 		}
 
@@ -387,17 +392,15 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 			if !exported(name) {
 				p.pkg()
 			}
-
 			recv := p.paramList()
 			params := p.paramList()
 			results := p.paramList()
 			p.int() // go:nointerface pragma - discarded
-
 			strip_method_receiver(recv)
 			p.callback(parent, &ast.FuncDecl{
 				Recv: recv,
 				Name: ast.NewIdent(name),
-				Type: &ast.FuncType{Params: params, Results: results},
+				Type: newFuncType(nil, params, results),
 			})
 		}
 		return t
@@ -437,18 +440,16 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 
 	case interfaceTag:
 		i := p.reserveMaybe()
-		var embeddeds []*ast.SelectorExpr
-		for n := p.int(); n > 0; n-- {
-			p.pos()
-			if named, ok := p.typ(parent).(*ast.SelectorExpr); ok {
-				embeddeds = append(embeddeds, named)
+		var embeddeds []*ast.Field
+		n := p.int()
+		if n > 0 {
+			embeddeds = make([]*ast.Field, n)
+			for i := 0; i < n; i++ {
+				embeddeds[i] = &ast.Field{Type: p.typ(parent)}
 			}
 		}
 		methods := p.methodList(parent)
-		for _, field := range embeddeds {
-			methods = append(methods, &ast.Field{Type: field})
-		}
-		return p.recordMaybe(i, &ast.InterfaceType{Methods: &ast.FieldList{List: methods}})
+		return p.recordMaybe(i, &ast.InterfaceType{Methods: &ast.FieldList{List: append(embeddeds, methods...)}})
 
 	case mapTag:
 		i := p.reserveMaybe()
@@ -471,7 +472,31 @@ func (p *gc_bin_parser) typ(parent string) ast.Expr {
 		}
 		elt := p.typ(parent)
 		return p.recordMaybe(i, &ast.ChanType{Dir: dir, Value: elt})
-
+	case typeParamTag:
+		i := p.reserveMaybe()
+		t0 := p.typ(parent)
+		return p.recordMaybe(i, t0)
+	case unionTag:
+		i := p.reserveMaybe()
+		n := p.int()
+		var expr ast.Expr
+		for i := 0; i < n; i++ {
+			title := p.int() != 0
+			t0 := p.typ(parent)
+			if title {
+				t0 = &ast.UnaryExpr{Op: TILDE, X: t0}
+			}
+			if i == 0 {
+				expr = t0
+			} else {
+				expr = &ast.BinaryExpr{
+					X:  expr,
+					Op: token.OR,
+					Y:  t0,
+				}
+			}
+		}
+		return p.recordMaybe(i, expr)
 	default:
 		panic(fmt.Sprintf("unexpected type tag %d", i))
 	}
@@ -777,7 +802,6 @@ const (
 
 	// Types
 	namedTag
-	typeParamTag
 	arrayTag
 	sliceTag
 	dddTag
@@ -801,6 +825,12 @@ const (
 
 	// Type aliases
 	aliasTag
+
+	typeParamTag
+	unionTag      // types.Union
+	named2Tag     // has typeparams
+	func2Tag      // has typeparams
+	signature2Tag // has typeparams
 )
 
 var predeclared = []ast.Expr{

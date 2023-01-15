@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"go/types"
 	"io"
+	"log"
 	"reflect"
 	"strings"
 	"sync"
+
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 // decl.class
@@ -84,6 +88,9 @@ type decl struct {
 	typ   ast.Expr
 	class decl_class
 	flags decl_flags
+
+	// typeparams
+	typeparams *ast.FieldList
 
 	// functions for interface type, fields+methods for struct type
 	children map[string]*decl
@@ -526,36 +533,13 @@ func func_return_type(f *ast.FuncType, index int) ast.Expr {
 }
 
 type type_path struct {
-	pkg  string
-	name string
+	pkg   string
+	name  string
+	targs []ast.Expr // typeparam index
 }
 
 func (tp *type_path) is_nil() bool {
 	return tp.pkg == "" && tp.name == ""
-}
-
-// converts type expressions like:
-// ast.Expr
-// *ast.Expr
-// $ast$go/ast.Expr
-// to a path that can be used to lookup a type related Decl
-func get_type_path(e ast.Expr) (r type_path) {
-	if e == nil {
-		return type_path{"", ""}
-	}
-
-	switch t := e.(type) {
-	case *ast.Ident:
-		r.name = t.Name
-	case *ast.StarExpr:
-		r = get_type_path(t.X)
-	case *ast.SelectorExpr:
-		if ident, ok := t.X.(*ast.Ident); ok {
-			r.pkg = ident.Name
-		}
-		r.name = t.Sel.Name
-	}
-	return
 }
 
 func lookup_path(tp type_path, scope *scope) *decl {
@@ -597,7 +581,153 @@ func lookup_pkg(tp type_path, scope *scope) string {
 	return decl.name
 }
 
+func instance_decl(d *decl, typ ast.Expr, targs []ast.Expr) *decl {
+	return new_decl_full(d.name, d.class, d.flags, typ, d.value, d.value_index, d.scope)
+}
+
+func (c *auto_complete_context) lookup_types(t ast.Expr) types.Type {
+	conf := c.typesConf
+
+	if typ := lookup_types_expr(t, conf.Info); typ != nil {
+		return typ
+	}
+	if conf.XInfo != nil {
+		if typ := lookup_types_expr(t, conf.XInfo); typ != nil {
+			return typ
+		}
+	}
+	return nil
+}
+
+func (c *auto_complete_context) lookup_ident(t ast.Expr) types.Type {
+	conf := c.typesConf
+	pos := token.Pos(c.typesCursor)
+
+	if ident, ok := t.(*ast.Ident); ok {
+		if typ := lookup_types_ident(ident, pos, conf.Info); typ != nil {
+			return typ
+		}
+		if conf.XInfo != nil {
+			if typ := lookup_types_ident(ident, pos, conf.XInfo); typ != nil {
+				return typ
+			}
+		}
+	}
+	return nil
+}
+
+func lookup_types(t ast.Expr) types.Type {
+	conf := g_daemon.autocomplete.typesConf
+	pos := token.Pos(g_daemon.autocomplete.typesCursor)
+
+	if ident, ok := t.(*ast.Ident); ok {
+		if typ := lookup_types_ident(ident, pos, conf.Info); typ != nil {
+			return typ
+		}
+		if conf.XInfo != nil {
+			if typ := lookup_types_ident(ident, pos, conf.XInfo); typ != nil {
+				return typ
+			}
+		}
+		return nil
+	}
+	if typ := lookup_types_expr(t, conf.Info); typ != nil {
+		return typ
+	}
+	if conf.XInfo != nil {
+		if typ := lookup_types_expr(t, conf.XInfo); typ != nil {
+			return typ
+		}
+	}
+	return nil
+}
+
+func lookup_types_scope(pos token.Pos) *types.Scope {
+	return g_daemon.autocomplete.typesPkg.Scope().Innermost(pos)
+}
+
+type typ_distance struct {
+	pos token.Pos
+	typ types.Type
+}
+
+// lookup type by ident, from scope or near instance
+func lookup_types_ident(ident *ast.Ident, pos token.Pos, info *types.Info) types.Type {
+	var typ types.Type
+	if scope := lookup_types_scope(pos); scope != nil {
+		if obj := scope.Lookup(ident.Name); obj != nil {
+			typ = obj.Type()
+		}
+		if _, obj := scope.LookupParent(ident.Name, pos); obj != nil {
+			typ = obj.Type()
+		}
+	}
+	// is typeparams lookup instance
+	if hasTypeParams(typ) {
+		return lookup_types_near_instance(ident, pos, info)
+	}
+	return typ
+}
+
+// lookup type by type, from type.
+func lookup_types_expr(t ast.Expr, info *types.Info) types.Type {
+	text := types.ExprString(t)
+	for k, v := range info.Types {
+		if text == types.ExprString(k) {
+			return v.Type
+		}
+	}
+	return nil
+}
+
 func type_to_decl(t ast.Expr, scope *scope) *decl {
+	if t == nil {
+		//TODO
+		return nil
+	}
+	tp := get_type_path(t)
+	d := lookup_path(tp, scope)
+	log.Println("=======", t, d)
+	if d == nil {
+		if st, ok := t.(*ast.StructType); ok {
+			d = new_decl_full(types.ExprString(t), decl_type, 0, st, nil, -1, scope)
+		}
+		// typeparams targs struct type: Typ[struct{...}]
+		// if typ := g_daemon.autocomplete.lookup_types(t); typ != nil {
+		// 	switch st := typ.(type) {
+		// 	case *types.Struct:
+		// 		dt := toType(nil, typ)
+		// 		d = new_decl_full(typ.String(), decl_type, 0, dt, nil, -1, scope)
+		// 	case *TypeParam:
+		// 		dt := toType(nil, st.Constraint().Underlying())
+		// 		d = new_decl_full(typ.String(), decl_type, 0, dt, nil, -1, scope)
+		// 	}
+		// }
+	} else if d.typeparams != nil {
+		// typeparams named type instance
+		if typ := g_daemon.autocomplete.lookup_types(t); typ != nil {
+			if named, ok := typ.(*types.Named); ok {
+				pkg := named.Obj().Pkg()
+				dt := toType(pkg, typ.Underlying())
+				d = new_decl_full(types.ExprString(t), decl_type, 0, dt, nil, -1, scope)
+				// add methods
+				for _, sel := range typeutil.IntuitiveMethodSet(named, nil) {
+					ft := toType(pkg, sel.Type())
+					method := sel.Obj().Name()
+					d.add_child(new_decl_full(method, decl_func, 0, ft, nil, -1, scope))
+				}
+			}
+		}
+	}
+
+	if d != nil && d.class == decl_var {
+		// weird variable declaration pointing to itself
+		return nil
+	}
+	return d
+}
+
+func advance_type_to_decl(t ast.Expr, scope *scope) *decl {
 	if t == nil {
 		//TODO
 		return nil
@@ -627,7 +757,7 @@ func advance_to_type(pred type_predicate, v ast.Expr, scope *scope) (ast.Expr, *
 		return v, scope
 	}
 
-	decl := type_to_decl(v, scope)
+	decl := advance_type_to_decl(v, scope)
 	if decl == nil {
 		return nil, nil
 	}
@@ -891,6 +1021,24 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		// myFunc(1,2,3) or int16(myvar)
 		it, s, is_type := infer_type(t.Fun, scope, -1)
 		if it == nil {
+			// func[targs](params)
+			if typ := lookup_types(t.Fun); typ != nil {
+				it = toType(nil, typ)
+				s = scope
+				is_type = false
+			}
+		} else if ct, ok := it.(*ast.FuncType); ok {
+			// ast.FuncType.TypeParams != nil
+			if funcHasTypeParams(ct) {
+				if typ := g_daemon.autocomplete.lookup_types(t.Fun); typ != nil {
+					it = toType(nil, typ)
+					s = scope
+					is_type = false
+				}
+			}
+		}
+
+		if it == nil {
 			break
 		}
 
@@ -993,6 +1141,7 @@ func (d *decl) infer_type() (ast.Expr, *scope) {
 
 	var scope *scope
 	d.typ, scope, _ = infer_type(d.value, d.scope, d.value_index)
+
 	return d.typ, scope
 }
 

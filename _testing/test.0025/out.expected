@@ -1,5 +1,7 @@
-Found 4 candidates:
+Found 6 candidates:
+  func Add(ptr Pointer, len IntegerType) Pointer
   func Alignof(any) uintptr
   func Offsetof(any) uintptr
   func Sizeof(any) uintptr
+  func Slice(ptr *ArbitraryType, len IntegerType) []ArbitraryType
   type Pointer uintptr
