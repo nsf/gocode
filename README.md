@@ -1,7 +1,34 @@
-## An autocompletion daemon for the Go programming language
+LiteIDE Gocode Tools
+=========
+
+### LiteIDE
+
+_LiteIDE is a simple, open source, cross-platform Go IDE._
+
+### Gocode
+_Gocode is a golang code autocomplete support for LiteIDE._
+
 
 - support Go1.11 Go modules.
 - support Go1.18 generics.
+
+```
+go install github.com/visualfc/gocode@latest
+
+Windows/Linux: copy GOPATH/bin gocode to liteide/bin
+MacOS: copy GOPATH/bin gocode to LiteIDE.app/Contents/MacOS
+```
+
+### Website
+* LiteIDE Source code
+<https://github.com/visualfc/liteide>
+* Gocode Source code
+<https://github.com/visualfc/gocode>
+
+
+***
+
+## An autocompletion daemon for the Go programming language
 
 Gocode is a helper tool which is intended to be integrated with your source code editor, like vim, neovim and emacs. It provides several advanced capabilities, which currently includes:
 
