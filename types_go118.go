@@ -340,10 +340,12 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr, canonical_aliases map[str
 		pretty_print_type_expr(out, t.X, canonical_aliases)
 		fmt.Fprintf(out, ")")
 	case *ast.IndexExpr:
-		fmt.Fprintf(out, "[")
 		pretty_print_type_expr(out, t.X, canonical_aliases)
+		fmt.Fprintf(out, "[")
+		pretty_print_type_expr(out, t.Index, canonical_aliases)
 		fmt.Fprintf(out, "]")
 	case *ast.IndexListExpr:
+		pretty_print_type_expr(out, t.X, canonical_aliases)
 		fmt.Fprintf(out, "[")
 		for i, index := range t.Indices {
 			if i != 0 {
