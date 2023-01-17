@@ -149,10 +149,6 @@ func DefaultPkgConfig() *pkgwalk.PkgConfig {
 	return conf
 }
 
-func lookup_types_instance_sig(text string, info *types.Info) types.Type {
-	return nil
-}
-
 func pretty_print_type_expr(out io.Writer, e ast.Expr, canonical_aliases map[string]string) {
 	switch t := e.(type) {
 	case *ast.StarExpr:

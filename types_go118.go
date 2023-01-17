@@ -234,44 +234,6 @@ func DefaultPkgConfig() *pkgwalk.PkgConfig {
 	return conf
 }
 
-func lookup_types_instance_sig(text string, info *types.Info) types.Type {
-	for _, v := range info.Instances {
-		switch t := v.Type.(type) {
-		case *types.Signature:
-			r := t.Results()
-			for i := 0; i < r.Len(); i++ {
-				typ := r.At(i).Type()
-				typ = toElem(typ)
-				expr := toType(nil, typ)
-				if types.ExprString(expr) == text {
-					return typ
-				}
-				if st, ok := typ.Underlying().(*types.Struct); ok {
-					for j := 0; j < st.NumFields(); j++ {
-						t := st.Field(j).Type()
-						t = toElem(t)
-						expr := toType(nil, t)
-						if types.ExprString(expr) == text {
-							return t
-						}
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func toElem(typ types.Type) types.Type {
-retry:
-	switch t := typ.(type) {
-	case *types.Pointer:
-		typ = t.Elem()
-		goto retry
-	}
-	return typ
-}
-
 func pretty_print_type_expr(out io.Writer, e ast.Expr, canonical_aliases map[string]string) {
 	switch t := e.(type) {
 	case *ast.StarExpr:

@@ -667,15 +667,55 @@ func lookup_types_ident(ident *ast.Ident, pos token.Pos, info *types.Info) types
 	return typ
 }
 
+func lookup_types_text(text string, typ types.Type) types.Type {
+retry:
+	switch t := typ.(type) {
+	case *types.Array:
+		typ = t.Elem()
+		goto retry
+	case *types.Map:
+		typ = t.Elem()
+		goto retry
+	case *types.Pointer:
+		typ = t.Elem()
+		goto retry
+	case *types.Slice:
+		typ = t.Elem()
+		goto retry
+	case *types.Chan:
+		typ = t.Elem()
+		goto retry
+	case *types.Named:
+		if text == types.ExprString(toType(nil, typ)) {
+			return typ
+		}
+		typ = t.Underlying()
+		goto retry
+	case *types.Struct:
+		for i := 0; i < t.NumFields(); i++ {
+			if r := lookup_types_text(text, t.Field(i).Type()); r != nil {
+				return r
+			}
+		}
+	}
+	return nil
+}
+
 // lookup type by type, from type.
 func lookup_types_expr(t ast.Expr, info *types.Info) types.Type {
 	text := types.ExprString(t)
 	for k, v := range info.Types {
+		if v.Type == nil {
+			continue
+		}
 		if text == types.ExprString(k) {
 			return v.Type
 		}
+		if t := lookup_types_text(text, v.Type); t != nil {
+			return t
+		}
 	}
-	return lookup_types_instance_sig(text, info)
+	return nil
 }
 
 func type_to_decl(t ast.Expr, scope *scope) *decl {
@@ -702,8 +742,10 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 		// }
 	} else if d.typeparams != nil {
 		// typeparams named type instance
+	retry:
 		if x, ok := t.(*ast.StarExpr); ok {
 			t = x.X
+			goto retry
 		}
 		if typ := g_daemon.autocomplete.lookup_types(t); typ != nil {
 			if named, ok := typ.(*types.Named); ok {
