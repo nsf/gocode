@@ -7,7 +7,6 @@ import (
 	"go/token"
 	"go/types"
 	"io"
-	"log"
 	"reflect"
 	"strings"
 	"sync"
@@ -687,7 +686,6 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 	}
 	tp := get_type_path(t)
 	d := lookup_path(tp, scope)
-	log.Println("=======", t, d)
 	if d == nil {
 		if st, ok := t.(*ast.StructType); ok {
 			d = new_decl_full(types.ExprString(t), decl_type, 0, st, nil, -1, scope)
@@ -706,6 +704,9 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 	} else if d.typeparams != nil {
 		// typeparams named type instance
 		if typ := g_daemon.autocomplete.lookup_types(t); typ != nil {
+			if t, ok := typ.(*types.Pointer); ok {
+				typ = t.Elem()
+			}
 			if named, ok := typ.(*types.Named); ok {
 				pkg := named.Obj().Pkg()
 				dt := toType(pkg, typ.Underlying())
