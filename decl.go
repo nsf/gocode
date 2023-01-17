@@ -1062,8 +1062,7 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		// this is a function call or a type cast:
 		// myFunc(1,2,3) or int16(myvar)
 		it, s, is_type := infer_type(t.Fun, scope, -1)
-		if it == nil {
-			// func[targs](params)
+		if it == nil && funHasTypeArgs(t.Fun) {
 			if typ := lookup_types(t.Fun); typ != nil {
 				it = toType(nil, typ)
 				s = scope
