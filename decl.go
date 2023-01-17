@@ -676,6 +676,20 @@ func lookup_types_expr(t ast.Expr, info *types.Info) types.Type {
 			return v.Type
 		}
 	}
+	for _, v := range info.Instances {
+		if sig, ok := v.Type.(*types.Signature); ok {
+			for i := 0; i < sig.Results().Len(); i++ {
+				typ := sig.Results().At(i).Type()
+				if star, ok := typ.(*types.Pointer); ok {
+					typ = star.Elem()
+				}
+				expr := toType(nil, typ)
+				if types.ExprString(expr) == text {
+					return typ
+				}
+			}
+		}
+	}
 	return nil
 }
 
