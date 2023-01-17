@@ -244,3 +244,7 @@ func pretty_print_type_expr(out io.Writer, e ast.Expr, canonical_aliases map[str
 		// the element has some weird type, just ignore it
 	}
 }
+
+func funHasTypeArgs(fun ast.Expr) bool {
+	return false
+}

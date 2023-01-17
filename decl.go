@@ -667,7 +667,7 @@ func lookup_types_ident(ident *ast.Ident, pos token.Pos, info *types.Info) types
 	return typ
 }
 
-func lookup_types_text(text string, typ types.Type) types.Type {
+func lookup_types_text(text string, typ types.Type, skips map[types.Type]bool) types.Type {
 retry:
 	switch t := typ.(type) {
 	case *types.Array:
@@ -689,11 +689,15 @@ retry:
 		if text == types.ExprString(toType(nil, typ)) {
 			return typ
 		}
+		if skips[t] {
+			return nil
+		}
+		skips[t] = true
 		typ = t.Underlying()
 		goto retry
 	case *types.Struct:
 		for i := 0; i < t.NumFields(); i++ {
-			if r := lookup_types_text(text, t.Field(i).Type()); r != nil {
+			if r := lookup_types_text(text, t.Field(i).Type(), skips); r != nil {
 				return r
 			}
 		}
@@ -704,6 +708,7 @@ retry:
 // lookup type by type, from type.
 func lookup_types_expr(t ast.Expr, info *types.Info) types.Type {
 	text := types.ExprString(t)
+	skips := make(map[types.Type]bool)
 	for k, v := range info.Types {
 		if v.Type == nil {
 			continue
@@ -711,7 +716,7 @@ func lookup_types_expr(t ast.Expr, info *types.Info) types.Type {
 		if text == types.ExprString(k) {
 			return v.Type
 		}
-		if t := lookup_types_text(text, v.Type); t != nil {
+		if t := lookup_types_text(text, v.Type, skips); t != nil {
 			return t
 		}
 	}
@@ -1062,8 +1067,7 @@ func infer_type(v ast.Expr, scope *scope, index int) (ast.Expr, *scope, bool) {
 		// this is a function call or a type cast:
 		// myFunc(1,2,3) or int16(myvar)
 		it, s, is_type := infer_type(t.Fun, scope, -1)
-		if it == nil {
-			// func[targs](params)
+		if it == nil && funHasTypeArgs(t.Fun) {
 			if typ := lookup_types(t.Fun); typ != nil {
 				it = toType(nil, typ)
 				s = scope
