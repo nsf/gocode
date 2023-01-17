@@ -4,10 +4,14 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"go/ast"
 	"go/token"
 	"go/types"
+	"io"
 	"sort"
+	"strings"
 
 	pkgwalk "github.com/visualfc/gotools/types"
 )
@@ -228,4 +232,115 @@ func DefaultPkgConfig() *pkgwalk.PkgConfig {
 		Instances:  make(map[*ast.Ident]types.Instance),
 	}
 	return conf
+}
+
+func pretty_print_type_expr(out io.Writer, e ast.Expr, canonical_aliases map[string]string) {
+	switch t := e.(type) {
+	case *ast.StarExpr:
+		fmt.Fprintf(out, "*")
+		pretty_print_type_expr(out, t.X, canonical_aliases)
+	case *ast.Ident:
+		if strings.HasPrefix(t.Name, "$") {
+			// beautify anonymous types
+			switch t.Name[1] {
+			case 's':
+				fmt.Fprintf(out, "struct")
+			case 'i':
+				// ok, in most cases anonymous interface is an
+				// empty interface, I'll just pretend that
+				// it's always true
+				fmt.Fprintf(out, "interface{}")
+			}
+		} else if !*g_debug && strings.HasPrefix(t.Name, "!") {
+			// these are full package names for disambiguating and pretty
+			// printing packages within packages, e.g.
+			// !go/ast!ast vs. !github.com/nsf/my/ast!ast
+			// another ugly hack, if people are punished in hell for ugly hacks
+			// I'm screwed...
+			emarkIdx := strings.LastIndex(t.Name, "!")
+			path := t.Name[1:emarkIdx]
+			alias := canonical_aliases[path]
+			if alias == "" {
+				alias = t.Name[emarkIdx+1:]
+			}
+			fmt.Fprintf(out, alias)
+		} else {
+			fmt.Fprintf(out, t.Name)
+		}
+	case *ast.ArrayType:
+		al := ""
+		if t.Len != nil {
+			al = get_array_len(t.Len)
+		}
+		if al != "" {
+			fmt.Fprintf(out, "[%s]", al)
+		} else {
+			fmt.Fprintf(out, "[]")
+		}
+		pretty_print_type_expr(out, t.Elt, canonical_aliases)
+	case *ast.SelectorExpr:
+		pretty_print_type_expr(out, t.X, canonical_aliases)
+		fmt.Fprintf(out, ".%s", t.Sel.Name)
+	case *ast.FuncType:
+		fmt.Fprintf(out, "func(")
+		pretty_print_func_field_list(out, t.Params, canonical_aliases)
+		fmt.Fprintf(out, ")")
+
+		buf := bytes.NewBuffer(make([]byte, 0, 256))
+		nresults := pretty_print_func_field_list(buf, t.Results, canonical_aliases)
+		if nresults > 0 {
+			results := buf.String()
+			if strings.IndexAny(results, ", ") != -1 {
+				results = "(" + results + ")"
+			}
+			fmt.Fprintf(out, " %s", results)
+		}
+	case *ast.MapType:
+		fmt.Fprintf(out, "map[")
+		pretty_print_type_expr(out, t.Key, canonical_aliases)
+		fmt.Fprintf(out, "]")
+		pretty_print_type_expr(out, t.Value, canonical_aliases)
+	case *ast.InterfaceType:
+		fmt.Fprintf(out, "interface{}")
+	case *ast.Ellipsis:
+		fmt.Fprintf(out, "...")
+		pretty_print_type_expr(out, t.Elt, canonical_aliases)
+	case *ast.StructType:
+		fmt.Fprintf(out, "struct")
+	case *ast.ChanType:
+		switch t.Dir {
+		case ast.RECV:
+			fmt.Fprintf(out, "<-chan ")
+		case ast.SEND:
+			fmt.Fprintf(out, "chan<- ")
+		case ast.SEND | ast.RECV:
+			fmt.Fprintf(out, "chan ")
+		}
+		pretty_print_type_expr(out, t.Value, canonical_aliases)
+	case *ast.ParenExpr:
+		fmt.Fprintf(out, "(")
+		pretty_print_type_expr(out, t.X, canonical_aliases)
+		fmt.Fprintf(out, ")")
+	case *ast.IndexExpr:
+		pretty_print_type_expr(out, t.X, canonical_aliases)
+		fmt.Fprintf(out, "[")
+		pretty_print_type_expr(out, t.Index, canonical_aliases)
+		fmt.Fprintf(out, "]")
+	case *ast.IndexListExpr:
+		pretty_print_type_expr(out, t.X, canonical_aliases)
+		fmt.Fprintf(out, "[")
+		for i, index := range t.Indices {
+			if i != 0 {
+				fmt.Fprintf(out, ", ")
+			}
+			pretty_print_type_expr(out, index, canonical_aliases)
+		}
+		fmt.Fprintf(out, "]")
+	case *ast.BadExpr:
+		// TODO: probably I should check that in a separate function
+		// and simply discard declarations with BadExpr as a part of their
+		// type
+	default:
+		// the element has some weird type, just ignore it
+	}
 }
