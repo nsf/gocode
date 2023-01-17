@@ -144,3 +144,7 @@ func DefaultPkgConfig() *pkgwalk.PkgConfig {
 	}
 	return conf
 }
+
+func lookup_types_instance_sig(text string, info *types.Info) types.Type {
+	return nil
+}
