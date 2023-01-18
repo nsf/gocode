@@ -7,7 +7,6 @@ import (
 	"go/token"
 	"go/types"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/visualfc/gocode/internal/gcexportdata"
@@ -107,23 +106,24 @@ func (m *package_file_cache) update_cache(c *auto_complete_context) {
 		m.process_package_types(c, pkg)
 		return
 	}
+	m.process_package_data(c, nil, true)
 
-	fname := m.find_file()
-	stat, err := os.Stat(fname)
+	// fname := m.find_file()
+	// stat, err := os.Stat(fname)
 
-	if err != nil {
-		m.process_package_data(c, nil, true)
-		return
-	}
-	statmtime := stat.ModTime().UnixNano()
-	if m.mtime != statmtime {
-		m.mtime = statmtime
-		data, err := file_reader.read_file(fname)
-		if err != nil {
-			return
-		}
-		m.process_package_data(c, data, false)
-	}
+	// if err != nil {
+	// 	m.process_package_data(c, nil, true)
+	// 	return
+	// }
+	// statmtime := stat.ModTime().UnixNano()
+	// if m.mtime != statmtime {
+	// 	m.mtime = statmtime
+	// 	data, err := file_reader.read_file(fname)
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// 	m.process_package_data(c, data, false)
+	// }
 }
 
 type types_export struct {
@@ -277,6 +277,10 @@ func (m *package_file_cache) process_package_data(c *auto_complete_context, data
 			importPath = m.vendor_name
 		}
 		tp.initSource(m.import_name, importPath, srcDir, m, c)
+		if tp.pkg != nil && tp.pkg.Name() == "" {
+			log.Println("error parser data source", importPath)
+			return
+		}
 		data = tp.exportData()
 		if *g_debug {
 			log.Printf("parser source %q %q\n", importPath, srcDir)
