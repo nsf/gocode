@@ -277,6 +277,10 @@ func (m *package_file_cache) process_package_data(c *auto_complete_context, data
 			importPath = m.vendor_name
 		}
 		tp.initSource(m.import_name, importPath, srcDir, m, c)
+		if tp.pkg != nil && tp.pkg.Name() == "" {
+			log.Println("error parser data source", importPath)
+			return
+		}
 		data = tp.exportData()
 		if *g_debug {
 			log.Printf("parser source %q %q\n", importPath, srcDir)
