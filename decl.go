@@ -756,7 +756,7 @@ func type_to_decl(t ast.Expr, scope *scope) *decl {
 			if named, ok := typ.(*types.Named); ok {
 				pkg := named.Obj().Pkg()
 				dt := toType(pkg, typ.Underlying())
-				d = new_decl_full(types.ExprString(t), decl_type, 0, dt, nil, -1, scope)
+				d = new_decl_full(types.ExprString(t), decl_type, d.flags, dt, nil, -1, scope)
 				// add methods
 				for _, sel := range typeutil.IntuitiveMethodSet(named, nil) {
 					ft := toType(pkg, sel.Type())
