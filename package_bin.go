@@ -879,4 +879,7 @@ var predeclared = []ast.Expr{
 
 	// used internally by gc; never used by this package or in .a files
 	ast.NewIdent("any"),
+
+	// comparable
+	ast.NewIdent("comparable"),
 }

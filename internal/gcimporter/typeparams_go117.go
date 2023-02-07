@@ -73,3 +73,10 @@ func (*Union) String() string         { unsupported(); return "" }
 func (*Union) Underlying() types.Type { unsupported(); return nil }
 func (*Union) Len() int               { return 0 }
 func (*Union) Term(i int) *Term       { unsupported(); return nil }
+
+var comparableType = comparable{}
+
+type comparable struct{}
+
+func (t comparable) Underlying() types.Type { return t }
+func (t comparable) String() string         { return "comparable" }
