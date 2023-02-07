@@ -45,3 +45,6 @@ func originType(t types.Type) types.Type {
 
 type Union = types.Union
 type Term = types.Term
+
+// comparable
+var comparableType = types.Universe.Lookup("comparable").Type()
