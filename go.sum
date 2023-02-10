@@ -1,10 +1,16 @@
+github.com/creack/pty v1.1.9 h1:uDmaGzcdjhF4i/plgjmEsriH11Y0o7RKapEf/LDaM3w=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/visualfc/gomod v0.1.2 h1:7qfPmifcA8r/0ZTpTPZQqsm5aJUiQ/EeyHEENPyywDg=
 github.com/visualfc/gomod v0.1.2/go.mod h1:rV5goiA/Ul6yT8X2eDnc/dl0dVy0cDHJLZVOuJ8PdmM=
 github.com/visualfc/gotools v1.5.1 h1:uICwSO7XKGMbg2XCYU4fjuu9JnIJsXMIrO1EDvJY6ks=
 github.com/visualfc/gotools v1.5.1/go.mod h1:VlP59ccCsSmRbFZTbuHgQDrTOi40EGKvyFK2Cq2Far8=
+github.com/visualfc/gotools v1.5.2 h1:uHHnTwZzIGTgd3vmKFSiq9aHCdRXv6p+a2gxlbCHG/M=
+github.com/visualfc/gotools v1.5.2/go.mod h1:VlP59ccCsSmRbFZTbuHgQDrTOi40EGKvyFK2Cq2Far8=
+github.com/visualfc/goversion v1.1.0 h1:EN0YQGRkeGoWTPxPNTnbhyNQyas5leKH5U5lL4t8lRE=
 github.com/visualfc/goversion v1.1.0/go.mod h1:Gr3s6bW8NTomhheImwAttqno97Mw6pAnFn2dU8/EMa8=
+github.com/yuin/goldmark v1.4.13 h1:fVcFKWvrslecOb/tg+Cc05dkeYx540o0FuFt3nUVDoE=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=
