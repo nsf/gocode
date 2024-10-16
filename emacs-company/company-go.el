@@ -4,7 +4,7 @@
 
 ;; Author: nsf <no.smile.face@gmail.com>
 ;; Keywords: languages
-;; Package-Requires: ((company "0.8.0") (go-mode "1.0.0"))
+;; Package-Requires: ((company "0.8.0") (go-mode "1.0.0") (emacs "24.3"))
 
 ;; No license, this code is under public domain, do whatever you want.
 
@@ -188,10 +188,10 @@ triggers a completion immediately."
         (setq pos (1+ pos))))
     (substring-no-properties str 0 pos)))
 
-; Uses meta as-is if annotation alignment is enabled. Otherwise removes first
-; two words from the meta, which are usually the class and the name of the
-; entity, the rest is the function signature or type. That's how annotations are
-; supposed to be used.
+                                        ; Uses meta as-is if annotation alignment is enabled. Otherwise removes first
+                                        ; two words from the meta, which are usually the class and the name of the
+                                        ; entity, the rest is the function signature or type. That's how annotations are
+                                        ; supposed to be used.
 (defun company-go--extract-annotation (meta)
   "Extract annotation from META."
   (if company-tooltip-align-annotations
@@ -226,7 +226,7 @@ triggers a completion immediately."
     (let* ((package (get-text-property 0 'package arg))
            (query (if (string= package "")
                       arg
-                      (format "%s.%s" package arg)))
+                    (format "%s.%s" package arg)))
            (buf (godoc--get-buffer query))
            (exit-code (call-process-shell-command
                        (concat company-go-godoc-command " " company-go-godoc-args " " query)
@@ -239,7 +239,7 @@ triggers a completion immediately."
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
   (interactive (list 'interactive))
-  (case command
+  (cl-case command
     (interactive (company-begin-backend 'company-go))
     (prefix (and (derived-mode-p 'go-mode)
                  (not (company-in-string-or-comment))
