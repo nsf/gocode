@@ -4,7 +4,7 @@
 
 ;; Author: nsf <no.smile.face@gmail.com>
 ;; Keywords: languages
-;; Package-Requires: ((company "0.8.0") (go-mode "1.0.0"))
+;; Package-Requires: ((company "0.8.0") (go-mode "1.0.0") (emacs "24.3"))
 
 ;; No license, this code is under public domain, do whatever you want.
 
@@ -13,7 +13,7 @@
 (require 'company-template)
 
 (eval-when-compile
-  (require 'cl))
+  (require 'cl-lib))
 
 (require 'go-mode)
 (require 'company)
@@ -239,7 +239,7 @@ triggers a completion immediately."
 ;;;###autoload
 (defun company-go (command &optional arg &rest ignored)
   (interactive (list 'interactive))
-  (case command
+  (cl-case command
     (interactive (company-begin-backend 'company-go))
     (prefix (and (derived-mode-p 'go-mode)
                  (not (company-in-string-or-comment))
